@@ -64,7 +64,7 @@ ALLOWED_EXTENSIONS = {
 }
 
 # 最大文件大小（字节）
-MAX_FILE_SIZE = settings.MAX_UPLOAD_SIZE
+MAX_FILE_SIZE = settings.MAX_FILE_SIZE
 
 def get_file_type(extension: str) -> str:
     """根据文件扩展名获取文件类型"""

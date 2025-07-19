@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from app.api.v1.endpoints import auth, users, projects, tasks, organizations, dashboard, upload, search, export
+from app.api.v1.endpoints import auth, users, projects, tasks, organizations, dashboard, files, search, export
 
 api_router = APIRouter()
 
@@ -23,7 +23,7 @@ api_router.include_router(organizations.router, prefix="/organizations", tags=["
 api_router.include_router(dashboard.router, prefix="/dashboard", tags=["仪表盘"])
 
 # 文件上传路由
-api_router.include_router(upload.router, prefix="/upload", tags=["文件上传"])
+api_router.include_router(files.router, prefix="/files", tags=["文件管理"])
 
 # 搜索路由
 api_router.include_router(search.router, prefix="/search", tags=["搜索"])

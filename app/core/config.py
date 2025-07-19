@@ -28,7 +28,7 @@ class Settings(BaseSettings):
     # 文件上传配置
     UPLOAD_DIR: str = "./uploads"
     MAX_FILE_SIZE: int = 10 * 1024 * 1024  # 10MB
-    ALLOWED_FILE_TYPES: list = [".jpg", ".jpeg", ".png", ".gif", ".pdf", ".doc", ".docx", ".xls", ".xlsx"]
+    ALLOWED_FILE_TYPES: str = "jpg,jpeg,png,gif,pdf,doc,docx,xls,xlsx,ppt,pptx,txt,zip,rar"
     
     # 分页配置
     DEFAULT_PAGE_SIZE: int = 20
@@ -40,6 +40,7 @@ class Settings(BaseSettings):
     class Config:
         env_file = ".env"
         case_sensitive = True
+        extra = "ignore"
 
 # 创建全局设置实例
 settings = Settings()
