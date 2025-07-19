@@ -1,0 +1,500 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# PyInstaller
+#  Usually these files are written by a python script from a template
+#  before PyInstaller builds the exe, so as to inject date/other infos into it.
+*.manifest
+*.spec
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+cover/
+
+# Translations
+*.mo
+*.pot
+
+# Django stuff:
+*.log
+local_settings.py
+db.sqlite3
+db.sqlite3-journal
+
+# Flask stuff:
+instance/
+.webassets-cache
+
+# Scrapy stuff:
+.scrapy
+
+# Sphinx documentation
+docs/_build/
+
+# PyBuilder
+.pybuilder/
+target/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# IPython
+profile_default/
+ipython_config.py
+
+# pyenv
+#   For a library or package, you might want to ignore these files since the code is
+#   intended to run in multiple environments; otherwise, check them in:
+# .python-version
+
+# pipenv
+#   According to pypa/pipenv#598, it is recommended to include Pipfile.lock in version control.
+#   However, in case of collaboration, if having platform-specific dependencies or dependencies
+#   having no cross-platform support, pipenv may install dependencies that don't work, or not
+#   install all needed dependencies.
+#Pipfile.lock
+
+# poetry
+#   Similar to Pipfile.lock, it is generally recommended to include poetry.lock in version control.
+#   This is especially recommended for binary packages to ensure reproducibility, and is more
+#   commonly ignored for libraries.
+#   https://python-poetry.org/docs/basic-usage/#commit-your-poetrylock-file-to-version-control
+#poetry.lock
+
+# pdm
+#   Similar to Pipfile.lock, it is generally recommended to include pdm.lock in version control.
+#pdm.lock
+#   pdm stores project-wide configurations in .pdm.toml, but it is recommended to not include it
+#   in version control.
+#   https://pdm.fming.dev/#use-with-ide
+.pdm.toml
+
+# PEP 582; used by e.g. github.com/David-OConnor/pyflow and github.com/pdm-project/pdm
+__pypackages__/
+
+# Celery stuff
+celerybeat-schedule
+celerybeat.pid
+
+# SageMath parsed files
+*.sage.py
+
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Spyder project settings
+.spyderproject
+.spyproject
+
+# Rope project settings
+.ropeproject
+
+# mkdocs documentation
+/site
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Pyre type checker
+.pyre/
+
+# pytype static type analyzer
+.pytype/
+
+# Cython debug symbols
+cython_debug/
+
+# PyCharm
+#  JetBrains specific template is maintained in a separate JetBrains.gitignore that can
+#  be added to the global gitignore or merged into this project gitignore.  For a PyCharm
+#  project, it is recommended to include the .idea directory in version control.
+.idea/
+
+# VS Code
+.vscode/
+*.code-workspace
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# Vim
+*.swp
+*.swo
+*~
+
+# Emacs
+*~
+\#*\#
+/.emacs.desktop
+/.emacs.desktop.lock
+*.elc
+auto-save-list
+tramp
+.\#*
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Project specific
+# 数据库文件
+*.db
+*.sqlite
+*.sqlite3
+
+# 日志文件
+logs/
+*.log
+*.log.*
+
+# 上传文件
+uploads/
+static/uploads/
+
+# 导出文件
+exports/
+
+# 临时文件
+temp/
+tmp/
+*.tmp
+
+# 备份文件
+backups/
+*.bak
+*.backup
+
+# 配置文件（包含敏感信息）
+.env
+.env.local
+.env.production
+.env.staging
+.env.test
+config.ini
+secrets.json
+
+# SSL证书
+*.pem
+*.key
+*.crt
+*.cert
+ssl/
+
+# Docker
+.dockerignore
+docker-compose.override.yml
+
+# Kubernetes
+*.yaml.bak
+*.yml.bak
+kustomization.yaml
+
+# Terraform
+*.tfstate
+*.tfstate.*
+.terraform/
+.terraform.lock.hcl
+
+# Ansible
+*.retry
+
+# Monitoring
+prometheus_data/
+grafana_data/
+
+# Cache directories
+.cache/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Coverage reports
+.coverage
+.coverage.*
+htmlcov/
+cov.xml
+*.cover
+
+# Profiling
+*.prof
+*.pstats
+
+# Memory dumps
+*.hprof
+*.dump
+
+# Performance logs
+perf.data*
+
+# IDE specific
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Documentation build
+docs/_build/
+docs/build/
+site/
+
+# Translation files
+*.mo
+
+# Local development
+local_settings.py
+dev_settings.py
+
+# Test databases
+test.db
+test_*.db
+
+# Jupyter notebooks
+.ipynb_checkpoints/
+*.ipynb
+
+# Data files
+*.csv
+*.json
+*.xml
+*.xlsx
+*.xls
+data/
+datasets/
+
+# Machine learning models
+*.pkl
+*.joblib
+*.h5
+*.pb
+models/
+
+# API keys and secrets
+api_keys.txt
+secrets.txt
+credentials.json
+
+# Local configuration overrides
+local.env
+override.env
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+
+# Package files
+*.tar.gz
+*.zip
+*.rar
+*.7z
+
+# System files
+.DS_Store
+Thumbs.db
+
+# Editor backups
+*~
+*.bak
+*.orig
+
+# Temporary directories
+__temp__/
+.temp/
+
+# Lock files
+*.lock
+poetry.lock
+Pipfile.lock
+yarn.lock
+package-lock.json
+
+# Node.js (if using for frontend build)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Frontend build
+static/js/
+static/css/
+static/img/
+
+# Compiled assets
+*.min.js
+*.min.css
+
+# Source maps
+*.map
+
+# Dependency directories
+vendor/
+third_party/
+
+# Generated files
+generated/
+auto_generated/
+
+# Backup directories
+.backup/
+old/
+archive/
+
+# Local scripts
+local_scripts/
+dev_scripts/
+
+# Environment specific
+production.env
+staging.env
+development.env
+
+# Database dumps
+*.sql
+*.dump
+
+# Redis dumps
+dump.rdb
+
+# Elasticsearch data
+elasticsearch_data/
+
+# Celery beat schedule
+celerybeat-schedule.db
+
+# Flower database
+flower.db
+
+# Monitoring data
+monitoring_data/
+metrics/
+
+# Profiling data
+profiling/
+
+# Load testing results
+load_test_results/
+
+# Security scan results
+security_reports/
+
+# Dependency vulnerability reports
+vulnerability_reports/
+
+# Performance test results
+performance_reports/
+
+# API documentation
+api_docs/
+openapi.json
+swagger.json
+
+# Localization
+locale/
+translations/
+
+# User uploads (development)
+user_uploads/
+media/
+
+# Cache files
+*.cache
+cache/
+
+# Session files
+sessions/
+
+# PID files
+*.pid
+
+# Socket files
+*.sock
+
+# Core dumps
+core.*
+
+# Memory leaks
+*.memcheck
+
+# Valgrind output
+valgrind-out.*
+
+# GDB history
+.gdb_history
+
+# LLDB history
+.lldb_history
+
+# Debugger
+.debugger/
+
+# Local development overrides
+local/
+dev/
+
+# Experimental features
+experimental/
+prototype/
+
+# Legacy code
+legacy/
+deprecated/
+
+# Third-party integrations
+integrations/config/
+
+# Custom ignore patterns
+# Add your custom patterns here

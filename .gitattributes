@@ -1,0 +1,236 @@
+# Git attributes for consistent line endings and file handling
+
+# Set default behavior to automatically normalize line endings
+* text=auto
+
+# Explicitly declare text files you want to always be normalized and converted
+# to native line endings on checkout
+*.py text eol=lf
+*.js text eol=lf
+*.ts text eol=lf
+*.jsx text eol=lf
+*.tsx text eol=lf
+*.css text eol=lf
+*.scss text eol=lf
+*.sass text eol=lf
+*.less text eol=lf
+*.html text eol=lf
+*.htm text eol=lf
+*.xml text eol=lf
+*.json text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.toml text eol=lf
+*.ini text eol=lf
+*.cfg text eol=lf
+*.conf text eol=lf
+*.md text eol=lf
+*.txt text eol=lf
+*.rst text eol=lf
+*.sql text eol=lf
+*.sh text eol=lf
+*.bash text eol=lf
+*.zsh text eol=lf
+*.fish text eol=lf
+*.ps1 text eol=crlf
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# Configuration files
+*.env text eol=lf
+*.env.* text eol=lf
+.env.example text eol=lf
+.gitignore text eol=lf
+.gitattributes text eol=lf
+.editorconfig text eol=lf
+.flake8 text eol=lf
+.pylintrc text eol=lf
+pyproject.toml text eol=lf
+setup.py text eol=lf
+setup.cfg text eol=lf
+requirements*.txt text eol=lf
+Manifest.in text eol=lf
+Makefile text eol=lf
+makefile text eol=lf
+Dockerfile text eol=lf
+docker-compose*.yml text eol=lf
+
+# Documentation
+README* text eol=lf
+CHANGELOG* text eol=lf
+LICENSE* text eol=lf
+CONTRIBUTING* text eol=lf
+AUTHORS* text eol=lf
+COPYING* text eol=lf
+INSTALL* text eol=lf
+NEWS* text eol=lf
+TODO* text eol=lf
+
+# Declare files that will always have CRLF line endings on checkout
+*.sln text eol=crlf
+*.vcproj text eol=crlf
+*.vcxproj text eol=crlf
+*.csproj text eol=crlf
+*.vbproj text eol=crlf
+
+# Denote all files that are truly binary and should not be modified
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.mov binary
+*.mp4 binary
+*.mp3 binary
+*.flv binary
+*.fla binary
+*.swf binary
+*.gz binary
+*.zip binary
+*.7z binary
+*.ttf binary
+*.eot binary
+*.woff binary
+*.woff2 binary
+*.pyc binary
+*.pyo binary
+*.pyd binary
+*.so binary
+*.dll binary
+*.exe binary
+*.msi binary
+*.dmg binary
+*.pkg binary
+*.deb binary
+*.rpm binary
+*.tar binary
+*.tgz binary
+*.bz2 binary
+*.xz binary
+*.rar binary
+*.cab binary
+*.iso binary
+*.img binary
+*.vdi binary
+*.vmdk binary
+*.ova binary
+*.ovf binary
+
+# Database files
+*.db binary
+*.sqlite binary
+*.sqlite3 binary
+*.mdb binary
+*.accdb binary
+
+# Office documents
+*.doc binary
+*.docx binary
+*.xls binary
+*.xlsx binary
+*.ppt binary
+*.pptx binary
+*.pdf binary
+
+# Python specific
+*.pickle binary
+*.pkl binary
+*.npy binary
+*.npz binary
+
+# Machine learning models
+*.h5 binary
+*.hdf5 binary
+*.model binary
+*.weights binary
+*.ckpt binary
+*.pb binary
+*.onnx binary
+*.tflite binary
+
+# Jupyter notebooks - treat as text but with special handling
+*.ipynb text eol=lf
+
+# Log files
+*.log text eol=lf
+
+# Certificate files
+*.pem text eol=lf
+*.crt text eol=lf
+*.key text eol=lf
+*.pub text eol=lf
+
+# Git LFS tracking for large files
+# Uncomment and modify as needed
+# *.psd filter=lfs diff=lfs merge=lfs -text
+# *.ai filter=lfs diff=lfs merge=lfs -text
+# *.sketch filter=lfs diff=lfs merge=lfs -text
+# *.fig filter=lfs diff=lfs merge=lfs -text
+
+# Language specific settings
+# Python
+*.py diff=python
+
+# Markdown
+*.md diff=markdown
+
+# Export ignore patterns for git archive
+.gitattributes export-ignore
+.gitignore export-ignore
+.github/ export-ignore
+.vscode/ export-ignore
+.idea/ export-ignore
+tests/ export-ignore
+docs/ export-ignore
+*.test.py export-ignore
+*.spec.py export-ignore
+conftest.py export-ignore
+pytest.ini export-ignore
+tox.ini export-ignore
+.coverage export-ignore
+.pytest_cache/ export-ignore
+.tox/ export-ignore
+.mypy_cache/ export-ignore
+__pycache__/ export-ignore
+*.pyc export-ignore
+*.pyo export-ignore
+*.pyd export-ignore
+
+# Merge strategies
+# Use union merge for changelog files
+CHANGELOG* merge=union
+CHANGELOG.* merge=union
+NEWS* merge=union
+HISTORY* merge=union
+
+# Use ours merge for version files
+VERSION merge=ours
+__version__.py merge=ours
+_version.py merge=ours
+version.py merge=ours
+
+# Custom diff drivers
+# For requirements files
+requirements*.txt diff=requirements
+
+# For environment files
+*.env diff=env
+*.env.* diff=env
+
+# Working tree encoding
+# Ensure UTF-8 encoding for text files
+*.py working-tree-encoding=UTF-8
+*.js working-tree-encoding=UTF-8
+*.json working-tree-encoding=UTF-8
+*.md working-tree-encoding=UTF-8
+*.yml working-tree-encoding=UTF-8
+*.yaml working-tree-encoding=UTF-8
+*.toml working-tree-encoding=UTF-8
+*.ini working-tree-encoding=UTF-8
+*.cfg working-tree-encoding=UTF-8
+*.conf working-tree-encoding=UTF-8
+*.txt working-tree-encoding=UTF-8
+*.sql working-tree-encoding=UTF-8
+*.html working-tree-encoding=UTF-8
+*.css working-tree-encoding=UTF-8
+*.xml working-tree-encoding=UTF-8
