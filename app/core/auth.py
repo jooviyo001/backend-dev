@@ -62,10 +62,14 @@ async def verify_token(credentials: HTTPAuthorizationCredentials = Depends(secur
         if user_id is None:
             raise credentials_exception
         
-        # 检查令牌是否在黑名单中
-        is_blacklisted = await redis_client.exists(f"blacklist:{credentials.credentials}")
-        if is_blacklisted:
-            raise credentials_exception
+        # 检查令牌是否在黑名单中（如果Redis可用）
+        try:
+            is_blacklisted = await redis_client.exists(f"blacklist:{credentials.credentials}")
+            if is_blacklisted:
+                raise credentials_exception
+        except Exception as e:
+            print(f"Redis blacklist check error: {e}")
+            # Redis不可用时跳过黑名单检查，继续验证token
             
         return payload
     except JWTError:
@@ -80,10 +84,14 @@ async def get_current_user(token_data: Dict[str, Any] = Depends(verify_token), d
             detail="Invalid authentication credentials"
         )
     
-    # 先从缓存中获取用户信息
-    cached_user = await redis_client.get(f"user:{user_id}")
-    if cached_user:
-        return User(**cached_user)
+    # 先从缓存中获取用户信息（如果Redis可用）
+    try:
+        cached_user = await redis_client.get(f"user:{user_id}")
+        if cached_user:
+            return User(**cached_user)
+    except Exception as e:
+        print(f"Redis cache get error: {e}")
+        # Redis不可用时继续从数据库获取
     
     # 从数据库获取用户
     result = await db.execute(select(User).where(User.id == user_id))
@@ -95,18 +103,22 @@ async def get_current_user(token_data: Dict[str, Any] = Depends(verify_token), d
             detail="User not found"
         )
     
-    # 缓存用户信息
-    user_dict = {
-        "id": user.id,
-        "username": user.username,
-        "email": user.email,
-        "name": user.name,
-        "role": user.role,
-        "status": user.status,
-        "avatar": user.avatar,
-        "department": user.department
-    }
-    await redis_client.set(f"user:{user_id}", user_dict, expire=1800)  # 30分钟缓存
+    # 尝试缓存用户信息（如果Redis可用）
+    try:
+        user_dict = {
+            "id": user.id,
+            "username": user.username,
+            "email": user.email,
+            "name": user.name,
+            "role": user.role,
+            "status": user.status,
+            "avatar": user.avatar,
+            "department": user.department
+        }
+        await redis_client.set(f"user:{user_id}", user_dict, expire=1800)  # 30分钟缓存
+    except Exception as e:
+        print(f"Redis cache set error: {e}")
+        # Redis不可用时忽略缓存，继续返回用户
     
     return user
 
@@ -164,10 +176,14 @@ async def logout_user(token: str):
             # 计算令牌剩余有效时间
             remaining_time = exp - datetime.utcnow().timestamp()
             if remaining_time > 0:
-                await redis_client.set(
-                    f"blacklist:{token}", 
-                    "1", 
-                    expire=int(remaining_time)
-                )
+                try:
+                    await redis_client.set(
+                        f"blacklist:{token}", 
+                        "1", 
+                        expire=int(remaining_time)
+                    )
+                except Exception as e:
+                    print(f"Redis blacklist set error: {e}")
+                    # Redis不可用时忽略黑名单设置
     except JWTError:
         pass  # 无效令牌，忽略

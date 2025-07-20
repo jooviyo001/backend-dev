@@ -65,18 +65,22 @@ async def login(
     user.last_login = datetime.utcnow()
     await db.commit()
     
-    # 缓存用户信息
-    user_dict = {
-        "id": user.id,
-        "username": user.username,
-        "email": user.email,
-        "name": user.name,
-        "role": user.role,
-        "status": user.status,
-        "avatar": user.avatar,
-        "department": user.department
-    }
-    await redis_client.set(f"user:{user.id}", user_dict, expire=1800)
+    # 尝试缓存用户信息（如果Redis可用）
+    try:
+        user_dict = {
+            "id": user.id,
+            "username": user.username,
+            "email": user.email,
+            "name": user.name,
+            "role": user.role,
+            "status": user.status,
+            "avatar": user.avatar,
+            "department": user.department
+        }
+        await redis_client.set(f"user:{user.id}", user_dict, expire=1800)
+    except Exception as e:
+        print(f"Redis cache error during login: {e}")
+        # Redis不可用时忽略缓存，继续登录流程
     
     return BaseResponse(
         data=UserLoginResponse(
@@ -142,8 +146,12 @@ async def logout(
     # 将令牌加入黑名单
     await logout_user(credentials.credentials)
     
-    # 清除用户缓存
-    await redis_client.delete(f"user:{current_user.id}")
+    # 尝试清除用户缓存（如果Redis可用）
+    try:
+        await redis_client.delete(f"user:{current_user.id}")
+    except Exception as e:
+        print(f"Redis cache clear error during logout: {e}")
+        # Redis不可用时忽略缓存清除，继续登出流程
     
     return BaseResponse(message="登出成功")
 

@@ -32,55 +32,71 @@ class RedisClient:
     
     async def set(self, key: str, value: Any, expire: Optional[int] = None) -> bool:
         """设置缓存"""
-        if not self.redis:
-            await self.connect()
-        
-        # 序列化数据
-        if isinstance(value, (dict, list)):
-            serialized_value = json.dumps(value, ensure_ascii=False)
-        elif isinstance(value, str):
-            serialized_value = value
-        else:
-            serialized_value = pickle.dumps(value)
-        
-        return await self.redis.set(
-            key, 
-            serialized_value, 
-            ex=expire or settings.CACHE_EXPIRE_SECONDS
-        )
+        try:
+            if not self.redis:
+                await self.connect()
+            
+            # 序列化数据
+            if isinstance(value, (dict, list)):
+                serialized_value = json.dumps(value, ensure_ascii=False)
+            elif isinstance(value, str):
+                serialized_value = value
+            else:
+                serialized_value = pickle.dumps(value)
+            
+            return await self.redis.set(
+                key, 
+                serialized_value, 
+                ex=expire or settings.CACHE_EXPIRE_SECONDS
+            )
+        except Exception as e:
+            print(f"Redis set error: {e}")
+            return False
     
     async def get(self, key: str) -> Any:
         """获取缓存"""
-        if not self.redis:
-            await self.connect()
-        
-        value = await self.redis.get(key)
-        if value is None:
-            return None
-        
-        # 尝试反序列化
         try:
-            # 先尝试JSON
-            return json.loads(value)
-        except (json.JSONDecodeError, TypeError):
+            if not self.redis:
+                await self.connect()
+            
+            value = await self.redis.get(key)
+            if value is None:
+                return None
+            
+            # 尝试反序列化
             try:
-                # 再尝试pickle
-                return pickle.loads(value)
-            except:
-                # 最后返回原始字符串
-                return value.decode('utf-8') if isinstance(value, bytes) else value
+                # 先尝试JSON
+                return json.loads(value)
+            except (json.JSONDecodeError, TypeError):
+                try:
+                    # 再尝试pickle
+                    return pickle.loads(value)
+                except:
+                    # 最后返回原始字符串
+                    return value.decode('utf-8') if isinstance(value, bytes) else value
+        except Exception as e:
+            print(f"Redis get error: {e}")
+            return None
     
     async def delete(self, key: str) -> bool:
         """删除缓存"""
-        if not self.redis:
-            await self.connect()
-        return bool(await self.redis.delete(key))
+        try:
+            if not self.redis:
+                await self.connect()
+            return bool(await self.redis.delete(key))
+        except Exception as e:
+            print(f"Redis delete error: {e}")
+            return False
     
     async def exists(self, key: str) -> bool:
         """检查键是否存在"""
-        if not self.redis:
-            await self.connect()
-        return bool(await self.redis.exists(key))
+        try:
+            if not self.redis:
+                await self.connect()
+            return bool(await self.redis.exists(key))
+        except Exception as e:
+            print(f"Redis exists error: {e}")
+            return False
     
     async def expire(self, key: str, seconds: int) -> bool:
         """设置过期时间"""
