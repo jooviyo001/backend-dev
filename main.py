@@ -9,7 +9,7 @@ import jwt
 from pydantic import BaseModel
 
 # 导入路由模块
-from routers import auth, users, projects, tasks, organizations
+from routers import auth, users, projects, tasks, organizations, dashboard
 from models.database import engine, Base
 from models import models
 
@@ -70,6 +70,7 @@ app.include_router(users.router, prefix="/api/v1/users", tags=["用户管理"])
 app.include_router(projects.router, prefix="/api/v1/projects", tags=["项目管理"])
 app.include_router(tasks.router, prefix="/api/v1/tasks", tags=["任务管理"])
 app.include_router(organizations.router, prefix="/api/v1/organizations", tags=["组织管理"])
+app.include_router(dashboard.router, prefix="/api/v1/dashboard", tags=["仪表盘"])
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8000, reload=True)
+    uvicorn.run(app, host="0.0.0.0", port=8000)

@@ -38,6 +38,7 @@ dependencies = [
     "python-dotenv>=1.0.0",
     "aiofiles>=23.2.1",
     "cryptography>=41.0.7",
+    "PyJWT>=2.8.0",
 ]
 
 [project.optional-dependencies]
