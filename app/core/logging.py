@@ -119,16 +119,16 @@ class SensitiveDataFilter(logging.Filter):
         return True
 
 def setup_logging(
-    log_level: Optional[str] = None,
-    log_file: Optional[str] = None,
+    log_level: Optional[str] = settings.LOG_LEVEL,
+    log_file: Optional[str] = settings.LOG_FILE,
     enable_json: bool = False,
-    enable_colors: bool = True
+    enable_colors: bool = settings.LOG_ENABLE_COLORS
 ) -> None:
     """设置日志配置"""
     
     # 使用配置中的默认值
-    log_level = log_level or settings.log_level
-    log_file = log_file or settings.log_file
+    log_level = log_level or settings.LOG_LEVEL
+    log_file = log_file or settings.LOG_FILE
     
     # 创建根日志记录器
     root_logger = logging.getLogger()
@@ -164,8 +164,8 @@ def setup_logging(
         # 使用轮转文件处理器
         file_handler = logging.handlers.RotatingFileHandler(
             log_file,
-            maxBytes=settings.log_max_size,
-            backupCount=settings.log_backup_count,
+            maxBytes=settings.LOG_MAX_SIZE,
+            backupCount=settings.LOG_BACKUP_COUNT,
             encoding='utf-8'
         )
         file_handler.setLevel(getattr(logging, log_level.upper()))
@@ -190,7 +190,7 @@ def setup_logging(
     logging.getLogger("aioredis").setLevel(logging.WARNING)
     
     # 如果是开发环境，显示更多SQL日志
-    if settings.is_development and settings.database_echo:
+    if settings.DEBUG and settings.DATABASE_ECHO:
         logging.getLogger("sqlalchemy.engine").setLevel(logging.INFO)
 
 def get_logger(name: str) -> logging.Logger:

@@ -10,6 +10,7 @@ class Settings(BaseSettings):
     
     # 数据库配置
     DATABASE_URL: str = "sqlite+aiosqlite:///./project_management.db"  # 开发环境使用SQLite
+    DATABASE_ECHO: bool = False # 是否显示SQLAlchemy的SQL日志
     MYSQL_URL: Optional[str] = None  # 生产环境MySQL连接
     
     # Redis配置
@@ -36,6 +37,14 @@ class Settings(BaseSettings):
     
     # 缓存配置
     CACHE_EXPIRE_SECONDS: int = 3600  # 1小时
+
+    # 日志配置
+    LOG_LEVEL: str = "INFO"
+    LOG_FORMAT: str = "%(levelname)s:     %(message)s"
+    LOG_ENABLE_COLORS: bool = True
+    LOG_FILE: Optional[str] = None
+    LOG_MAX_SIZE: int = 10 * 1024 * 1024  # 10 MB
+    LOG_BACKUP_COUNT: int = 5
     
     class Config:
         env_file = ".env"

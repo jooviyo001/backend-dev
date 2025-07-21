@@ -320,7 +320,7 @@ datasets/
 *.joblib
 *.h5
 *.pb
-models/
+# models/
 
 # API keys and secrets
 api_keys.txt

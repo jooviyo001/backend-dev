@@ -1,6 +1,6 @@
-from sqlalchemy.ext.asyncio import AsyncSession
+from app.core.database import AsyncSessionLocal, engine
 from sqlalchemy import select
-from app.core.database import async_session, engine
+from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import settings
 from app.core.security import get_password_hash
 from app.models.user import User
@@ -8,7 +8,7 @@ from app.models.organization import Organization
 from app.models.project import Project
 from app.models.task import Task
 from app.models.file import File
-from app.models import Base
+from app.core.database import Base, engine
 import asyncio
 from datetime import datetime
 import logging

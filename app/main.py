@@ -9,7 +9,7 @@ from pathlib import Path
 
 from app.core.config import settings
 from app.core.database import engine, Base
-from app.core.redis_client import init_redis, close_redis
+from app.core.redis_client import redis_client
 from app.core.logging import init_logging, get_logger
 from app.core.middleware import setup_middleware
 from app.core.exceptions import setup_exception_handlers
@@ -30,12 +30,10 @@ async def lifespan(app: FastAPI):
     
     try:
         # 初始化Redis连接
-        await init_redis()
+        await redis_client.connect()
         logger.info("Redis connection initialized")
         
-        # 创建数据库表
-        logger.info("Creating database tables...")
-        Base.metadata.create_all(bind=engine)
+
         
         # 初始化数据库数据
         if settings.init_db_on_startup:
@@ -66,7 +64,7 @@ async def lifespan(app: FastAPI):
         
         try:
             # 关闭Redis连接
-            await close_redis()
+            await redis_client.disconnect()
             logger.info("Redis connection closed")
             
         except Exception as e:
