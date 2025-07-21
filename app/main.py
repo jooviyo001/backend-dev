@@ -18,8 +18,6 @@ from app.core.init_db import init_database
 # 导入API路由
 from app.api.v1.api import api_router
 
-# 初始化日志
-init_logging()
 logger = get_logger(__name__)
 
 @asynccontextmanager
@@ -27,6 +25,7 @@ async def lifespan(app: FastAPI):
     """应用程序生命周期管理"""
     # 启动时执行
     logger.info("Starting application...")
+    init_logging()
     
     try:
         # 初始化Redis连接
@@ -36,17 +35,17 @@ async def lifespan(app: FastAPI):
 
         
         # 初始化数据库数据
-        if settings.init_db_on_startup:
+        if settings.INIT_DB_ON_STARTUP:
             logger.info("Initializing database data...")
             await init_database()
         
         # 创建上传目录
-        upload_dir = Path(settings.upload_dir)
+        upload_dir = Path(settings.UPLOAD_DIR)
         upload_dir.mkdir(parents=True, exist_ok=True)
         logger.info(f"Upload directory created: {upload_dir}")
         
         # 创建导出目录
-        export_dir = Path(settings.export_dir)
+        export_dir = Path(settings.EXPORT_DIR)
         export_dir.mkdir(parents=True, exist_ok=True)
         logger.info(f"Export directory created: {export_dir}")
         
@@ -74,12 +73,12 @@ async def lifespan(app: FastAPI):
 
 # 创建FastAPI应用实例
 app = FastAPI(
-    title=settings.app_name,
-    description=settings.app_description,
-    version=settings.app_version,
-    openapi_url=f"{settings.api_v1_str}/openapi.json" if settings.environment != "production" else None,
-    docs_url="/docs" if settings.environment != "production" else None,
-    redoc_url="/redoc" if settings.environment != "production" else None,
+    title=settings.APP_NAME,
+    description=settings.APP_DESCRIPTION,
+    version=settings.VERSION,
+    openapi_url=f"{settings.API_V1_STR}/openapi.json" if settings.ENVIRONMENT != "production" else None,
+    docs_url="/docs" if settings.ENVIRONMENT != "production" else None,
+    redoc_url="/redoc" if settings.ENVIRONMENT != "production" else None,
     lifespan=lifespan
 )
 
@@ -95,9 +94,9 @@ async def health_check():
     """健康检查端点"""
     return {
         "status": "healthy",
-        "app_name": settings.app_name,
-        "version": settings.app_version,
-        "environment": settings.environment
+        "app_name": settings.APP_NAME,
+        "version": settings.VERSION,
+        "environment": settings.ENVIRONMENT
     }
 
 # 系统信息端点
@@ -109,9 +108,9 @@ async def system_info():
     from datetime import datetime
     
     return {
-        "app_name": settings.app_name,
-        "version": settings.app_version,
-        "environment": settings.environment,
+        "app_name": settings.APP_NAME,
+        "version": settings.VERSION,
+        "environment": settings.ENVIRONMENT,
         "python_version": platform.python_version(),
         "platform": platform.platform(),
         "cpu_count": psutil.cpu_count(),
@@ -152,25 +151,25 @@ async def metrics():
 async def root():
     """根路径"""
     return {
-        "message": f"Welcome to {settings.app_name} API",
-        "version": settings.app_version,
-        "docs_url": "/docs" if settings.environment != "production" else None,
-        "api_url": settings.api_v1_str
+        "message": f"Welcome to {settings.APP_NAME} API",
+        "version": settings.VERSION,
+        "docs_url": "/docs" if settings.ENVIRONMENT != "production" else None,
+        "api_url": settings.API_V1_STR
     }
 
 # 包含API路由
-app.include_router(api_router, prefix=settings.api_v1_str)
+app.include_router(api_router, prefix=settings.API_V1_STR)
 
 # 静态文件服务（如果需要）
-if settings.serve_static_files:
-    static_dir = Path(settings.static_dir)
+if settings.SERVE_STATIC_FILES:
+    static_dir = Path(settings.STATIC_DIR)
     if static_dir.exists():
         app.mount("/static", StaticFiles(directory=static_dir), name="static")
         logger.info(f"Static files served from: {static_dir}")
 
 # 上传文件服务
-if settings.serve_upload_files:
-    upload_dir = Path(settings.upload_dir)
+if settings.SERVE_UPLOAD_FILES:
+    upload_dir = Path(settings.UPLOAD_DIR)
     if upload_dir.exists():
         app.mount("/uploads", StaticFiles(directory=upload_dir), name="uploads")
         logger.info(f"Upload files served from: {upload_dir}")

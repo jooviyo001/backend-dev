@@ -19,4 +19,4 @@ class Organization(Base):
 
     # Relationships
     parent = relationship("Organization", remote_side=[id], backref="children")
-    members = relationship("User", backref="organization")
+    members = relationship("User", back_populates="organization", lazy="dynamic")

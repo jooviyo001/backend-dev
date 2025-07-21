@@ -21,7 +21,7 @@ class Project(Base):
     # Relationships
     organization = relationship("Organization", backref="projects")
     created_by = relationship("User", foreign_keys=[created_by_id])
-    tasks = relationship("Task", backref="project")
+    tasks = relationship("Task", back_populates="project")
     members = relationship("User", secondary="project_members", backref="projects_joined")
 
 from sqlalchemy import Table, Column, String, ForeignKey, DateTime

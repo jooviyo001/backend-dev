@@ -1,4 +1,5 @@
-from sqlalchemy import Column, String, Boolean, DateTime
+from sqlalchemy import Column, String, Boolean, DateTime, ForeignKey
+from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.core.database import Base
 
@@ -13,10 +14,15 @@ class User(Base):
     phone = Column(String, nullable=True)
     department = Column(String, nullable=True)
     position = Column(String, nullable=True)
+    organization_id = Column(String, ForeignKey('organizations.id'), nullable=True)
     avatar = Column(String, nullable=True)
     role = Column(String, default="member", nullable=False)
     status = Column(String, default="active", nullable=False)
     is_verified = Column(Boolean, default=False)
+    is_superuser = Column(Boolean, default=False)
     last_login = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=func.now(), nullable=False)
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now(), nullable=False)
+
+    # Relationships
+    organization = relationship("Organization", back_populates="members")

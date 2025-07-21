@@ -26,21 +26,21 @@ def parse_args():
     parser.add_argument(
         "--host",
         type=str,
-        default=settings.server_host,
+        default=settings.SERVER_HOST,
         help=f"服务器主机地址 (默认: {settings.server_host})"
     )
     
     parser.add_argument(
         "--port",
         type=int,
-        default=settings.server_port,
+        default=settings.SERVER_PORT,
         help=f"服务器端口 (默认: {settings.server_port})"
     )
     
     parser.add_argument(
         "--workers",
         type=int,
-        default=settings.server_workers,
+        default=settings.SERVER_WORKERS,
         help=f"工作进程数 (默认: {settings.server_workers})"
     )
     
@@ -135,17 +135,7 @@ def check_dependencies():
         logger.error("请运行: pip install -r requirements.txt")
         return False
 
-def check_database_connection():
-    """检查数据库连接"""
-    try:
-        from app.core.database import engine
-        with engine.connect() as conn:
-            conn.execute("SELECT 1")
-        logger.info("数据库连接正常")
-        return True
-    except Exception as e:
-        logger.error(f"数据库连接失败: {e}")
-        return False
+
 
 def check_redis_connection():
     """检查Redis连接"""
@@ -171,7 +161,7 @@ def pre_start_checks():
     
     checks = [
         ("依赖检查", check_dependencies),
-        ("数据库连接", check_database_connection),
+
         ("Redis连接", check_redis_connection),
     ]
     
@@ -200,6 +190,10 @@ def main():
     
     # 设置环境
     setup_environment(args.env)
+    
+    # 初始化数据库连接
+    from app.core.database import init_db_connection
+    init_db_connection()
     
     # 显示启动信息
     logger.info(f"启动 {settings.app_name} v{settings.app_version}")
@@ -247,7 +241,18 @@ def main():
     
     try:
         logger.info("启动服务器...")
-        uvicorn.run(**config)
+        uvicorn.run(
+            "app.main:app",
+            host=args.host,
+            port=args.port,
+            log_level=args.log_level,
+            access_log=access_log,
+            use_colors=args.env == "development",
+            reload=args.reload,
+            workers=config.get("workers"),
+            ssl_keyfile=ssl_config.get("ssl_keyfile"),
+            ssl_certfile=ssl_config.get("ssl_certfile"),
+        )
     
     except KeyboardInterrupt:
         logger.info("服务器被用户停止")

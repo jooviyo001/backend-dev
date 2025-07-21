@@ -13,9 +13,15 @@ project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
 # 导入模型和配置
-from app.core.config import settings
-from app.core.database import Base
-from app.models import *  # 导入所有模型
+from app.core.config import Settings
+settings = Settings(_env_file=project_root / ".env")
+# from app.core.database import Base
+from app.models.user import User
+from app.models.organization import Organization
+from app.models.project import Project
+from app.models.task import Task
+from app.models.file import File
+from app.models.project_member import ProjectMember
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
@@ -28,6 +34,7 @@ if config.config_file_name is not None:
 
 # add your model's MetaData object here
 # for 'autogenerate' support
+from app.models.base import Base
 target_metadata = Base.metadata
 
 # other values from the config, defined by the needs of env.py,
@@ -82,8 +89,6 @@ def do_run_migrations(connection: Connection) -> None:
         compare_type=True,
         compare_server_default=True,
         include_schemas=True,
-        # 自定义比较函数
-        compare_server_default=True,
         # 包含对象名称
         include_object=include_object,
         # 渲染项目
@@ -146,18 +151,25 @@ def run_migrations_online() -> None:
     # 检查是否是异步数据库URL
     database_url = get_database_url()
     
-    if "postgresql+asyncpg" in database_url or "mysql+aiomysql" in database_url:
-        # 异步数据库
-        asyncio.run(run_async_migrations())
-    else:
-        # 同步数据库
+    if database_url.startswith("sqlite:///"):
+        # 同步数据库 (SQLite)
         from sqlalchemy import create_engine
-        
         connectable = create_engine(
             database_url,
             poolclass=pool.NullPool,
         )
-        
+        with connectable.connect() as connection:
+            do_run_migrations(connection)
+    elif "postgresql+asyncpg" in database_url or "mysql+aiomysql" in database_url:
+        # 异步数据库
+        asyncio.run(run_async_migrations())
+    else:
+        # 默认同步数据库
+        from sqlalchemy import create_engine
+        connectable = create_engine(
+            database_url,
+            poolclass=pool.NullPool,
+        )
         with connectable.connect() as connection:
             do_run_migrations(connection)
 
