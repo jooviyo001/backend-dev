@@ -266,6 +266,56 @@ CMD ["python", "run.py"]
 
 MIT License
 
+## Git 版本管理
+
+### 分支策略
+
+项目采用 Git Flow 工作流：
+
+- `main` - 主分支，生产环境代码
+- `develop` - 开发分支，集成最新功能
+- `feature/*` - 功能分支
+- `hotfix/*` - 热修复分支
+- `release/*` - 发布分支
+
+### 提交规范
+
+使用 [Conventional Commits](https://www.conventionalcommits.org/) 规范：
+
+```bash
+# 新功能
+git commit -m "feat(auth): 添加JWT令牌刷新功能"
+
+# 修复bug
+git commit -m "fix(tasks): 修复任务状态更新问题"
+
+# 文档更新
+git commit -m "docs: 更新API文档"
+```
+
+### 开发流程
+
+```bash
+# 1. 创建功能分支
+git checkout develop
+git checkout -b feature/your-feature
+
+# 2. 开发和提交
+git add .
+git commit -m "feat: 添加新功能"
+
+# 3. 推送分支
+git push origin feature/your-feature
+
+# 4. 创建 Pull Request
+```
+
+详细的贡献指南请参考 [CONTRIBUTING.md](CONTRIBUTING.md)。
+
+## 更新日志
+
+查看 [CHANGELOG.md](CHANGELOG.md) 了解版本更新历史。
+
 ## 贡献
 
-欢迎提交 Issue 和 Pull Request！
+欢迎提交 Issue 和 Pull Request！请先阅读 [贡献指南](CONTRIBUTING.md)。
