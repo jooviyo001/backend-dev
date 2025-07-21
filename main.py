@@ -1,43 +1,28 @@
 from fastapi import FastAPI, HTTPException, Depends, status
-from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from contextlib import asynccontextmanager
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 import uvicorn
+from datetime import datetime
+from typing import Optional, List
+import jwt
+from pydantic import BaseModel
 
-from app.core.config import settings
-from app.core.database import engine, Base
-from app.core.redis_client import redis_client
-from app.api.v1.api import api_router
-from app.core.auth import verify_token
+# 导入路由模块
+from routers import auth, users, projects, tasks, organizations
+from models.database import engine, Base
+from models import models
 
-security = HTTPBearer()
-
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    # 启动时创建数据库表
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-    
-    # 测试Redis连接
-    try:
-        await redis_client.ping()
-        print("Redis连接成功")
-    except Exception as e:
-        print(f"Redis连接失败: {e}")
-    
-    yield
-    
-    # 关闭时清理资源
-    await redis_client.close()
+# 创建数据库表
+Base.metadata.create_all(bind=engine)
 
 app = FastAPI(
     title="项目管理系统API",
     description="基于FastAPI的项目管理系统后端接口",
-    version="1.0.0",
-    lifespan=lifespan
+    version="1.0.0"
 )
 
-# CORS中间件
+# CORS中间件配置
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],  # 生产环境应该限制具体域名
@@ -46,33 +31,45 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# 包含API路由
-app.include_router(api_router, prefix="/api")
+# 安全配置
+security = HTTPBearer()
 
+# 全局异常处理
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request, exc):
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={
+            "success": False,
+            "message": exc.detail,
+            "data": None,
+            "timestamp": datetime.now().isoformat()
+        }
+    )
+
+# 根路径
 @app.get("/")
 async def root():
-    return {"message": "项目管理系统API服务正在运行", "version": "1.0.0"}
-
-@app.get("/health")
-async def health_check():
-    try:
-        # 检查Redis连接
-        await redis_client.ping()
-        redis_status = "healthy"
-    except:
-        redis_status = "unhealthy"
-    
     return {
-        "status": "healthy",
-        "redis": redis_status,
-        "database": "healthy"
+        "message": "项目管理系统API",
+        "version": "1.0.0",
+        "timestamp": datetime.now().isoformat()
     }
 
+# 健康检查
+@app.get("/health")
+async def health_check():
+    return {
+        "status": "healthy",
+        "timestamp": datetime.now().isoformat()
+    }
+
+# 注册路由
+app.include_router(auth.router, prefix="/api/v1/auth", tags=["认证"])
+app.include_router(users.router, prefix="/api/v1/users", tags=["用户管理"])
+app.include_router(projects.router, prefix="/api/v1/projects", tags=["项目管理"])
+app.include_router(tasks.router, prefix="/api/v1/tasks", tags=["任务管理"])
+app.include_router(organizations.router, prefix="/api/v1/organizations", tags=["组织管理"])
+
 if __name__ == "__main__":
-    uvicorn.run(
-        "main:app",
-        host="0.0.0.0",
-        port=8000,
-        reload=True,
-        log_level="info"
-    )
+    uvicorn.run(app, host="0.0.0.0", port=8000, reload=True)
