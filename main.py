@@ -16,7 +16,7 @@ from routers import auth, users, projects, organizations, dashboard
 from models.database import engine, Base
 from models import models
 from utils.snowflake import init_snowflake
-from utils.init_default_users import init_default_users
+from utils.database_initializer import init_database
 from utils.logging_middleware import RequestResponseLoggingMiddleware
 
 # 初始化雪花算法（机器ID可以通过环境变量配置）
@@ -27,8 +27,11 @@ init_snowflake(machine_id)
 # 创建数据库表
 Base.metadata.create_all(bind=engine)
 
-# 初始化默认用户
-init_default_users()
+# 初始化数据库数据（仅在开发环境）
+try:
+    init_database(force=False)
+except Exception as e:
+    print(f"⚠️  数据库初始化跳过: {e}")
 
 app = FastAPI(
     title="项目管理系统API",
