@@ -7,7 +7,7 @@ from math import ceil
 from models.database import get_db
 from models.models import User
 from schemas.schemas import (
-    UserCreate, UserUpdate, UserResponse, BaseResponse, PaginationResponse
+    UserCreate, UserUpdate, UserResponse, BaseResponse, PaginationResponse, UserStatusToggle
 )
 from utils.auth import (
     get_current_active_user, require_permission, get_password_hash
@@ -253,3 +253,37 @@ async def deactivate_user(
     db.commit()
     
     return BaseResponse(message="停用用户成功")
+
+@router.put("/{user_id}/toggle-status", response_model=BaseResponse)
+async def toggle_user_status(
+    user_id: int,
+    status_data: UserStatusToggle,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_permission("user:write"))
+):
+    """切换用户状态"""
+    # 检查是否尝试修改自己的状态为inactive
+    if user_id == current_user.id and status_data.status == "inactive":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="不能停用自己"
+        )
+    
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="用户不存在"
+        )
+    
+    # 根据传入的状态设置用户状态
+    new_status = status_data.status == "active"
+    user.is_active = new_status
+    db.commit()
+    db.refresh(user)
+    
+    status_text = "激活" if new_status else "停用"
+    return BaseResponse(
+        message=f"{status_text}用户成功",
+        data=UserResponse.from_orm(user)
+    )
