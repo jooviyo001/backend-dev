@@ -49,19 +49,28 @@ project_members = Table(
     Column('role', String(50), default='member')
 )
 
+# 成员角色枚举
+class MemberRole(str, enum.Enum):
+    ADMIN = "admin"      # 管理员
+    MANAGER = "manager"  # 经理
+    MEMBER = "member"    # 普通成员
+    VIEWER = "viewer"    # 查看者
+
 organization_members = Table(
     'organization_members',
     Base.metadata,
     Column('organization_id', BigInteger, ForeignKey('organizations.id'), primary_key=True),
     Column('user_id', BigInteger, ForeignKey('users.id'), primary_key=True),
-    Column('role', String(50), default='member')
+    Column('position', String(100)),  # 职位
+    Column('role', Enum(MemberRole), default=MemberRole.MEMBER),
+    Column('joined_at', DateTime, default=func.now())
 )
 
 # 用户模型
 class User(Base):
     __tablename__ = "users"
     
-    id = Column(Integer, primary_key=True, index=True)
+    id = snowflake_id_column()
     username = Column(String(50), unique=True, index=True, nullable=False)
     email = Column(String(100), unique=True, index=True, nullable=False)
     password_hash = Column(String(255), nullable=False)
@@ -82,20 +91,48 @@ class User(Base):
     projects = relationship("Project", secondary=project_members, back_populates="members")
     organizations = relationship("Organization", secondary=organization_members, back_populates="members")
 
+# 组织类型枚举
+class OrganizationType(str, enum.Enum):
+    COMPANY = "company"
+    DEPARTMENT = "department"
+    TEAM = "team"
+    GROUP = "group"
+
+# 组织状态枚举
+class OrganizationStatus(str, enum.Enum):
+    ACTIVE = "active"
+    INACTIVE = "inactive"
+
+
+
 # 组织模型
 class Organization(Base):
     __tablename__ = "organizations"
     
     id = snowflake_id_column()
     name = Column(String(100), nullable=False)
+    code = Column(String(20), unique=True, nullable=False, index=True)
+    type = Column(Enum(OrganizationType), nullable=False)
+    status = Column(Enum(OrganizationStatus), default=OrganizationStatus.ACTIVE)
     description = Column(Text)
-    logo = Column(String(255))
+    parent_id = Column(BigInteger, ForeignKey("organizations.id"))
+    level = Column(Integer, default=1)
+    path = Column(String(500))  # 存储组织路径，如 "/1/2/3"
+    manager_id = Column(BigInteger, ForeignKey("users.id"))
+    sort = Column(Integer, default=0)
+    address = Column(String(255))
+    phone = Column(String(20))
+    email = Column(String(100))
     website = Column(String(255))
-    is_active = Column(Boolean, default=True)
+    logo = Column(String(255))
+    is_active = Column(Boolean, default=True)  # 保留兼容性
     created_at = Column(DateTime, default=func.now())
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
     
     # 关系
+    parent = relationship("Organization", remote_side=[id], back_populates="children")
+    children = relationship("Organization", back_populates="parent")
+    manager = relationship("User", foreign_keys=[manager_id])
     projects = relationship("Project", back_populates="organization")
     members = relationship("User", secondary=organization_members, back_populates="organizations")
 

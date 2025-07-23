@@ -13,7 +13,7 @@ from datetime import datetime
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from models.database import engine, SessionLocal
-from models.models import Base, User, Organization, Project, Task, UserRole, ProjectStatus, TaskStatus, TaskPriority, TaskType
+from models.models import Base, User, Organization, Project, Task, UserRole, ProjectStatus, TaskStatus, TaskPriority, TaskType, OrganizationType
 from utils.auth import get_password_hash
 
 def create_tables():
@@ -96,6 +96,8 @@ def create_initial_data():
         # 创建示例组织
         organization = Organization(
             name="示例科技公司",
+            code="DEMO001",
+            type=OrganizationType.COMPANY,
             description="这是一个示例组织，用于演示系统功能",
             website="https://example.com",
             is_active=True
