@@ -1,7 +1,8 @@
-from sqlalchemy import Column, Integer, String, DateTime, Text, Boolean, ForeignKey, Enum, Table
+from sqlalchemy import Column, Integer, String, DateTime, Text, Boolean, ForeignKey, Enum, Table, BigInteger
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from .database import Base
+from utils.snowflake_column import snowflake_id_column, SnowflakeId
 import enum
 from datetime import datetime
 
@@ -43,16 +44,16 @@ class UserRole(str, enum.Enum):
 project_members = Table(
     'project_members',
     Base.metadata,
-    Column('project_id', Integer, ForeignKey('projects.id'), primary_key=True),
-    Column('user_id', Integer, ForeignKey('users.id'), primary_key=True),
+    Column('project_id', BigInteger, ForeignKey('projects.id'), primary_key=True),
+    Column('user_id', BigInteger, ForeignKey('users.id'), primary_key=True),
     Column('role', String(50), default='developer')
 )
 
 organization_members = Table(
     'organization_members',
     Base.metadata,
-    Column('organization_id', Integer, ForeignKey('organizations.id'), primary_key=True),
-    Column('user_id', Integer, ForeignKey('users.id'), primary_key=True),
+    Column('organization_id', BigInteger, ForeignKey('organizations.id'), primary_key=True),
+    Column('user_id', BigInteger, ForeignKey('users.id'), primary_key=True),
     Column('role', String(50), default='member')
 )
 
@@ -85,7 +86,7 @@ class User(Base):
 class Organization(Base):
     __tablename__ = "organizations"
     
-    id = Column(Integer, primary_key=True, index=True)
+    id = snowflake_id_column()
     name = Column(String(100), nullable=False)
     description = Column(Text)
     logo = Column(String(255))
@@ -102,14 +103,14 @@ class Organization(Base):
 class Project(Base):
     __tablename__ = "projects"
     
-    id = Column(Integer, primary_key=True, index=True)
+    id = snowflake_id_column()
     name = Column(String(100), nullable=False)
     description = Column(Text)
     status = Column(Enum(ProjectStatus), default=ProjectStatus.PLANNING)
     start_date = Column(DateTime)
     end_date = Column(DateTime)
-    creator_id = Column(Integer, ForeignKey("users.id"))
-    organization_id = Column(Integer, ForeignKey("organizations.id"))
+    creator_id = Column(BigInteger, ForeignKey("users.id"))
+    organization_id = Column(BigInteger, ForeignKey("organizations.id"))
     is_archived = Column(Boolean, default=False)
     created_at = Column(DateTime, default=func.now())
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
@@ -124,15 +125,15 @@ class Project(Base):
 class Task(Base):
     __tablename__ = "tasks"
     
-    id = Column(Integer, primary_key=True, index=True)
+    id = snowflake_id_column()
     title = Column(String(200), nullable=False)
     description = Column(Text)
     status = Column(Enum(TaskStatus), default=TaskStatus.TODO)
     priority = Column(Enum(TaskPriority), default=TaskPriority.MEDIUM)
     type = Column(Enum(TaskType), default=TaskType.FEATURE)
-    project_id = Column(Integer, ForeignKey("projects.id"))
-    assignee_id = Column(Integer, ForeignKey("users.id"))
-    reporter_id = Column(Integer, ForeignKey("users.id"))
+    project_id = Column(BigInteger, ForeignKey("projects.id"))
+    assignee_id = Column(BigInteger, ForeignKey("users.id"))
+    reporter_id = Column(BigInteger, ForeignKey("users.id"))
     due_date = Column(DateTime)
     estimated_hours = Column(Integer)
     actual_hours = Column(Integer)
@@ -151,14 +152,14 @@ class Task(Base):
 class TaskAttachment(Base):
     __tablename__ = "task_attachments"
     
-    id = Column(Integer, primary_key=True, index=True)
-    task_id = Column(Integer, ForeignKey("tasks.id"))
+    id = snowflake_id_column()
+    task_id = Column(BigInteger, ForeignKey("tasks.id"))
     filename = Column(String(255), nullable=False)
     original_filename = Column(String(255), nullable=False)
     file_path = Column(String(500), nullable=False)
     file_size = Column(Integer)
     content_type = Column(String(100))
-    uploaded_by = Column(Integer, ForeignKey("users.id"))
+    uploaded_by = Column(BigInteger, ForeignKey("users.id"))
     created_at = Column(DateTime, default=func.now())
     
     # 关系
@@ -169,9 +170,9 @@ class TaskAttachment(Base):
 class TaskComment(Base):
     __tablename__ = "task_comments"
     
-    id = Column(Integer, primary_key=True, index=True)
-    task_id = Column(Integer, ForeignKey("tasks.id"))
-    user_id = Column(Integer, ForeignKey("users.id"))
+    id = snowflake_id_column()
+    task_id = Column(BigInteger, ForeignKey("tasks.id"))
+    user_id = Column(BigInteger, ForeignKey("users.id"))
     content = Column(Text, nullable=False)
     created_at = Column(DateTime, default=func.now())
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now())

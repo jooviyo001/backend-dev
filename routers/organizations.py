@@ -16,7 +16,8 @@ from utils.auth import (
 
 router = APIRouter()
 
-@router.get("/", response_model=BaseResponse)
+# 组织列表
+@router.get("/list", response_model=BaseResponse)
 async def get_organizations(
     keyword: Optional[str] = Query(None, description="关键词搜索"),
     is_active: Optional[bool] = Query(None, description="状态过滤"),
@@ -54,6 +55,7 @@ async def get_organizations(
         message="获取组织列表成功"
     )
 
+# 组织分页列表
 @router.get("/page", response_model=BaseResponse)
 async def get_organizations_page(
     page: int = Query(1, ge=1, description="页码"),
@@ -85,7 +87,8 @@ async def get_organization(
         data=OrganizationResponse.from_orm(organization)
     )
 
-@router.post("/", response_model=BaseResponse)
+# 组织创建
+@router.post("/create", response_model=BaseResponse)
 async def create_organization(
     organization_data: OrganizationCreate,
     db: Session = Depends(get_db),
@@ -119,6 +122,7 @@ async def create_organization(
         data=OrganizationResponse.from_orm(db_organization)
     )
 
+# 组织更新
 @router.put("/{organization_id}", response_model=BaseResponse)
 async def update_organization(
     organization_id: int,
@@ -158,6 +162,7 @@ async def update_organization(
         data=OrganizationResponse.from_orm(organization)
     )
 
+# 组织删除
 @router.delete("/{organization_id}", response_model=BaseResponse)
 async def delete_organization(
     organization_id: int,
@@ -184,6 +189,7 @@ async def delete_organization(
     
     return BaseResponse(message="删除组织成功")
 
+# 组织激活
 @router.put("/{organization_id}/activate", response_model=BaseResponse)
 async def activate_organization(
     organization_id: int,
@@ -203,6 +209,7 @@ async def activate_organization(
     
     return BaseResponse(message="激活组织成功")
 
+# 组织停用
 @router.put("/{organization_id}/deactivate", response_model=BaseResponse)
 async def deactivate_organization(
     organization_id: int,
@@ -222,6 +229,7 @@ async def deactivate_organization(
     
     return BaseResponse(message="停用组织成功")
 
+# 组织添加成员
 @router.post("/{organization_id}/members/{user_id}", response_model=BaseResponse)
 async def add_organization_member(
     organization_id: int,
@@ -254,8 +262,9 @@ async def add_organization_member(
     organization.members.append(user)
     db.commit()
     
-    return BaseResponse(message="添加组织成员成功")
+    return BaseResponse(message="添加组织成员成功", data=UserResponse.from_orm(user))
 
+# 组织移除成员
 @router.delete("/{organization_id}/members/{user_id}", response_model=BaseResponse)
 async def remove_organization_member(
     organization_id: int,
@@ -288,8 +297,9 @@ async def remove_organization_member(
     organization.members.remove(user)
     db.commit()
     
-    return BaseResponse(message="移除组织成员成功")
+    return BaseResponse(message="移除组织成员成功", data=UserResponse.from_orm(user))
 
+# 组织获取成员列表
 @router.get("/{organization_id}/members", response_model=BaseResponse)
 async def get_organization_members(
     organization_id: int,

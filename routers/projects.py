@@ -15,7 +15,8 @@ from utils.auth import (
 
 router = APIRouter()
 
-@router.get("/", response_model=BaseResponse)
+# 项目列表
+@router.get("/list", response_model=BaseResponse)
 async def get_projects(
     keyword: Optional[str] = Query(None, description="关键词搜索"),
     status: Optional[str] = Query(None, description="项目状态"),
@@ -76,12 +77,13 @@ async def get_projects_page(
     """获取项目分页数据"""
     return await get_projects(keyword, status, organization_id, None, page, size, db, current_user)
 
+# 我的项目
 @router.get("/my", response_model=BaseResponse)
 async def get_my_projects(
     status: Optional[str] = Query(None, description="项目状态"),
     role: Optional[str] = Query(None, description="在项目中的角色"),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
+    current_user: User = Depends(require_permission("project:read"))
 ):
     """获取当前用户参与的项目"""
     from utils.response_utils import list_response
@@ -107,6 +109,7 @@ async def get_my_projects(
         message="获取我的项目成功"
     )
 
+# 项目详情
 @router.get("/{project_id}", response_model=BaseResponse)
 async def get_project(
     project_id: int,
@@ -126,7 +129,8 @@ async def get_project(
         data=ProjectResponse.from_orm(project)
     )
 
-@router.post("/", response_model=BaseResponse)
+# 创建项目
+@router.post("/create", response_model=BaseResponse)
 async def create_project(
     project_data: ProjectCreate,
     db: Session = Depends(get_db),
@@ -175,7 +179,8 @@ async def create_project(
         data=ProjectResponse.from_orm(db_project)
     )
 
-@router.put("/{project_id}", response_model=BaseResponse)
+# 更新项目
+@router.put("/{project_id}/update", response_model=BaseResponse)
 async def update_project(
     project_id: int,
     project_data: ProjectUpdate,
@@ -214,7 +219,8 @@ async def update_project(
         data=ProjectResponse.from_orm(project)
     )
 
-@router.delete("/{project_id}", response_model=BaseResponse)
+# 删除项目
+@router.delete("/{project_id}/delete", response_model=BaseResponse)
 async def delete_project(
     project_id: int,
     db: Session = Depends(get_db),
@@ -233,6 +239,7 @@ async def delete_project(
     
     return BaseResponse(message="删除项目成功")
 
+# 归档项目
 @router.put("/{project_id}/archive", response_model=BaseResponse)
 async def archive_project(
     project_id: int,
@@ -252,6 +259,7 @@ async def archive_project(
     
     return BaseResponse(message="归档项目成功")
 
+# 恢复项目
 @router.put("/{project_id}/restore", response_model=BaseResponse)
 async def restore_project(
     project_id: int,
@@ -271,6 +279,7 @@ async def restore_project(
     
     return BaseResponse(message="恢复项目成功")
 
+# 项目添加成员
 @router.post("/{project_id}/members/{user_id}", response_model=BaseResponse)
 async def add_project_member(
     project_id: int,
@@ -305,6 +314,7 @@ async def add_project_member(
     
     return BaseResponse(message="添加项目成员成功")
 
+# 项目移除成员
 @router.delete("/{project_id}/members/{user_id}", response_model=BaseResponse)
 async def remove_project_member(
     project_id: int,
@@ -346,6 +356,7 @@ async def remove_project_member(
     
     return BaseResponse(message="移除项目成员成功")
 
+# 项目成员列表
 @router.get("/{project_id}/members", response_model=BaseResponse)
 async def get_project_members(
     project_id: int,

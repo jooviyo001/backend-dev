@@ -8,8 +8,9 @@ class BaseResponse(BaseModel):
     code: str = "200"
     message: str = "操作成功"
     data: Optional[Any] = None
-    timestamp: datetime = datetime.now()
-
+    # 这里的时间需要使用格式“yyyy-MM-dd HH:mm:ss”
+    timestamp: datetime = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    
 # 分页响应模式
 class PaginationResponse(BaseModel):
     total: int
@@ -54,11 +55,13 @@ class LoginRequest(BaseModel):
     username: str
     password: str
 
+# 登录响应模式
 class LoginResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
     user: UserResponse
 
+# 注册模式
 class RegisterRequest(UserCreate):
     confirm_password: str
     
@@ -68,21 +71,35 @@ class RegisterRequest(UserCreate):
             raise ValueError('密码不匹配')
         return v
 
+# 注册响应模式
+class RegisterResponse(BaseResponse):
+    data: UserResponse
+
 # 组织相关模式
 class OrganizationBase(BaseModel):
     name: str
     description: Optional[str] = None
     website: Optional[str] = None
 
+# 组织创建模式
 class OrganizationCreate(OrganizationBase):
     pass
 
+# 组织更新模式
 class OrganizationUpdate(BaseModel):
     name: Optional[str] = None
     description: Optional[str] = None
     website: Optional[str] = None
     is_active: Optional[bool] = None
 
+# 组织更新模式
+class OrganizationUpdate(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+    website: Optional[str] = None
+    is_active: Optional[bool] = None
+
+# 组织响应模式
 class OrganizationResponse(OrganizationBase):
     id: int
     logo: Optional[str] = None
@@ -102,9 +119,11 @@ class ProjectBase(BaseModel):
     end_date: Optional[datetime] = None
     organization_id: Optional[int] = None
 
+# 项目创建模式
 class ProjectCreate(ProjectBase):
     pass
 
+# 项目更新模式
 class ProjectUpdate(BaseModel):
     name: Optional[str] = None
     description: Optional[str] = None
@@ -113,6 +132,16 @@ class ProjectUpdate(BaseModel):
     end_date: Optional[datetime] = None
     organization_id: Optional[int] = None
 
+# 项目更新模式
+class ProjectUpdate(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+    status: Optional[ProjectStatus] = None
+    start_date: Optional[datetime] = None
+    end_date: Optional[datetime] = None
+    organization_id: Optional[int] = None
+
+# 项目响应模式
 class ProjectResponse(ProjectBase):
     id: int
     creator_id: int
@@ -138,9 +167,11 @@ class TaskBase(BaseModel):
     estimated_hours: Optional[int] = None
     tags: Optional[List[str]] = None
 
+# 任务创建模式
 class TaskCreate(TaskBase):
     pass
 
+# 任务更新模式
 class TaskUpdate(BaseModel):
     title: Optional[str] = None
     description: Optional[str] = None
@@ -203,9 +234,12 @@ class AttachmentResponse(BaseModel):
 class CommentBase(BaseModel):
     content: str
 
+# 评论创建模式
 class CommentCreate(CommentBase):
-    pass
+    task_id: int
+    user_id: int
 
+# 评论响应模式
 class CommentResponse(CommentBase):
     id: int
     task_id: int

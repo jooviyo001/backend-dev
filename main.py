@@ -12,12 +12,23 @@ from pydantic import BaseModel
 from utils.status_codes import *
 
 # 导入路由模块
-from routers import auth, users, projects, tasks, organizations, dashboard
+from routers import auth, users, projects, organizations, dashboard
 from models.database import engine, Base
 from models import models
+from utils.snowflake import init_snowflake
+from utils.init_default_users import init_default_users
+from utils.logging_middleware import RequestResponseLoggingMiddleware
+
+# 初始化雪花算法（机器ID可以通过环境变量配置）
+import os
+machine_id = int(os.getenv("MACHINE_ID", "1"))  # 默认机器ID为1
+init_snowflake(machine_id)
 
 # 创建数据库表
 Base.metadata.create_all(bind=engine)
+
+# 初始化默认用户
+init_default_users()
 
 app = FastAPI(
     title="项目管理系统API",
@@ -33,6 +44,10 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# 请求响应日志中间件
+log_level = os.getenv("LOG_LEVEL", "INFO")
+app.add_middleware(RequestResponseLoggingMiddleware, log_level=log_level)
 
 # 响应格式统一中间件
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -202,7 +217,6 @@ async def vite_client():
 app.include_router(auth.router, prefix="/api/v1/auth", tags=["认证"])
 app.include_router(users.router, prefix="/api/v1/users", tags=["用户管理"])
 app.include_router(projects.router, prefix="/api/v1/projects", tags=["项目管理"])
-app.include_router(tasks.router, prefix="/api/v1/tasks", tags=["任务管理"])
 app.include_router(organizations.router, prefix="/api/v1/organizations", tags=["组织管理"])
 app.include_router(dashboard.router, prefix="/api/v1/dashboard", tags=["仪表盘"])
 
