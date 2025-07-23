@@ -37,8 +37,8 @@ class ProjectStatus(str, enum.Enum):
 class UserRole(str, enum.Enum):
     ADMIN = "admin"
     MANAGER = "manager"
-    DEVELOPER = "developer"
-    VIEWER = "viewer"
+    MEMBER = "member"
+    USER = "user"
 
 # 关联表
 project_members = Table(
@@ -46,7 +46,7 @@ project_members = Table(
     Base.metadata,
     Column('project_id', BigInteger, ForeignKey('projects.id'), primary_key=True),
     Column('user_id', BigInteger, ForeignKey('users.id'), primary_key=True),
-    Column('role', String(50), default='developer')
+    Column('role', String(50), default='member')
 )
 
 organization_members = Table(
@@ -68,7 +68,7 @@ class User(Base):
     full_name = Column(String(100))
     avatar = Column(String(255))
     phone = Column(String(20))
-    role = Column(Enum(UserRole), default=UserRole.DEVELOPER)
+    role = Column(Enum(UserRole), default=UserRole.MEMBER)
     is_active = Column(Boolean, default=True)
     is_verified = Column(Boolean, default=False)
     last_login = Column(DateTime)

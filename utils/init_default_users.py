@@ -39,7 +39,7 @@ DEFAULT_USERS = [
         "email": "developer@example.com",
         "password": "developer123", 
         "full_name": "开发人员",
-        "role": UserRole.DEVELOPER,
+        "role": UserRole.MEMBER,
         "is_verified": True,
         "is_active": True
     }

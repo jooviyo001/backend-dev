@@ -25,7 +25,7 @@ class UserBase(BaseModel):
     email: EmailStr
     full_name: Optional[str] = None
     phone: Optional[str] = None
-    role: UserRole = UserRole.DEVELOPER
+    role: UserRole = UserRole.MEMBER
 
 class UserCreate(UserBase):
     password: str
@@ -74,16 +74,6 @@ class RegisterRequest(UserCreate):
 # 注册响应模式
 class RegisterResponse(BaseResponse):
     data: UserResponse
-
-# 用户状态切换模式
-class UserStatusToggle(BaseModel):
-    status: str = Field(..., description="用户状态: active 或 inactive")
-    
-    @validator('status')
-    def validate_status(cls, v):
-        if v not in ['active', 'inactive']:
-            raise ValueError('状态必须是 active 或 inactive')
-        return v
 
 # 用户状态切换模式
 class UserStatusToggle(BaseModel):

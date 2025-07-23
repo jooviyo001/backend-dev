@@ -62,14 +62,14 @@ def create_initial_data():
                 "email": "dev1@example.com",
                 "password": "dev123",
                 "full_name": "开发者1",
-                "role": UserRole.DEVELOPER
+                "role": UserRole.MEMBER
             },
             {
                 "username": "developer2",
                 "email": "dev2@example.com",
                 "password": "dev123",
                 "full_name": "开发者2",
-                "role": UserRole.DEVELOPER
+                "role": UserRole.MEMBER
             }
         ]
         

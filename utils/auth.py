@@ -103,8 +103,8 @@ def check_permission(user: User, required_permission: str) -> bool:
                  "task:read", "task:write", "organization:read", "organization:write"],
         "manager": ["user:read", "project:read", "project:write", 
                    "task:read", "task:write", "organization:read"],
-        "developer": ["user:read", "project:read", "task:read", "task:write"],
-        "viewer": ["user:read", "project:read", "task:read"]
+        "member": ["user:read", "project:read", "task:read", "task:write"],
+        "user": ["user:read", "project:read", "task:read"]
     }
     
     user_permissions = permission_map.get(user.role.value, [])

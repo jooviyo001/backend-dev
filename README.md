@@ -86,8 +86,8 @@ uv run uvicorn main:app --reload
 
 启动服务后，可以通过以下地址访问API文档：
 
-- Swagger UI: http://127.0.0.1:8000/docs
-- ReDoc: http://127.0.0.1:8000/redoc
+- Swagger UI: [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)
+- ReDoc: [http://127.0.0.1:8000/redoc](http://127.0.0.1:8000/redoc)
 
 ## 默认账户
 
@@ -97,14 +97,15 @@ uv run uvicorn main:app --reload
 |--------|------|------|------|
 | admin | admin123 | 管理员 | 系统管理员，拥有所有权限 |
 | manager | manager123 | 项目经理 | 项目管理权限 |
-| developer1 | dev123 | 开发者 | 普通开发者权限 |
-| developer2 | dev123 | 开发者 | 普通开发者权限 |
+| developer1 | dev123 | 成员 | 普通成员权限 |
+| developer2 | dev123 | 成员 | 普通成员权限 |
 
 **注意**: 生产环境请及时修改默认密码！
 
 ## API 接口概览
 
 ### 认证相关
+
 - `POST /auth/login` - 用户登录
 - `POST /auth/register` - 用户注册
 - `POST /auth/logout` - 用户登出
@@ -113,6 +114,7 @@ uv run uvicorn main:app --reload
 - `POST /auth/refresh` - 刷新令牌
 
 ### 用户管理
+
 - `GET /users` - 获取用户列表
 - `GET /users/{user_id}` - 获取用户详情
 - `POST /users` - 创建用户
@@ -120,6 +122,7 @@ uv run uvicorn main:app --reload
 - `DELETE /users/{user_id}` - 删除用户
 
 ### 组织管理
+
 - `GET /organizations` - 获取组织列表
 - `GET /organizations/{org_id}` - 获取组织详情
 - `POST /organizations` - 创建组织
@@ -127,6 +130,7 @@ uv run uvicorn main:app --reload
 - `DELETE /organizations/{org_id}` - 删除组织
 
 ### 项目管理
+
 - `GET /projects` - 获取项目列表
 - `GET /projects/{project_id}` - 获取项目详情
 - `POST /projects` - 创建项目
@@ -134,6 +138,7 @@ uv run uvicorn main:app --reload
 - `DELETE /projects/{project_id}` - 删除项目
 
 ### 任务管理
+
 - `GET /tasks` - 获取任务列表
 - `GET /tasks/{task_id}` - 获取任务详情
 - `POST /tasks` - 创建任务
@@ -142,7 +147,7 @@ uv run uvicorn main:app --reload
 
 ## 项目结构
 
-```
+```text
 backend/
 ├── main.py                 # FastAPI 应用入口
 ├── run.py                  # 启动脚本
@@ -223,7 +228,7 @@ uv run alembic upgrade head
 | ALGORITHM | JWT 算法 | HS256 |
 | ACCESS_TOKEN_EXPIRE_MINUTES | 令牌过期时间(分钟) | 30 |
 | DEBUG | 调试模式 | True |
-| ALLOWED_ORIGINS | 允许的跨域来源 | http://localhost:3000 |
+| ALLOWED_ORIGINS | 允许的跨域来源 | `http://localhost:3000` |
 
 ### 权限说明
 
@@ -231,8 +236,8 @@ uv run alembic upgrade head
 
 - **ADMIN**: 系统管理员，拥有所有权限
 - **MANAGER**: 项目经理，可以管理项目和任务
-- **DEVELOPER**: 开发者，可以查看和更新分配给自己的任务
-- **VIEWER**: 观察者，只有查看权限
+- **member**: 成员，可以查看和更新分配给自己的任务
+- **user**: 用户，只有查看权限
 
 ## 部署说明
 

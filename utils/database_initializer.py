@@ -128,7 +128,7 @@ class DatabaseInitializer:
                 "email": "developer@example.com",
                 "password": "dev123",
                 "full_name": "开发工程师",
-                "role": UserRole.DEVELOPER,
+                "role": UserRole.MEMBER,
                 "phone": "13800138002"
             },
             {
@@ -136,7 +136,7 @@ class DatabaseInitializer:
                 "email": "alice@example.com",
                 "password": "alice123",
                 "full_name": "Alice Wang",
-                "role": UserRole.DEVELOPER,
+                "role": UserRole.MEMBER,
                 "phone": "13800138003"
             },
             {
@@ -144,7 +144,7 @@ class DatabaseInitializer:
                 "email": "bob@example.com",
                 "password": "bob123",
                 "full_name": "Bob Chen",
-                "role": UserRole.DEVELOPER,
+                "role": UserRole.MEMBER,
                 "phone": "13800138004"
             }
         ]
@@ -387,7 +387,7 @@ class DatabaseInitializer:
         
         tasks = []
         admin_user = next(u for u in users if u.role == UserRole.ADMIN)
-        developers = [u for u in users if u.role == UserRole.DEVELOPER]
+        developers = [u for u in users if u.role == UserRole.MEMBER]
         
         for i, task_data in enumerate(tasks_data):
             project = projects[task_data["project_index"]]
