@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr, validator
+from pydantic import BaseModel, EmailStr, validator, Field
 from typing import Optional, List, Any
 from datetime import datetime
 from models.models import TaskStatus, TaskPriority, TaskType, ProjectStatus, UserRole
@@ -8,8 +8,8 @@ class BaseResponse(BaseModel):
     code: str = "200"
     message: str = "操作成功"
     data: Optional[Any] = None
-    # 这里的时间需要使用格式“yyyy-MM-dd HH:mm:ss”
-    timestamp: datetime = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    # 使用datetime类型，并通过Field设置默认值工厂函数
+    timestamp: datetime = Field(default_factory=datetime.now)
     
 # 分页响应模式
 class PaginationResponse(BaseModel):
