@@ -204,7 +204,7 @@ async def get_dashboard_stats(
 async def get_recent_tasks(
     limit: int = Query(5, description="限制数量，默认5"),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
+    current_user = Depends(get_current_active_user)
 ):
     """获取最近任务列表"""
     
@@ -276,13 +276,14 @@ async def get_project_progress(
         items=project_progress_list
     )
 
+# 替换为当前用户的任务状态分布数据
 @router.get("/task-status-distribution", response_model=BaseResponse)
 async def get_task_status_distribution(
     projectId: Optional[str] = Query(None, description="项目ID"),
     dateFrom: Optional[str] = Query(None, description="日期范围开始"),
     dateTo: Optional[str] = Query(None, description="日期范围结束"),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
+    current_user = Depends(get_current_active_user)
 ):
     """获取任务状态分布数据"""
     
@@ -342,6 +343,7 @@ async def get_task_status_distribution(
         data=distribution
     )
 
+# 替换为当前用户的最近活动记录
 @router.get("/recent-activities", response_model=BaseResponse)
 async def get_recent_activities(
     limit: int = Query(20, description="限制数量，默认20"),
@@ -381,12 +383,13 @@ async def get_recent_activities(
         data=activities
     )
 
+# 替换为当前用户的用户工作负载数据
 @router.get("/user-workload", response_model=BaseResponse)
 async def get_user_workload(
     departmentId: Optional[str] = Query(None, description="部门ID"),
     limit: Optional[int] = Query(10, description="限制数量，默认10"),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
+    current_user = Depends(get_current_active_user)
 ):
     """获取用户工作负载数据"""
     

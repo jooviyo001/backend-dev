@@ -23,7 +23,7 @@ async def get_users(
     page: int = Query(1, ge=1, description="页码"),
     size: int = Query(10, ge=1, le=100, description="每页数量"),
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_permission("user:read"))
+    current_user = Depends(require_permission("user:read"))
 ):
     """获取用户列表"""
     from utils.response_utils import list_response, paginate_query
@@ -72,11 +72,12 @@ async def get_users_page(
     """获取用户分页数据"""
     return await get_users(keyword, role, is_active, page, size, db, current_user)
 
+# 替换为当前用户
 @router.get("/{user_id}", response_model=BaseResponse)
 async def get_user(
     user_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_permission("user:read"))
+    current_user = Depends(require_permission("user:read"))
 ):
     """获取用户详情"""
     user = db.query(User).filter(User.id == user_id).first()
