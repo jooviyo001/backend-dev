@@ -26,6 +26,8 @@ async def get_organizations(
     current_user: User = Depends(require_permission("organization:read"))
 ):
     """获取组织列表"""
+    from utils.response_utils import list_response, paginate_query
+    
     query = db.query(Organization)
     
     # 关键词搜索
@@ -42,18 +44,14 @@ async def get_organizations(
         query = query.filter(Organization.is_active == is_active)
     
     # 分页
-    total = query.count()
-    organizations = query.offset((page - 1) * size).limit(size).all()
+    total, organizations = paginate_query(query, page, size)
     
-    return BaseResponse(
-        message="获取组织列表成功",
-        data=PaginationResponse(
-            total=total,
-            page=page,
-            size=size,
-            pages=ceil(total / size),
-            items=[OrganizationResponse.from_orm(org) for org in organizations]
-        )
+    return list_response(
+        items=[OrganizationResponse.from_orm(org) for org in organizations],
+        total=total,
+        page=page,
+        size=size,
+        message="获取组织列表成功"
     )
 
 @router.get("/page", response_model=BaseResponse)

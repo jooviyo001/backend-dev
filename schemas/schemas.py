@@ -5,7 +5,7 @@ from models.models import TaskStatus, TaskPriority, TaskType, ProjectStatus, Use
 
 # 基础响应模式
 class BaseResponse(BaseModel):
-    success: bool = True
+    code: str = "200"
     message: str = "操作成功"
     data: Optional[Any] = None
     timestamp: datetime = datetime.now()

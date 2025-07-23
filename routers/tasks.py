@@ -21,7 +21,8 @@ from utils.auth import (
 
 router = APIRouter()
 
-@router.get("/", response_model=BaseResponse)
+# 任务列表
+@router.get("/list", response_model=BaseResponse)
 async def get_tasks(
     keyword: Optional[str] = Query(None, description="关键词搜索"),
     status: Optional[str] = Query(None, description="任务状态"),
@@ -41,6 +42,8 @@ async def get_tasks(
     current_user: User = Depends(require_permission("task:read"))
 ):
     """获取任务列表"""
+    from utils.response_utils import list_response, paginate_query
+    
     query = db.query(Task)
     
     # 关键词搜索
@@ -93,20 +96,17 @@ async def get_tasks(
         query = query.filter(Task.created_at <= created_at_to)
     
     # 分页
-    total = query.count()
-    tasks = query.offset((page - 1) * size).limit(size).all()
+    total, tasks = paginate_query(query, page, size)
     
-    return BaseResponse(
-        message="获取任务列表成功",
-        data=PaginationResponse(
-            total=total,
-            page=page,
-            size=size,
-            pages=ceil(total / size),
-            items=[TaskResponse.from_orm(task) for task in tasks]
-        )
+    return list_response(
+        items=[TaskResponse.from_orm(task) for task in tasks],
+        total=total,
+        page=page,
+        size=size,
+        message="获取任务列表成功"
     )
 
+# 任务分列表
 @router.get("/page", response_model=BaseResponse)
 async def get_tasks_page(
     page: int = Query(1, ge=1, description="页码"),
@@ -125,6 +125,7 @@ async def get_tasks_page(
         None, None, None, None, page, size, db, current_user
     )
 
+
 @router.get("/my", response_model=BaseResponse)
 async def get_my_tasks(
     status: Optional[str] = Query(None, description="任务状态"),
@@ -134,6 +135,8 @@ async def get_my_tasks(
     current_user: User = Depends(get_current_active_user)
 ):
     """获取当前用户的任务"""
+    from utils.response_utils import list_response
+    
     query = db.query(Task).filter(Task.assignee_id == current_user.id)
     
     # 状态过滤
@@ -150,9 +153,9 @@ async def get_my_tasks(
     
     tasks = query.all()
     
-    return BaseResponse(
-        message="获取我的任务成功",
-        data=[TaskResponse.from_orm(task) for task in tasks]
+    return list_response(
+        items=[TaskResponse.from_orm(task) for task in tasks],
+        message="获取我的任务成功"
     )
 
 @router.get("/statistics", response_model=BaseResponse)
@@ -231,7 +234,7 @@ async def get_task(
         data=TaskResponse.from_orm(task)
     )
 
-@router.post("/", response_model=BaseResponse)
+@router.post("/create", response_model=BaseResponse)
 async def create_task(
     task_data: TaskCreate,
     db: Session = Depends(get_db),

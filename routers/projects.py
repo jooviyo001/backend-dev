@@ -27,6 +27,8 @@ async def get_projects(
     current_user: User = Depends(require_permission("project:read"))
 ):
     """获取项目列表"""
+    from utils.response_utils import list_response, paginate_query
+    
     query = db.query(Project).filter(Project.is_archived == False)
     
     # 关键词搜索
@@ -51,18 +53,14 @@ async def get_projects(
         query = query.filter(Project.creator_id == creator_id)
     
     # 分页
-    total = query.count()
-    projects = query.offset((page - 1) * size).limit(size).all()
+    total, projects = paginate_query(query, page, size)
     
-    return BaseResponse(
-        message="获取项目列表成功",
-        data=PaginationResponse(
-            total=total,
-            page=page,
-            size=size,
-            pages=ceil(total / size),
-            items=[ProjectResponse.from_orm(project) for project in projects]
-        )
+    return list_response(
+        items=[ProjectResponse.from_orm(project) for project in projects],
+        total=total,
+        page=page,
+        size=size,
+        message="获取项目列表成功"
     )
 
 @router.get("/page", response_model=BaseResponse)
@@ -86,6 +84,8 @@ async def get_my_projects(
     current_user: User = Depends(get_current_active_user)
 ):
     """获取当前用户参与的项目"""
+    from utils.response_utils import list_response
+    
     query = db.query(Project).filter(
         and_(
             Project.is_archived == False,
@@ -102,9 +102,9 @@ async def get_my_projects(
     
     projects = query.all()
     
-    return BaseResponse(
-        message="获取我的项目成功",
-        data=[ProjectResponse.from_orm(project) for project in projects]
+    return list_response(
+        items=[ProjectResponse.from_orm(project) for project in projects],
+        message="获取我的项目成功"
     )
 
 @router.get("/{project_id}", response_model=BaseResponse)

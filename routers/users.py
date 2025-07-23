@@ -15,7 +15,7 @@ from utils.auth import (
 
 router = APIRouter()
 
-@router.get("/", response_model=BaseResponse)
+@router.get("/list", response_model=BaseResponse)
 async def get_users(
     keyword: Optional[str] = Query(None, description="关键词搜索"),
     role: Optional[str] = Query(None, description="角色过滤"),
@@ -26,6 +26,8 @@ async def get_users(
     current_user: User = Depends(require_permission("user:read"))
 ):
     """获取用户列表"""
+    from utils.response_utils import list_response, paginate_query
+    
     query = db.query(User)
     
     # 关键词搜索
@@ -47,18 +49,14 @@ async def get_users(
         query = query.filter(User.is_active == is_active)
     
     # 分页
-    total = query.count()
-    users = query.offset((page - 1) * size).limit(size).all()
+    total, users = paginate_query(query, page, size)
     
-    return BaseResponse(
-        message="获取用户列表成功",
-        data=PaginationResponse(
-            total=total,
-            page=page,
-            size=size,
-            pages=ceil(total / size),
-            items=[UserResponse.from_orm(user) for user in users]
-        )
+    return list_response(
+        items=[UserResponse.from_orm(user) for user in users],
+        total=total,
+        page=page,
+        size=size,
+        message="获取用户列表成功"
     )
 
 @router.get("/page", response_model=BaseResponse)
@@ -93,7 +91,8 @@ async def get_user(
         data=UserResponse.from_orm(user)
     )
 
-@router.post("/", response_model=BaseResponse)
+# 创建用户
+@router.post("/create", response_model=BaseResponse)
 async def create_user(
     user_data: UserCreate,
     db: Session = Depends(get_db),
@@ -134,6 +133,7 @@ async def create_user(
         data=UserResponse.from_orm(db_user)
     )
 
+# 更新用户
 @router.put("/{user_id}", response_model=BaseResponse)
 async def update_user(
     user_id: int,
