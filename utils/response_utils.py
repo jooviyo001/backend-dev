@@ -1,8 +1,42 @@
 from datetime import datetime
-from typing import Any, Optional, List, Dict
+from typing import Any, Optional, List, Dict, Union
 from fastapi.responses import JSONResponse
 from math import ceil
+from datetime import datetime
 from .status_codes import SUCCESS, get_message
+
+# 定义ID前缀映射
+ID_PREFIX_MAP = {
+    "users": "USER",
+    "projects": "PROJ",
+    "tasks": "TASK",
+    "organizations": "ORG",
+    "task_attachments": "ATT",
+    "task_comments": "COMM",
+    # 可以根据需要添加其他模型的映射
+}
+
+def _add_id_prefix(data: Any) -> Any:
+    """
+    递归地为响应数据中的ID添加前缀
+    """
+    if isinstance(data, dict):
+        # 检查是否是ORM模型对象（通过__tablename__判断）
+        if "id" in data and "__tablename__" in data and data["__tablename__"] in ID_PREFIX_MAP:
+            prefix = ID_PREFIX_MAP[data["__tablename__"]]
+            # 确保id是字符串或数字，避免对None或非预期类型操作
+            if data["id"] is not None:
+                data["id"] = f"{prefix}_{data["id"]}"
+        
+        # 递归处理字典中的其他值
+        for key, value in data.items():
+            data[key] = _add_id_prefix(value)
+    elif isinstance(data, list):
+        # 递归处理列表中的每个元素
+        data = [_add_id_prefix(item) for item in data]
+    
+    return data
+
 
 def standard_response(data: Any = None, code: str = SUCCESS, message: Optional[str] = None, status_code: int = 200):
     """
@@ -20,10 +54,12 @@ def standard_response(data: Any = None, code: str = SUCCESS, message: Optional[s
     if message is None:
         message = get_message(code)
     
+    processed_data = _add_id_prefix(data)
+    
     return {
         "code": code,
         "message": message,
-        "data": data,
+        "data": processed_data,
         "timestamp": datetime.now().isoformat()
     }
 

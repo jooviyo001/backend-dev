@@ -130,7 +130,9 @@ def init_snowflake(machine_id: int = 1):
     _snowflake_generator = SnowflakeGenerator(machine_id)
 
 
-def generate_snowflake_id() -> int:
+from typing import Union
+
+def generate_snowflake_id(prefix: Optional[str] = None) -> Union[int, str]:
     """
     生成雪花算法ID
     
@@ -140,7 +142,12 @@ def generate_snowflake_id() -> int:
     global _snowflake_generator
     if _snowflake_generator is None:
         init_snowflake()
-    return _snowflake_generator.generate_id()
+    generated_id = _snowflake_generator.generate_id()
+    
+    if prefix:
+        return f"{prefix}_{generated_id}"
+    else:
+        return generated_id
 
 
 def parse_snowflake_id(snowflake_id: int) -> dict:
