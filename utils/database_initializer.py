@@ -18,7 +18,8 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from models.database import engine, SessionLocal
 from models.models import (
     Base, User, Organization, Project, Task, TaskAttachment, TaskComment,
-    UserRole, ProjectStatus, TaskStatus, TaskPriority, TaskType
+    UserRole, ProjectStatus, TaskStatus, TaskPriority, TaskType,
+    OrganizationType, OrganizationStatus
 )
 from utils.auth import get_password_hash
 from utils.snowflake import generate_snowflake_id
@@ -183,11 +184,15 @@ class DatabaseInitializer:
         orgs_data = [
             {
                 "name": "示例科技公司",
+                "code": "TECH001",
+                "type": OrganizationType.COMPANY,
                 "description": "一家专注于软件开发的科技公司",
                 "website": "https://example-tech.com"
             },
             {
                 "name": "创新实验室",
+                "code": "LAB001",
+                "type": OrganizationType.DEPARTMENT,
                 "description": "专注于前沿技术研究的实验室",
                 "website": "https://innovation-lab.com"
             }
@@ -198,8 +203,13 @@ class DatabaseInitializer:
             org = Organization(
                 id=generate_snowflake_id(),
                 name=org_data["name"],
+                code=org_data["code"],
+                type=org_data["type"],
+                status=OrganizationStatus.ACTIVE,
                 description=org_data["description"],
                 website=org_data["website"],
+                level=1,
+                sort=i,
                 is_active=True,
                 created_at=datetime.now(),
                 updated_at=datetime.now()

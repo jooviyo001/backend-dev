@@ -34,6 +34,12 @@ class ProjectStatus(str, enum.Enum):
     COMPLETED = "completed"
     ARCHIVED = "archived"
 
+class ProjectPriority(str, enum.Enum):
+    LOW = "low"
+    MEDIUM = "medium"
+    HIGH = "high"
+    URGENT = "urgent"
+
 class UserRole(str, enum.Enum):
     ADMIN = "admin"
     MANAGER = "manager"
@@ -144,9 +150,11 @@ class Project(Base):
     name = Column(String(100), nullable=False)
     description = Column(Text)
     status = Column(Enum(ProjectStatus), default=ProjectStatus.PLANNING)
+    priority = Column(Enum(ProjectPriority), default=ProjectPriority.MEDIUM)
     start_date = Column(DateTime)
     end_date = Column(DateTime)
     creator_id = Column(BigInteger, ForeignKey("users.id"))
+    manager_id = Column(BigInteger, ForeignKey("users.id"))
     organization_id = Column(BigInteger, ForeignKey("organizations.id"))
     is_archived = Column(Boolean, default=False)
     created_at = Column(DateTime, default=func.now())
@@ -154,6 +162,7 @@ class Project(Base):
     
     # 关系
     creator = relationship("User", back_populates="created_projects", foreign_keys=[creator_id])
+    manager = relationship("User", foreign_keys=[manager_id])
     organization = relationship("Organization", back_populates="projects")
     tasks = relationship("Task", back_populates="project")
     members = relationship("User", secondary=project_members, back_populates="projects")

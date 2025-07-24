@@ -155,14 +155,37 @@ async def create_project(
                 detail="组织不存在"
             )
     
+    # 检查项目经理是否存在
+    if project_data.manager_id:
+        manager = db.query(User).filter(User.id == project_data.manager_id).first()
+        if not manager:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="指定的项目经理不存在"
+            )
+    
+    # 检查成员是否存在
+    members_to_add = []
+    if project_data.member_ids:
+        for member_id in project_data.member_ids:
+            member = db.query(User).filter(User.id == member_id).first()
+            if not member:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail=f"用户ID {member_id} 不存在"
+                )
+            members_to_add.append(member)
+    
     # 创建新项目
     db_project = Project(
         name=project_data.name,
         description=project_data.description,
         status=project_data.status,
+        priority=project_data.priority,
         start_date=project_data.start_date,
         end_date=project_data.end_date,
         creator_id=current_user.id,
+        manager_id=project_data.manager_id,
         organization_id=project_data.organization_id
     )
     
@@ -170,8 +193,21 @@ async def create_project(
     db.commit()
     db.refresh(db_project)
     
-    # 将创建者添加为项目成员
-    db_project.members.append(current_user)
+    # 将创建者添加为项目成员（如果不在成员列表中）
+    if current_user not in members_to_add:
+        db_project.members.append(current_user)
+    
+    # 添加指定的项目成员
+    for member in members_to_add:
+        if member not in db_project.members:
+            db_project.members.append(member)
+    
+    # 如果指定了项目经理且经理不在成员列表中，也添加为成员
+    if project_data.manager_id:
+        manager = db.query(User).filter(User.id == project_data.manager_id).first()
+        if manager and manager not in db_project.members:
+            db_project.members.append(manager)
+    
     db.commit()
     
     return BaseResponse(

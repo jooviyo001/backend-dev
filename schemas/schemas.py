@@ -1,7 +1,7 @@
 from pydantic import BaseModel, EmailStr, validator, Field
 from typing import Optional, List, Any
 from datetime import datetime
-from models.models import TaskStatus, TaskPriority, TaskType, ProjectStatus, UserRole, OrganizationType, OrganizationStatus, MemberRole
+from models.models import TaskStatus, TaskPriority, TaskType, ProjectStatus, ProjectPriority, UserRole, OrganizationType, OrganizationStatus, MemberRole
 
 # 基础响应模式
 class BaseResponse(BaseModel):
@@ -210,40 +210,37 @@ class ProjectBase(BaseModel):
     name: str
     description: Optional[str] = None
     status: ProjectStatus = ProjectStatus.PLANNING
+    priority: ProjectPriority = ProjectPriority.MEDIUM
     start_date: Optional[datetime] = None
     end_date: Optional[datetime] = None
     organization_id: Optional[int] = None
 
 # 项目创建模式
 class ProjectCreate(ProjectBase):
-    pass
+    manager_id: Optional[int] = Field(None, description="项目经理ID")
+    member_ids: Optional[List[int]] = Field(default_factory=list, description="项目成员ID列表")
 
 # 项目更新模式
 class ProjectUpdate(BaseModel):
     name: Optional[str] = None
     description: Optional[str] = None
     status: Optional[ProjectStatus] = None
+    priority: Optional[ProjectPriority] = None
     start_date: Optional[datetime] = None
     end_date: Optional[datetime] = None
-    organization_id: Optional[int] = None
-
-# 项目更新模式
-class ProjectUpdate(BaseModel):
-    name: Optional[str] = None
-    description: Optional[str] = None
-    status: Optional[ProjectStatus] = None
-    start_date: Optional[datetime] = None
-    end_date: Optional[datetime] = None
+    manager_id: Optional[int] = None
     organization_id: Optional[int] = None
 
 # 项目响应模式
 class ProjectResponse(ProjectBase):
     id: int
     creator_id: int
+    manager_id: Optional[int] = None
     is_archived: bool
     created_at: datetime
     updated_at: datetime
     creator: Optional[UserResponse] = None
+    manager: Optional[UserResponse] = None
     organization: Optional[OrganizationResponse] = None
     
     class Config:

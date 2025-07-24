@@ -17,9 +17,18 @@ SECRET_KEY = os.getenv("SECRET_KEY", "your-secret-key-here")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
+# 调试模式开关 - 设置为True时将跳过所有鉴权检查
+DEBUG_SKIP_AUTH = os.getenv("DEBUG_SKIP_AUTH", "false").lower() == "true"
+
 # 密码加密
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-security = HTTPBearer()
+
+# 安全配置 - 在调试模式下使认证变为可选
+if DEBUG_SKIP_AUTH:
+    from fastapi.security import HTTPBearer
+    security = HTTPBearer(auto_error=False)  # 不自动抛出错误
+else:
+    security = HTTPBearer()
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """验证密码"""
@@ -60,8 +69,34 @@ def verify_token(token: str) -> dict:
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security), db: Session = Depends(get_db)) -> User:
+def get_current_user(credentials: Optional[HTTPAuthorizationCredentials] = Depends(security), db: Session = Depends(get_db)) -> User:
     """获取当前用户"""
+    # 调试模式：跳过鉴权，返回默认管理员用户
+    if DEBUG_SKIP_AUTH:
+        admin_user = db.query(User).filter(User.role == "ADMIN").first()
+        if admin_user:
+            return admin_user
+        # 如果没有管理员用户，返回第一个用户
+        first_user = db.query(User).first()
+        if first_user:
+            return first_user
+        # 如果没有任何用户，创建一个临时用户对象
+        from models.models import UserRole
+        temp_user = User()
+        temp_user.id = 1
+        temp_user.username = "debug_admin"
+        temp_user.email = "debug@admin.com"
+        temp_user.role = UserRole.ADMIN
+        temp_user.is_active = True
+        return temp_user
+    
+    if not credentials:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="缺少认证凭据",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    
     token = credentials.credentials
     payload = verify_token(token)
     username = payload.get("sub")
@@ -113,6 +148,10 @@ def check_permission(user: User, required_permission: str) -> bool:
 def require_permission(permission: str):
     """权限装饰器"""
     def permission_checker(current_user: User = Depends(get_current_active_user)):
+        # 调试模式：跳过权限检查
+        if DEBUG_SKIP_AUTH:
+            return current_user
+            
         if not check_permission(current_user, permission):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
