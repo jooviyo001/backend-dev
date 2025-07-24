@@ -34,7 +34,7 @@ def test_auth_bypass():
             
             if response.status_code == 200:
                 data = response.json()
-                print(f"   响应: {data.get('message', '成功')}")
+                print(f"   ✅ Test {endpoint} passed. Response: {json.dumps(data, indent=2, ensure_ascii=False)}")
                 success_count += 1
             elif response.status_code == 401:
                 print("   ❌ 鉴权未跳过，仍需要token")
@@ -66,14 +66,14 @@ def test_basic_endpoints():
         # 测试根路径
         response = requests.get(f"{BASE_URL}/")
         if response.status_code == 200:
-            print("✅ 根路径访问正常")
+            print(f"✅ 根路径访问正常. 响应: {json.dumps(response.json(), indent=2, ensure_ascii=False)}")
         else:
             print(f"❌ 根路径访问失败: {response.status_code}")
             
         # 测试健康检查
         response = requests.get(f"{BASE_URL}/health")
         if response.status_code == 200:
-            print("✅ 健康检查正常")
+            print(f"✅ 健康检查正常. 响应: {json.dumps(response.json(), indent=2, ensure_ascii=False)}")
         else:
             print(f"❌ 健康检查失败: {response.status_code}")
             
