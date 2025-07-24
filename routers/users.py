@@ -7,7 +7,7 @@ from math import ceil
 from models.database import get_db
 from models.models import User
 from schemas.schemas import (
-    UserCreate, UserUpdate, UserResponse, BaseResponse, PaginationResponse, UserStatusToggle
+    UserCreate, UserUpdate, UserResponse, BaseResponse, PaginationResponse, UserStatusToggle, UserProfile
 )
 from utils.auth import (
     get_current_active_user, require_permission, get_password_hash
@@ -71,6 +71,120 @@ async def get_users_page(
 ):
     """获取用户分页数据"""
     return await get_users(keyword, role, is_active, page, size, db, current_user)
+
+# 用户档案接口 - 必须放在 /{user_id} 之前避免路由冲突
+@router.put("/profile", response_model=BaseResponse)
+async def create_user_profile(
+    profile_data: UserProfile,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_permission("user:write"))
+):
+    """创建/更新用户档案"""
+    from datetime import datetime
+    import re
+    
+    # 处理用户ID - 支持字符串ID，提取数字部分
+    user_id = None
+    if profile_data.id:
+        if profile_data.id.isdigit():
+            user_id = int(profile_data.id)
+        else:
+            # 从字符串ID中提取数字部分，如 "USER_206386416517648384" -> 206386416517648384
+            match = re.search(r'(\d+)', profile_data.id)
+            if match:
+                user_id = int(match.group(1))
+    
+    if not user_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="无效的用户ID格式"
+        )
+    
+    # 查找用户
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="用户不存在"
+        )
+    
+    # 更新用户信息
+    if profile_data.username:
+        user.username = profile_data.username
+    if profile_data.name:  # 支持name字段
+        user.full_name = profile_data.name
+    if profile_data.email:
+        user.email = profile_data.email
+    if profile_data.phone:
+        user.phone = profile_data.phone
+    if profile_data.full_name:
+        user.full_name = profile_data.full_name
+    if profile_data.avatar:
+        user.avatar = profile_data.avatar
+    if profile_data.role:
+        user.role = profile_data.role
+    if profile_data.is_active is not None:
+        user.is_active = profile_data.is_active
+    if profile_data.is_verified is not None:
+        user.is_verified = profile_data.is_verified
+    
+    # 处理时间字段 - 支持ISO格式和y-m-d h:m:s格式
+    def parse_datetime(date_str):
+        if not date_str:
+            return None
+        try:
+            # 尝试解析ISO格式 (2025-07-25T00:47:28.040233)
+            if 'T' in date_str:
+                # 移除微秒部分
+                if '.' in date_str:
+                    date_str = date_str.split('.')[0]
+                return datetime.fromisoformat(date_str)
+            # 尝试解析y-m-d h:m:s格式
+            else:
+                return datetime.strptime(date_str, "%Y-%m-%d %H:%M:%S")
+        except ValueError:
+            return None
+    
+    if profile_data.last_login:
+        parsed_time = parse_datetime(profile_data.last_login)
+        if parsed_time:
+            user.last_login = parsed_time
+    
+    if profile_data.created_at:
+        parsed_time = parse_datetime(profile_data.created_at)
+        if parsed_time:
+            user.created_at = parsed_time
+    
+    if profile_data.updated_at:
+        parsed_time = parse_datetime(profile_data.updated_at)
+        if parsed_time:
+            user.updated_at = parsed_time
+    
+    db.commit()
+    db.refresh(user)
+    
+    # 格式化返回数据
+    response_data = {
+        "id": user.id,
+        "username": user.username,
+        "email": user.email,
+        "phone": user.phone,
+        "full_name": user.full_name,
+        "avatar": user.avatar,
+        "role": user.role,
+        "is_active": user.is_active,
+        "is_verified": user.is_verified,
+        "position": profile_data.position or "",  # 扩展字段
+        "department": profile_data.department or "",  # 扩展字段
+        "last_login": user.last_login.strftime("%Y-%m-%d %H:%M:%S") if user.last_login else "",
+        "created_at": user.created_at.strftime("%Y-%m-%d %H:%M:%S") if user.created_at else "",
+        "updated_at": user.updated_at.strftime("%Y-%m-%d %H:%M:%S") if user.updated_at else ""
+    }
+    
+    return BaseResponse(
+        message="更新用户档案成功",
+        data=response_data
+    )
 
 # 替换为当前用户
 @router.get("/{user_id}", response_model=BaseResponse)

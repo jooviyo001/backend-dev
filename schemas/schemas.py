@@ -85,6 +85,24 @@ class UserStatusToggle(BaseModel):
             raise ValueError('状态必须是 active 或 inactive')
         return v
 
+# 用户档案模式
+class UserProfile(BaseModel):
+    username: Optional[str] = None
+    name: Optional[str] = None  # 支持name字段
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    position: Optional[str] = None
+    department: Optional[str] = None
+    avatar: Optional[str] = None
+    full_name: Optional[str] = None
+    role: Optional[str] = None
+    id: Optional[str] = None  # 支持字符串ID
+    is_active: Optional[bool] = None
+    is_verified: Optional[bool] = None
+    last_login: Optional[str] = None  # 支持ISO格式时间字符串
+    created_at: Optional[str] = None  # 支持ISO格式时间字符串
+    updated_at: Optional[str] = None  # 支持ISO格式时间字符串
+
 # 组织相关模式
 class OrganizationBase(BaseModel):
     name: str = Field(..., min_length=2, max_length=50, description="组织名称")

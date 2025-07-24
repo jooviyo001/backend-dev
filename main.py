@@ -203,6 +203,7 @@ async def vite_client():
 # 注册路由
 app.include_router(auth.router, prefix="/api/v1/auth", tags=["认证"])
 app.include_router(users.router, prefix="/api/v1/users", tags=["用户管理"])
+app.include_router(users.router, prefix="/api/v1/user", tags=["用户管理"])  # 支持单数形式
 app.include_router(projects.router, prefix="/api/v1/projects", tags=["项目管理"])
 app.include_router(organizations.router, prefix="/api/v1/organizations", tags=["组织管理"])
 app.include_router(dashboard.router, prefix="/api/v1/dashboard", tags=["仪表盘"])
