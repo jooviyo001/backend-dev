@@ -26,17 +26,17 @@ def _add_id_prefix(data: Any) -> Any:
             model_name = data.get("__tablename__")
             if model_name and model_name in ID_PREFIX_MAP:
                 prefix = ID_PREFIX_MAP[model_name]
-                data["id"] = f"{prefix}_{data["id"]}"
+                data["id"] = f"{prefix}_{data['id']}"
             else:
                 # 备用方案：通过特定字段判断
                 if "username" in data: # User模型
-                    data["id"] = f"{ID_PREFIX_MAP["users"]}_{data["id"]}"
+                    data["id"] = f"{ID_PREFIX_MAP['users']}_{data['id']}"
                 elif "name" in data and "creator_id" in data: # Project模型
-                    data["id"] = f"{ID_PREFIX_MAP["projects"]}_{data["id"]}"
+                    data["id"] = f"{ID_PREFIX_MAP['projects']}_{data['id']}"
                 elif "name" in data: # Organization模型 (假设没有creator_id)
-                    data["id"] = f"{ID_PREFIX_MAP["organizations"]}_{data["id"]}"
+                    data["id"] = f"{ID_PREFIX_MAP['organizations']}_{data['id']}"
                 elif "title" in data and "project_id" in data: # Task模型
-                    data["id"] = f"{ID_PREFIX_MAP["tasks"]}_{data["id"]}"
+                    data["id"] = f"{ID_PREFIX_MAP['tasks']}_{data['id']}"
         
         # 递归处理字典中的其他值
         for key, value in data.items():

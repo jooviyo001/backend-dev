@@ -73,72 +73,56 @@ class ResponseMiddleware(BaseHTTPMiddleware):
             return response
             
         try:
-            # 获取响应体
-            body = b""
-            async for chunk in response.body_iterator:
-                body += chunk
-                
-            if body:
-                content = json.loads(body.decode())
-                
-                # 如果响应已经是标准格式，则不做修改
-                if "code" in content and "message" in content and "data" in content:
-                    return Response(
-                        content=body,
-                        status_code=response.status_code,
-                        headers=dict(response.headers),
-                        media_type=response.media_type
-                    )
-                
-                # 根据HTTP状态码映射到自定义状态码
-                if response.status_code < 400:
-                    code = SUCCESS
-                    message = get_message(SUCCESS)
-                elif response.status_code == 400:
-                    code = BAD_REQUEST
-                    message = get_message(BAD_REQUEST)
-                elif response.status_code == 401:
-                    code = UNAUTHORIZED
-                    message = get_message(UNAUTHORIZED)
-                elif response.status_code == 403:
-                    code = FORBIDDEN
-                    message = get_message(FORBIDDEN)
-                elif response.status_code == 404:
-                    code = NOT_FOUND
-                    message = get_message(NOT_FOUND)
-                elif response.status_code >= 500:
-                    code = INTERNAL_ERROR
-                    message = get_message(INTERNAL_ERROR)
-                else:
-                    code = str(response.status_code)
-                    message = "操作失败"
-                
-                # 将响应转换为标准格式
-                new_content = {
-                    "code": code,
-                    "message": message,
-                    "data": content,
-                    "timestamp": datetime.now().isoformat()
-                }
-                
-                # 创建新的响应
-                return JSONResponse(
-                    content=new_content,
-                    status_code=response.status_code,
-                    headers=dict(response.headers)
-                )
+            # 确保响应体可以被多次读取
+            response_body = [chunk async for chunk in response.body_iterator]
+            body = b"".join(response_body)
+
+            if not body:
+                return response
+
+            content = json.loads(body.decode('utf-8'))
             
-            # 如果没有响应体，返回原始响应
-            return Response(
-                content=body,
-                status_code=response.status_code,
-                headers=dict(response.headers),
-                media_type=response.media_type
+            # 导入 standard_response 函数
+            from utils.response_utils import standard_response
+            from utils.status_codes import SUCCESS, get_message
+
+            # 提取原始响应的数据、状态码和消息
+            original_data = content.get("data", content) # 如果是标准格式，取data字段，否则取整个content
+            original_code = content.get("code", SUCCESS)
+            original_message = content.get("message", get_message(SUCCESS))
+
+            # 统一使用 standard_response 处理，确保ID前缀和编码
+            standard_res = standard_response(
+                data=original_data,
+                code=original_code,
+                message=original_message,
+                status_code=response.status_code
             )
             
+            # 重新构建响应，确保原始响应头不变
+            new_response = JSONResponse(
+                content=standard_res,
+                status_code=response.status_code
+            )
+            # 复制原始响应的头部，除了Content-Length，让FastAPI重新计算
+            for header_name, header_value in response.headers.items():
+                if header_name.lower() != "content-length":
+                    new_response.headers[header_name] = header_value
+            return new_response
         except Exception as e:
-            # 发生异常时，返回原始响应
-            return response
+            import traceback
+            print(f"Error in ResponseMiddleware: {e}")
+            traceback.print_exc()
+            # 返回一个通用的错误响应，防止服务器崩溃
+            from utils.response_utils import standard_response
+            error_res = standard_response(
+                data={"detail": f"Internal Server Error: {e}"},
+                code="500",
+                message="服务器内部错误",
+                status_code=500
+            )
+            error_response = JSONResponse(content=error_res, status_code=500)
+            return error_response
 
 app.add_middleware(ResponseMiddleware)
 
