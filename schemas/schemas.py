@@ -43,6 +43,8 @@ class UserResponse(UserBase):
     avatar: Optional[str] = None
     is_active: bool
     is_verified: bool
+    position: Optional[str] = None  # 职位
+    department: Optional[str] = None  # 部门
     last_login: Optional[datetime] = None
     created_at: datetime
     updated_at: datetime

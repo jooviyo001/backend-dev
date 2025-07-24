@@ -89,11 +89,42 @@ async def logout(current_user: User = Depends(get_current_active_user)):
     return BaseResponse(message="登出成功")
 
 @router.get("/me", response_model=BaseResponse)
-async def get_current_user_info(current_user: User = Depends(get_current_active_user)):
+async def get_current_user_info(
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
     """获取当前用户信息"""
+    from models.models import organization_members, Organization
+    from sqlalchemy import select
+    
+    # 查询用户的组织信息
+    position = None
+    department = None
+    
+    # 查询用户在组织中的职位和部门信息
+    org_query = db.execute(
+        select(
+            organization_members.c.position,
+            Organization.name
+        ).select_from(
+            organization_members.join(Organization, organization_members.c.organization_id == Organization.id)
+        ).where(
+            organization_members.c.user_id == current_user.id
+        ).limit(1)  # 取第一个组织的信息
+    ).first()
+    
+    if org_query:
+        position = org_query.position
+        department = org_query.name
+    
+    # 创建用户响应数据
+    user_data = UserResponse.from_orm(current_user)
+    user_data.position = position
+    user_data.department = department
+    
     return BaseResponse(
         message="获取用户信息成功",
-        data=UserResponse.from_orm(current_user)
+        data=user_data
     )
 
 @router.put("/change-password", response_model=BaseResponse)

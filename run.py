@@ -15,7 +15,8 @@ def main():
     # 从环境变量获取配置，如果没有则使用默认值
     host = os.getenv("HOST", "127.0.0.1")
     port = int(os.getenv("PORT", "8000"))
-    debug = os.getenv("DEBUG", "True").lower() == "true"
+    # 从环境变量获取DEBUG配置，默认值为False
+    debug = os.getenv("DEBUG", "false").lower() == "true"
     
     print(f"启动服务器...")
     print(f"地址: http://{host}:{port}")
