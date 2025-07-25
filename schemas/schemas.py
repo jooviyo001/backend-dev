@@ -45,6 +45,18 @@ class UserUpdate(BaseModel):
     is_verified: Optional[bool] = Field(None, description="用户是否已验证")
     avatar: Optional[str] = None
 
+class UserProfileUpdateRequest(BaseModel):
+    username: Optional[str] = None
+    full_name: Optional[str] = None
+    email: Optional[EmailStr] = None
+    phone: Optional[str] = None
+    position: Optional[str] = None
+    department: Optional[str] = None
+    avatar: Optional[str] = None
+    is_active: Optional[bool] = None
+    is_verified: Optional[bool] = None
+    role: Optional[UserRole] = None
+
 class UserResponse(UserBase):
     id: int
     is_active: bool

@@ -6,7 +6,7 @@ from datetime import timedelta
 from models.database import get_db
 from models.models import User
 from schemas.schemas import (
-    LoginRequest, LoginResponse, RegisterRequest, UserResponse, BaseResponse
+    LoginRequest, LoginResponse, RegisterRequest, UserResponse, BaseResponse, UserProfileUpdateRequest
 )
 from utils.auth import (
     authenticate_user, create_access_token, get_password_hash,
@@ -93,6 +93,25 @@ async def get_current_user_info(current_user: User = Depends(get_current_active_
     """获取当前用户信息"""
     return BaseResponse(
         message="获取用户信息成功",
+        data=UserResponse.from_orm(current_user)
+    )
+
+@router.put("/profile", response_model=BaseResponse)
+async def update_user_profile(
+    profile_data: UserProfileUpdateRequest,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """更新当前用户个人资料"""
+    # 遍历请求体中的数据，更新用户模型
+    for field, value in profile_data.dict(exclude_unset=True).items():
+        setattr(current_user, field, value)
+    
+    db.commit()
+    db.refresh(current_user)
+    
+    return BaseResponse(
+        message="个人资料更新成功",
         data=UserResponse.from_orm(current_user)
     )
 
