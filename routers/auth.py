@@ -38,11 +38,10 @@ async def login(login_data: LoginRequest, db: Session = Depends(get_db)):
     
     return BaseResponse(
         message="登录成功",
-        data=LoginResponse(
-            access_token=access_token,
-            token_type="bearer",
-            user=UserResponse.from_orm(user)
-        )
+        data={
+            "access_token": access_token,
+            "token_type": "bearer"
+        }
     )
 
 @router.post("/register", response_model=BaseResponse)
