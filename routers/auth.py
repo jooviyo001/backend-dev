@@ -86,7 +86,7 @@ async def register(register_data: RegisterRequest, db: Session = Depends(get_db)
 async def logout(current_user: User = Depends(get_current_active_user)):
     """用户登出"""
     # 在实际应用中，可以将token加入黑名单
-    return BaseResponse(message="登出成功")
+    return BaseResponse(message="登出成功", data="success")
 
 @router.get("/me", response_model=BaseResponse)
 async def get_current_user_info(current_user: User = Depends(get_current_active_user)):
@@ -147,7 +147,8 @@ async def change_password(
     db.refresh(current_user)
     
     return BaseResponse(
-        message="密码修改成功"
+        message="密码修改成功",
+        data="success"
     )
 
 @router.post("/refresh-token", response_model=BaseResponse)
