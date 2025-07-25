@@ -25,6 +25,8 @@ class UserBase(BaseModel):
     email: EmailStr
     full_name: Optional[str] = None
     phone: Optional[str] = None
+    position: Optional[str] = None
+    department: Optional[str] = None
     role: UserRole = UserRole.MEMBER
 
 class UserCreate(UserBase):
@@ -35,12 +37,16 @@ class UserUpdate(BaseModel):
     email: Optional[EmailStr] = None
     full_name: Optional[str] = None
     phone: Optional[str] = None
+    position: Optional[str] = None
+    department: Optional[str] = None
+    organization_id: Optional[str] = None
     role: Optional[UserRole] = None
     is_active: Optional[bool] = None
+    is_verified: Optional[bool] = Field(None, description="用户是否已验证")
+    avatar: Optional[str] = None
 
 class UserResponse(UserBase):
     id: int
-    avatar: Optional[str] = None
     is_active: bool
     is_verified: bool
     last_login: Optional[datetime] = None

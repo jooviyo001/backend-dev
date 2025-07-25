@@ -75,7 +75,7 @@ async def get_users_page(
 # 替换为当前用户
 @router.get("/{user_id}", response_model=BaseResponse)
 async def get_user(
-    user_id: int,
+    user_id: str,
     db: Session = Depends(get_db),
     current_user = Depends(require_permission("user:read"))
 ):
@@ -137,12 +137,52 @@ async def create_user(
 # 更新用户
 @router.put("/{user_id}", response_model=BaseResponse)
 async def update_user(
-    user_id: int,
+    user_id: str,
     user_data: UserUpdate,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_permission("user:write"))
 ):
     """更新用户信息"""
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="用户不存在"
+        )
+
+    update_data = user_data.dict(exclude_unset=True)
+    # 移除position和department字段，因为前端不再传递
+
+
+    for key, value in update_data.items():
+        if key == "password" and value:
+            user.password = get_password_hash(value)
+        else:
+            setattr(user, key, value)
+
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+
+    return BaseResponse(
+        message="用户信息更新成功",
+        data=UserResponse.from_orm(user)
+    )
+
+# 删除用户
+@router.delete("/{user_id}", response_model=BaseResponse)
+async def delete_user(
+    user_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_permission("user:write"))
+):
+    """删除用户"""
+    if user_id == current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="不能删除自己"
+        )
+    
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(
@@ -187,7 +227,7 @@ async def update_user(
 
 @router.delete("/{user_id}", response_model=BaseResponse)
 async def delete_user(
-    user_id: int,
+    user_id: str,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_permission("user:write"))
 ):
@@ -212,7 +252,7 @@ async def delete_user(
 
 @router.put("/{user_id}/activate", response_model=BaseResponse)
 async def activate_user(
-    user_id: int,
+    user_id: str,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_permission("user:write"))
 ):
@@ -231,7 +271,7 @@ async def activate_user(
 
 @router.put("/{user_id}/deactivate", response_model=BaseResponse)
 async def deactivate_user(
-    user_id: int,
+    user_id: str,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_permission("user:write"))
 ):
@@ -256,7 +296,7 @@ async def deactivate_user(
 
 @router.put("/{user_id}/toggle-status", response_model=BaseResponse)
 async def toggle_user_status(
-    user_id: int,
+    user_id: str,
     status_data: UserStatusToggle,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_permission("user:write"))
