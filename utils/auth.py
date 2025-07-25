@@ -18,9 +18,10 @@ ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
 # 调试模式开关 - 设置为True时将跳过所有鉴权检查
-# 使用方法：在.env文件中设置 DEBUG_SKIP_AUTH=true 即可启用
+# 使用方法：在.env文件中设置 DEBUG_SKIP_AUTH=true 或 DEBUG=true 即可启用
 # 注意：此功能仅用于开发环境，生产环境必须设置为false
-DEBUG_SKIP_AUTH = os.getenv("DEBUG_SKIP_AUTH", "false").lower() == "true"
+DEBUG_MODE = os.getenv("DEBUG", "false").lower() == "true"
+DEBUG_SKIP_AUTH = os.getenv("DEBUG_SKIP_AUTH", "false").lower() == "true" or DEBUG_MODE
 
 # 密码加密
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")

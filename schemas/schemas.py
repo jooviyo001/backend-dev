@@ -275,8 +275,15 @@ class ProjectUpdate(BaseModel):
     organization_id: Optional[int] = None
 
 # 项目响应模式
-class ProjectResponse(ProjectBase):
+class ProjectResponse(BaseModel):
     id: int
+    name: str
+    description: Optional[str] = None
+    status: ProjectStatus = ProjectStatus.PLANNING
+    priority: Optional[ProjectPriority] = None
+    start_date: Optional[datetime] = None
+    end_date: Optional[datetime] = None
+    organization_id: Optional[int] = None
     creator_id: int
     manager_id: Optional[int] = None
     is_archived: bool
