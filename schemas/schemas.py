@@ -25,6 +25,8 @@ class UserBase(BaseModel):
     email: EmailStr
     full_name: Optional[str] = None
     phone: Optional[str] = None
+    position: Optional[str] = None
+    department: Optional[str] = None
     role: UserRole = UserRole.MEMBER
 
 class UserCreate(UserBase):
@@ -35,12 +37,28 @@ class UserUpdate(BaseModel):
     email: Optional[EmailStr] = None
     full_name: Optional[str] = None
     phone: Optional[str] = None
+    position: Optional[str] = None
+    department: Optional[str] = None
+    organization_id: Optional[str] = None
     role: Optional[UserRole] = None
     is_active: Optional[bool] = None
+    is_verified: Optional[bool] = Field(None, description="用户是否已验证")
+    avatar: Optional[str] = None
+
+class UserProfileUpdateRequest(BaseModel):
+    username: Optional[str] = None
+    full_name: Optional[str] = None
+    email: Optional[EmailStr] = None
+    phone: Optional[str] = None
+    position: Optional[str] = None
+    department: Optional[str] = None
+    avatar: Optional[str] = None
+    is_active: Optional[bool] = None
+    is_verified: Optional[bool] = None
+    role: Optional[UserRole] = None
 
 class UserResponse(UserBase):
     id: int
-    avatar: Optional[str] = None
     is_active: bool
     is_verified: bool
     position: Optional[str] = None  # 职位
@@ -48,11 +66,16 @@ class UserResponse(UserBase):
     last_login: Optional[datetime] = None
     created_at: datetime
     updated_at: datetime
+    avatar: Optional[str] = None
     
     class Config:
         from_attributes = True
 
 # 认证相关模式
+class ChangePasswordRequest(BaseModel):
+    currentPassword: str
+    newPassword: str
+
 class LoginRequest(BaseModel):
     username: str
     password: str

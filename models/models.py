@@ -57,7 +57,7 @@ class MemberRole(str, enum.Enum):
     ADMIN = "admin"      # 管理员
     MANAGER = "manager"  # 经理
     MEMBER = "member"    # 普通成员
-    VIEWER = "viewer"    # 查看者
+    USER = "user"        # 普通用户
 
 # 项目成员关联表
 project_members = Table(
@@ -97,6 +97,7 @@ class OrganizationStatus(str, enum.Enum):
 class User(Base):
     """用户表模型"""
     __tablename__ = "users"
+    avatar = Column(String(255), nullable=True, comment='用户头像URL')
     
     id = Column(String(20), primary_key=True, index=True, default=generate_snowflake_id, comment='用户ID，雪花算法生成')
     username = Column(String(50), unique=True, index=True, nullable=False, comment='用户名，唯一标识')
@@ -105,6 +106,9 @@ class User(Base):
     full_name = Column(String(100), comment='用户真实姓名')
     avatar = Column(String(255), comment='头像URL地址')
     phone = Column(String(20), comment='手机号码')
+    position = Column(String(100), comment='用户岗位/职位')
+    department = Column(String(100), comment='用户所属部门')
+    organization_id = Column(String(20), ForeignKey("organizations.id"), comment='用户所属组织ID')
     role = Column(Enum(UserRole), default=UserRole.MEMBER, comment='用户角色')
     is_active = Column(Boolean, default=True, comment='是否激活状态')
     is_verified = Column(Boolean, default=False, comment='是否已验证邮箱')
@@ -113,6 +117,7 @@ class User(Base):
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now(), comment='更新时间')
     
     # 关系
+    organization = relationship("Organization", foreign_keys=[organization_id])
     created_projects = relationship("Project", back_populates="creator", foreign_keys="Project.creator_id")
     assigned_tasks = relationship("Task", back_populates="assignee", foreign_keys="Task.assignee_id")
     reported_tasks = relationship("Task", back_populates="reporter", foreign_keys="Task.reporter_id")
