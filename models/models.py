@@ -57,7 +57,7 @@ class MemberRole(str, enum.Enum):
     ADMIN = "admin"      # 管理员
     MANAGER = "manager"  # 经理
     MEMBER = "member"    # 普通成员
-    VIEWER = "viewer"    # 查看者
+    USER = "user"        # 普通用户
 
 # 项目成员关联表
 project_members = Table(

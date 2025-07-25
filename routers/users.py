@@ -151,12 +151,12 @@ async def update_user(
         )
 
     update_data = user_data.dict(exclude_unset=True)
-    # 移除position和department字段，因为前端不再传递
-
 
     for key, value in update_data.items():
         if key == "password" and value:
-            user.password = get_password_hash(value)
+            user.password_hash = get_password_hash(value)
+        elif key == "avatar":
+            setattr(user, key, value)
         else:
             setattr(user, key, value)
 

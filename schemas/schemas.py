@@ -64,11 +64,16 @@ class UserResponse(UserBase):
     last_login: Optional[datetime] = None
     created_at: datetime
     updated_at: datetime
+    avatar: Optional[str] = None
     
     class Config:
         from_attributes = True
 
 # 认证相关模式
+class ChangePasswordRequest(BaseModel):
+    currentPassword: str
+    newPassword: str
+
 class LoginRequest(BaseModel):
     username: str
     password: str

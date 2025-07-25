@@ -115,28 +115,40 @@ async def update_user_profile(
         data=UserResponse.from_orm(current_user)
     )
 
+from fastapi import Body
+from schemas.schemas import ChangePasswordRequest
+
 @router.put("/change-password", response_model=BaseResponse)
 async def change_password(
-    old_password: str,
-    new_password: str,
+    password_data: ChangePasswordRequest = Body(...),
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
     """修改密码"""
     from utils.auth import verify_password
     
+    # 校验密码是否为空
+    if not password_data.currentPassword or not password_data.newPassword:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="原密码和新密码不能为空"
+        )
+
     # 验证旧密码
-    if not verify_password(old_password, current_user.password_hash):
+    if not verify_password(password_data.currentPassword, current_user.password_hash):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="原密码错误"
         )
     
     # 更新密码
-    current_user.password_hash = get_password_hash(new_password)
+    current_user.password_hash = get_password_hash(password_data.newPassword)
     db.commit()
+    db.refresh(current_user)
     
-    return BaseResponse(message="密码修改成功")
+    return BaseResponse(
+        message="密码修改成功"
+    )
 
 @router.post("/refresh-token", response_model=BaseResponse)
 async def refresh_token(current_user: User = Depends(get_current_active_user)):
