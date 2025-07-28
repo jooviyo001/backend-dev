@@ -125,10 +125,10 @@ class DatabaseInitializer:
                 "phone": "13800138001"
             },
             {
-                "username": "developer",
-                "email": "developer@example.com",
-                "password": "dev123",
-                "full_name": "开发工程师",
+                "username": "member",
+                "email": "member@example.com",
+                "password": "member123",
+                "full_name": "普通成员",
                 "role": UserRole.MEMBER,
                 "phone": "13800138002"
             },
@@ -141,10 +141,10 @@ class DatabaseInitializer:
                 "phone": "13800138003"
             },
             {
-                "username": "bob",
-                "email": "bob@example.com",
-                "password": "bob123",
-                "full_name": "Bob Chen",
+                "username": "user",
+                "email": "user@example.com",
+                "password": "user123",
+                "full_name": "普通用户",
                 "role": UserRole.MEMBER,
                 "phone": "13800138004"
             }

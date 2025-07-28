@@ -136,8 +136,11 @@ def generate_snowflake_id(prefix: Optional[str] = None) -> Union[int, str]:
     """
     生成雪花算法ID
     
+    Args:
+        prefix: 可选的前缀，如 "U", "P", "Q", "T", "O" 等  # 依次是用户表、项目表、需求表、任务表、组织表
+    
     Returns:
-        int: 64位唯一ID
+        Union[int, str]: 如果有前缀则返回字符串，否则返回整数ID
     """
     global _snowflake_generator
     if _snowflake_generator is None:
@@ -145,9 +148,39 @@ def generate_snowflake_id(prefix: Optional[str] = None) -> Union[int, str]:
     generated_id = _snowflake_generator.generate_id()
     
     if prefix:
-        return f"{prefix}_{generated_id}"
+        return f"{prefix}{generated_id}"
     else:
-        return generated_id
+        return str(generated_id)
+
+
+def generate_user_id() -> str:
+    """生成用户ID，格式：U + 雪花算法ID"""
+    return generate_snowflake_id("U")
+
+
+def generate_organization_id() -> str:
+    """生成组织ID，格式：O + 雪花算法ID"""
+    return generate_snowflake_id("O")
+
+
+def generate_project_id() -> str:
+    """生成项目ID，格式：P + 雪花算法ID"""
+    return generate_snowflake_id("P")
+
+
+def generate_task_id() -> str:
+    """生成任务ID，格式：T + 雪花算法ID"""
+    return generate_snowflake_id("T")
+
+
+def generate_task_attachment_id() -> str:
+    """生成任务附件ID，格式：TA + 雪花算法ID"""
+    return generate_snowflake_id("TA")
+
+
+def generate_task_comment_id() -> str:
+    """生成任务评论ID，格式：TC + 雪花算法ID"""
+    return generate_snowflake_id("TC")
 
 
 def parse_snowflake_id(snowflake_id: int) -> dict:

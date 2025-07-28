@@ -20,8 +20,8 @@ router = APIRouter()
 async def get_projects(
     keyword: Optional[str] = Query(None, description="关键词搜索"),
     status: Optional[str] = Query(None, description="项目状态"),
-    organization_id: Optional[int] = Query(None, description="组织ID"),
-    creator_id: Optional[int] = Query(None, description="创建者ID"),
+    organization_id: Optional[str] = Query(None, description="组织ID"),
+    creator_id: Optional[str] = Query(None, description="创建者ID"),
     page: int = Query(1, ge=1, description="页码"),
     size: int = Query(10, ge=1, le=100, description="每页数量"),
     db: Session = Depends(get_db),
@@ -29,6 +29,28 @@ async def get_projects(
 ):
     """获取项目列表"""
     from utils.response_utils import list_response, paginate_query
+    
+    # ID格式处理函数
+    def extract_id(id_str):
+        """提取ID的数字部分，兼容多种格式"""
+        if not id_str:
+            return None
+        # 如果是纯数字，直接返回
+        if id_str.isdigit():
+            return id_str
+        # 如果以O开头（组织ID）
+        if id_str.startswith('O') and id_str[1:].isdigit():
+            return id_str[1:]
+        # 如果以U开头（用户ID）
+        if id_str.startswith('U') and id_str[1:].isdigit():
+            return id_str[1:]
+        # 如果以P开头（项目ID）
+        if id_str.startswith('P') and id_str[1:].isdigit():
+            return id_str[1:]
+        # 如果以USER_开头（旧格式）
+        if id_str.startswith('USER_'):
+            return id_str[5:]
+        return id_str
     
     query = db.query(Project).filter(Project.is_archived == False)
     
@@ -47,11 +69,13 @@ async def get_projects(
     
     # 组织过滤
     if organization_id:
-        query = query.filter(Project.organization_id == organization_id)
+        org_id = extract_id(organization_id)
+        query = query.filter(Project.organization_id == org_id)
     
     # 创建者过滤
     if creator_id:
-        query = query.filter(Project.creator_id == creator_id)
+        creator_id_num = extract_id(creator_id)
+        query = query.filter(Project.creator_id == creator_id_num)
     
     # 分页
     total, projects = paginate_query(query, page, size)
@@ -70,7 +94,7 @@ async def get_projects_page(
     size: int = Query(10, ge=1, le=100, description="每页数量"),
     keyword: Optional[str] = Query(None, description="关键词搜索"),
     status: Optional[str] = Query(None, description="项目状态"),
-    organization_id: Optional[int] = Query(None, description="组织ID"),
+    organization_id: Optional[str] = Query(None, description="组织ID"),
     db: Session = Depends(get_db),
     current_user: User = Depends(require_permission("project:read"))
 ):
@@ -112,12 +136,26 @@ async def get_my_projects(
 # 项目详情
 @router.get("/{project_id}", response_model=BaseResponse)
 async def get_project(
-    project_id: int,
+    project_id: str,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_permission("project:read"))
 ):
     """获取项目详情"""
-    project = db.query(Project).filter(Project.id == project_id).first()
+    # ID格式处理函数
+    def extract_id(id_str):
+        """提取ID的数字部分，兼容多种格式"""
+        if not id_str:
+            return None
+        # 如果是纯数字，直接返回
+        if id_str.isdigit():
+            return id_str
+        # 如果以P开头（项目ID）
+        if id_str.startswith('P') and id_str[1:].isdigit():
+            return id_str[1:]
+        return id_str
+    
+    project_id_num = extract_id(project_id)
+    project = db.query(Project).filter(Project.id == project_id_num).first()
     if not project:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -218,13 +256,27 @@ async def create_project(
 # 更新项目
 @router.put("/{project_id}/update", response_model=BaseResponse)
 async def update_project(
-    project_id: int,
+    project_id: str,
     project_data: ProjectUpdate,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_permission("project:write"))
 ):
     """更新项目信息"""
-    project = db.query(Project).filter(Project.id == project_id).first()
+    # ID格式处理函数
+    def extract_id(id_str):
+        """提取ID的数字部分，兼容多种格式"""
+        if not id_str:
+            return None
+        # 如果是纯数字，直接返回
+        if id_str.isdigit():
+            return id_str
+        # 如果以P开头（项目ID）
+        if id_str.startswith('P') and id_str[1:].isdigit():
+            return id_str[1:]
+        return id_str
+    
+    project_id_num = extract_id(project_id)
+    project = db.query(Project).filter(Project.id == project_id_num).first()
     if not project:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -234,7 +286,7 @@ async def update_project(
     # 检查项目名是否已被其他项目使用
     if project_data.name and project_data.name != project.name:
         existing_project = db.query(Project).filter(
-            and_(Project.name == project_data.name, Project.id != project_id)
+            and_(Project.name == project_data.name, Project.id != project_id_num)
         ).first()
         if existing_project:
             raise HTTPException(
@@ -258,12 +310,26 @@ async def update_project(
 # 删除项目
 @router.delete("/{project_id}/delete", response_model=BaseResponse)
 async def delete_project(
-    project_id: int,
+    project_id: str,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_permission("project:write"))
 ):
     """删除项目"""
-    project = db.query(Project).filter(Project.id == project_id).first()
+    # ID格式处理函数
+    def extract_id(id_str):
+        """提取ID的数字部分，兼容多种格式"""
+        if not id_str:
+            return None
+        # 如果是纯数字，直接返回
+        if id_str.isdigit():
+            return id_str
+        # 如果以P开头（项目ID）
+        if id_str.startswith('P') and id_str[1:].isdigit():
+            return id_str[1:]
+        return id_str
+    
+    project_id_num = extract_id(project_id)
+    project = db.query(Project).filter(Project.id == project_id_num).first()
     if not project:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -278,12 +344,26 @@ async def delete_project(
 # 归档项目
 @router.put("/{project_id}/archive", response_model=BaseResponse)
 async def archive_project(
-    project_id: int,
+    project_id: str,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_permission("project:write"))
 ):
     """归档项目"""
-    project = db.query(Project).filter(Project.id == project_id).first()
+    # ID格式处理函数
+    def extract_id(id_str):
+        """提取ID的数字部分，兼容多种格式"""
+        if not id_str:
+            return None
+        # 如果是纯数字，直接返回
+        if id_str.isdigit():
+            return id_str
+        # 如果以P开头（项目ID）
+        if id_str.startswith('P') and id_str[1:].isdigit():
+            return id_str[1:]
+        return id_str
+    
+    project_id_num = extract_id(project_id)
+    project = db.query(Project).filter(Project.id == project_id_num).first()
     if not project:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -298,12 +378,26 @@ async def archive_project(
 # 恢复项目
 @router.put("/{project_id}/restore", response_model=BaseResponse)
 async def restore_project(
-    project_id: int,
+    project_id: str,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_permission("project:write"))
 ):
     """恢复已归档的项目"""
-    project = db.query(Project).filter(Project.id == project_id).first()
+    # ID格式处理函数
+    def extract_id(id_str):
+        """提取ID的数字部分，兼容多种格式"""
+        if not id_str:
+            return None
+        # 如果是纯数字，直接返回
+        if id_str.isdigit():
+            return id_str
+        # 如果以P开头（项目ID）
+        if id_str.startswith('P') and id_str[1:].isdigit():
+            return id_str[1:]
+        return id_str
+    
+    project_id_num = extract_id(project_id)
+    project = db.query(Project).filter(Project.id == project_id_num).first()
     if not project:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -318,20 +412,42 @@ async def restore_project(
 # 项目添加成员
 @router.post("/{project_id}/members/{user_id}", response_model=BaseResponse)
 async def add_project_member(
-    project_id: int,
-    user_id: int,
+    project_id: str,
+    user_id: str,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_permission("project:write"))
 ):
     """添加项目成员"""
-    project = db.query(Project).filter(Project.id == project_id).first()
+    # ID格式处理函数
+    def extract_id(id_str):
+        """提取ID的数字部分，兼容多种格式"""
+        if not id_str:
+            return None
+        # 如果是纯数字，直接返回
+        if id_str.isdigit():
+            return id_str
+        # 如果以P开头（项目ID）
+        if id_str.startswith('P') and id_str[1:].isdigit():
+            return id_str[1:]
+        # 如果以U开头（用户ID）
+        if id_str.startswith('U') and id_str[1:].isdigit():
+            return id_str[1:]
+        # 如果以USER_开头（旧格式）
+        if id_str.startswith('USER_'):
+            return id_str[5:]
+        return id_str
+    
+    project_id_num = extract_id(project_id)
+    user_id_num = extract_id(user_id)
+    
+    project = db.query(Project).filter(Project.id == project_id_num).first()
     if not project:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="项目不存在"
         )
     
-    user = db.query(User).filter(User.id == user_id).first()
+    user = db.query(User).filter(User.id == user_id_num).first()
     if not user:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -353,20 +469,42 @@ async def add_project_member(
 # 项目移除成员
 @router.delete("/{project_id}/members/{user_id}", response_model=BaseResponse)
 async def remove_project_member(
-    project_id: int,
-    user_id: int,
+    project_id: str,
+    user_id: str,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_permission("project:write"))
 ):
     """移除项目成员"""
-    project = db.query(Project).filter(Project.id == project_id).first()
+    # ID格式处理函数
+    def extract_id(id_str):
+        """提取ID的数字部分，兼容多种格式"""
+        if not id_str:
+            return None
+        # 如果是纯数字，直接返回
+        if id_str.isdigit():
+            return id_str
+        # 如果以P开头（项目ID）
+        if id_str.startswith('P') and id_str[1:].isdigit():
+            return id_str[1:]
+        # 如果以U开头（用户ID）
+        if id_str.startswith('U') and id_str[1:].isdigit():
+            return id_str[1:]
+        # 如果以USER_开头（旧格式）
+        if id_str.startswith('USER_'):
+            return id_str[5:]
+        return id_str
+    
+    project_id_num = extract_id(project_id)
+    user_id_num = extract_id(user_id)
+    
+    project = db.query(Project).filter(Project.id == project_id_num).first()
     if not project:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="项目不存在"
         )
     
-    user = db.query(User).filter(User.id == user_id).first()
+    user = db.query(User).filter(User.id == user_id_num).first()
     if not user:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -381,7 +519,7 @@ async def remove_project_member(
         )
     
     # 不能移除项目创建者
-    if user_id == project.creator_id:
+    if user_id_num == project.creator_id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="不能移除项目创建者"
@@ -395,12 +533,26 @@ async def remove_project_member(
 # 项目成员列表
 @router.get("/{project_id}/members", response_model=BaseResponse)
 async def get_project_members(
-    project_id: int,
+    project_id: str,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_permission("project:read"))
 ):
     """获取项目成员列表"""
-    project = db.query(Project).filter(Project.id == project_id).first()
+    # ID格式处理函数
+    def extract_id(id_str):
+        """提取ID的数字部分，兼容多种格式"""
+        if not id_str:
+            return None
+        # 如果是纯数字，直接返回
+        if id_str.isdigit():
+            return id_str
+        # 如果以P开头（项目ID）
+        if id_str.startswith('P') and id_str[1:].isdigit():
+            return id_str[1:]
+        return id_str
+    
+    project_id_num = extract_id(project_id)
+    project = db.query(Project).filter(Project.id == project_id_num).first()
     if not project:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

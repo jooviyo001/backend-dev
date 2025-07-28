@@ -44,6 +44,22 @@ class UserUpdate(BaseModel):
     is_active: Optional[bool] = None
     is_verified: Optional[bool] = Field(None, description="用户是否已验证")
     avatar: Optional[str] = None
+    password: Optional[str] = Field(None, description="新密码")
+    status: Optional[str] = Field(None, description="用户状态")
+    
+    @validator('department', pre=True)
+    def convert_department(cls, v):
+        """处理department字段，如果是数组则取第一个元素"""
+        if isinstance(v, list) and len(v) > 0:
+            return v[0]
+        return v
+    
+    @validator('status')
+    def validate_status(cls, v):
+        """验证status字段"""
+        if v is not None and v not in ['active', 'inactive']:
+            raise ValueError('状态必须是 active 或 inactive')
+        return v
 
 class UserProfileUpdateRequest(BaseModel):
     username: Optional[str] = None
@@ -109,24 +125,6 @@ class UserStatusToggle(BaseModel):
         if v not in ['active', 'inactive']:
             raise ValueError('状态必须是 active 或 inactive')
         return v
-
-# 用户档案模式
-class UserProfile(BaseModel):
-    username: Optional[str] = None
-    name: Optional[str] = None  # 支持name字段
-    email: Optional[str] = None
-    phone: Optional[str] = None
-    position: Optional[str] = None
-    department: Optional[str] = None
-    avatar: Optional[str] = None
-    full_name: Optional[str] = None
-    role: Optional[str] = None
-    id: Optional[str] = None  # 支持字符串ID
-    is_active: Optional[bool] = None
-    is_verified: Optional[bool] = None
-    last_login: Optional[str] = None  # 支持ISO格式时间字符串
-    created_at: Optional[str] = None  # 支持ISO格式时间字符串
-    updated_at: Optional[str] = None  # 支持ISO格式时间字符串
 
 # 组织相关模式
 class OrganizationBase(BaseModel):
@@ -198,6 +196,57 @@ class OrganizationTreeNode(BaseModel):
     status: OrganizationStatus
     parent_id: Optional[int] = None
     level: int
+    children: List["OrganizationTreeNode"] = [] # 递归引用自身
+
+# 任务相关模式
+class TaskBase(BaseModel):
+    title: str = Field(..., min_length=1, max_length=100, description="任务标题")
+    description: Optional[str] = Field(None, max_length=500, description="任务描述")
+    project_id: int = Field(..., description="所属项目ID")
+    assignee_id: Optional[int] = Field(None, description="执行人ID")
+    reporter_id: Optional[int] = Field(None, description="报告人ID")
+    status: TaskStatus = Field(TaskStatus.TODO, description="任务状态")
+    priority: TaskPriority = Field(TaskPriority.MEDIUM, description="任务优先级")
+    type: TaskType = Field(TaskType.FEATURE, description="任务类型")
+    due_date: Optional[datetime] = Field(None, description="截止日期")
+    parent_task_id: Optional[int] = Field(None, description="父任务ID")
+    
+class TaskCreate(TaskBase):
+    pass
+
+class TaskUpdate(BaseModel):
+    title: Optional[str] = Field(None, min_length=1, max_length=100, description="任务标题")
+    description: Optional[str] = Field(None, max_length=500, description="任务描述")
+    project_id: Optional[int] = Field(None, description="所属项目ID")
+    assignee_id: Optional[int] = Field(None, description="执行人ID")
+    reporter_id: Optional[int] = Field(None, description="报告人ID")
+    status: Optional[TaskStatus] = Field(None, description="任务状态")
+    priority: Optional[TaskPriority] = Field(None, description="任务优先级")
+    type: Optional[TaskType] = Field(None, description="任务类型")
+    due_date: Optional[datetime] = Field(None, description="截止日期")
+    parent_task_id: Optional[int] = Field(None, description="父任务ID")
+
+class TaskResponse(BaseModel):
+    id: int
+    title: str
+    description: Optional[str] = None
+    project_id: int
+    project_name: Optional[str] = None
+    assignee_id: Optional[int] = None
+    assignee_name: Optional[str] = None
+    reporter_id: Optional[int] = None
+    reporter_name: Optional[str] = None
+    status: TaskStatus
+    priority: TaskPriority
+    type: TaskType
+    due_date: Optional[datetime] = None
+    parent_task_id: Optional[int] = None
+    parent_task_title: Optional[str] = None
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
     member_count: int = 0
     children: List['OrganizationTreeNode'] = []
     

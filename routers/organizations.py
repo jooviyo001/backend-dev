@@ -23,7 +23,7 @@ router = APIRouter(
 )
 
 # 辅助函数：构建组织路径
-def build_organization_path(db: Session, org_id: int) -> str:
+def build_organization_path(db: Session, org_id) -> str:
     """构建组织路径"""
     path_parts = []
     current_id = org_id
@@ -48,7 +48,7 @@ def update_children_level_and_path(db: Session, parent_org: Organization):
         update_children_level_and_path(db, child)
 
 # 辅助函数：获取组织成员数量
-def get_member_count(db: Session, org_id: int) -> int:
+def get_member_count(db: Session, org_id) -> int:
     """获取组织成员数量"""
     try:
         return db.query(func.count(organization_members.c.user_id)).filter(
@@ -58,7 +58,7 @@ def get_member_count(db: Session, org_id: int) -> int:
         return 0
 
 # 辅助函数：获取子组织数量
-def get_child_count(db: Session, org_id: int) -> int:
+def get_child_count(db: Session, org_id) -> int:
     """获取子组织数量"""
     try:
         return db.query(func.count(Organization.id)).filter(
@@ -73,14 +73,33 @@ async def get_organizations(
     keyword: Optional[str] = Query(None, description="搜索关键词"),
     type: Optional[OrganizationType] = Query(None, description="组织类型"),
     status: Optional[OrganizationStatus] = Query(None, description="组织状态"),
-    parent_id: Optional[int] = Query(None, description="父组织ID"),
-    manager_id: Optional[int] = Query(None, description="负责人ID"),
+    parent_id: Optional[str] = Query(None, description="父组织ID"),
+    manager_id: Optional[str] = Query(None, description="负责人ID"),
     level: Optional[int] = Query(None, description="组织层级"),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """获取组织列表"""
     try:
+        # ID格式处理函数
+        def extract_id(id_str):
+            """提取ID的数字部分，兼容多种格式"""
+            if not id_str:
+                return None
+            # 如果是纯数字，直接返回
+            if id_str.isdigit():
+                return id_str
+            # 如果以O开头（组织ID）
+            if id_str.startswith('O') and id_str[1:].isdigit():
+                return id_str[1:]
+            # 如果以U开头（用户ID）
+            if id_str.startswith('U') and id_str[1:].isdigit():
+                return id_str[1:]
+            # 如果以USER_开头（旧格式）
+            if id_str.startswith('USER_'):
+                return id_str[5:]
+            return id_str
+        
         query = db.query(Organization)
         
         # 关键词搜索
@@ -103,11 +122,15 @@ async def get_organizations(
         
         # 父组织筛选
         if parent_id is not None:
-            query = query.filter(Organization.parent_id == parent_id)
+            extracted_parent_id = extract_id(parent_id)
+            if extracted_parent_id:
+                query = query.filter(Organization.parent_id == extracted_parent_id)
         
         # 负责人筛选
         if manager_id:
-            query = query.filter(Organization.manager_id == manager_id)
+            extracted_manager_id = extract_id(manager_id)
+            if extracted_manager_id:
+                query = query.filter(Organization.manager_id == extracted_manager_id)
         
         # 层级筛选
         if level:
@@ -178,12 +201,25 @@ async def get_organizations_page(
     keyword: Optional[str] = Query(None, description="搜索关键词"),
     type: Optional[OrganizationType] = Query(None, description="组织类型"),
     status: Optional[OrganizationStatus] = Query(None, description="组织状态"),
-    parent_id: Optional[int] = Query(None, description="父组织ID"),
+    parent_id: Optional[str] = Query(None, description="父组织ID"),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """获取组织分页数据"""
     try:
+        # ID格式处理函数
+        def extract_id(id_str):
+            """提取ID的数字部分，兼容多种格式"""
+            if not id_str:
+                return None
+            # 如果是纯数字，直接返回
+            if id_str.isdigit():
+                return id_str
+            # 如果以O开头（组织ID）
+            if id_str.startswith('O') and id_str[1:].isdigit():
+                return id_str[1:]
+            return id_str
+        
         query = db.query(Organization)
         
         # 关键词搜索
@@ -206,7 +242,9 @@ async def get_organizations_page(
         
         # 父组织筛选
         if parent_id is not None:
-            query = query.filter(Organization.parent_id == parent_id)
+            extracted_parent_id = extract_id(parent_id)
+            if extracted_parent_id:
+                query = query.filter(Organization.parent_id == extracted_parent_id)
         
         # 分页
         total = query.count()
@@ -259,13 +297,26 @@ async def get_organizations_page(
 # 组织树形结构
 @router.get("/tree", response_model=BaseResponse)
 async def get_organization_tree(
-    parent_id: Optional[int] = Query(None, description="父组织ID，为空时获取根组织"),
+    parent_id: Optional[str] = Query(None, description="父组织ID，为空时获取根组织"),
     include_inactive: bool = Query(False, description="是否包含停用组织"),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """获取组织树形结构"""
     try:
+        # ID格式处理函数
+        def extract_id(id_str):
+            """提取ID的数字部分，兼容多种格式"""
+            if not id_str:
+                return None
+            # 如果是纯数字，直接返回
+            if id_str.isdigit():
+                return id_str
+            # 如果以O开头（组织ID）
+            if id_str.startswith('O') and id_str[1:].isdigit():
+                return id_str[1:]
+            return id_str
+        
         def build_tree_node(org: Organization) -> OrganizationTreeNode:
             """构建树节点"""
             children_query = db.query(Organization).filter(Organization.parent_id == org.id)
@@ -287,7 +338,8 @@ async def get_organization_tree(
             )
         
         # 获取根组织或指定父组织的子组织
-        query = db.query(Organization).filter(Organization.parent_id == parent_id)
+        extracted_parent_id = extract_id(parent_id)
+        query = db.query(Organization).filter(Organization.parent_id == extracted_parent_id)
         if not include_inactive:
             query = query.filter(Organization.status == OrganizationStatus.ACTIVE)
         
@@ -302,16 +354,30 @@ async def get_organization_tree(
 
 @router.get("/{organization_id}", response_model=BaseResponse)
 async def get_organization(
-    organization_id: int,
+    organization_id: str,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
     """获取组织详情"""
     try:
+        # ID格式处理函数
+        def extract_id(id_str):
+            """提取ID的数字部分，兼容多种格式"""
+            if not id_str:
+                return None
+            # 如果是纯数字，直接返回
+            if id_str.isdigit():
+                return id_str
+            # 如果以O开头（组织ID）
+            if id_str.startswith('O') and id_str[1:].isdigit():
+                return id_str[1:]
+            return id_str
+        
+        extracted_org_id = extract_id(organization_id)
         organization = db.query(Organization).options(
             joinedload(Organization.parent),
             joinedload(Organization.manager)
-        ).filter(Organization.id == organization_id).first()
+        ).filter(Organization.id == extracted_org_id).first()
         
         if not organization:
             return error_response(code=NOT_FOUND, message="组织不存在")
@@ -452,17 +518,31 @@ async def create_organization(
 # 组织更新
 @router.put("/{organization_id}", response_model=BaseResponse)
 async def update_organization(
-    organization_id: int,
+    organization_id: str,
     organization_data: OrganizationUpdate,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """更新组织信息"""
     try:
+        # ID格式处理函数
+        def extract_id(id_str):
+            """提取ID的数字部分，兼容多种格式"""
+            if not id_str:
+                return None
+            # 如果是纯数字，直接返回
+            if id_str.isdigit():
+                return id_str
+            # 如果以O开头（组织ID）
+            if id_str.startswith('O') and id_str[1:].isdigit():
+                return id_str[1:]
+            return id_str
+        
+        extracted_org_id = extract_id(organization_id)
         organization = db.query(Organization).options(
             joinedload(Organization.parent),
             joinedload(Organization.manager)
-        ).filter(Organization.id == organization_id).first()
+        ).filter(Organization.id == extracted_org_id).first()
         
         if not organization:
             return error_response(code=NOT_FOUND, message="组织不存在")
@@ -470,7 +550,7 @@ async def update_organization(
         # 检查组织编码是否已被其他组织使用
         if organization_data.code and organization_data.code != organization.code:
             existing_code = db.query(Organization).filter(
-                and_(Organization.code == organization_data.code, Organization.id != organization_id)
+                and_(Organization.code == organization_data.code, Organization.id != extracted_org_id)
             ).first()
             if existing_code:
                 return error_response(code=BAD_REQUEST, message="组织编码已存在")
@@ -482,7 +562,7 @@ async def update_organization(
                 and_(
                     Organization.name == organization_data.name,
                     Organization.parent_id == parent_id,
-                    Organization.id != organization_id
+                    Organization.id != extracted_org_id
                 )
             ).first()
             if existing_name:
@@ -491,7 +571,7 @@ async def update_organization(
         # 验证父组织变更
         if organization_data.parent_id is not None and organization_data.parent_id != organization.parent_id:
             # 不能将组织设为自己的子组织
-            if organization_data.parent_id == organization_id:
+            if organization_data.parent_id == extracted_org_id:
                 return error_response(code=BAD_REQUEST, message="不能将组织设为自己的子组织")
             
             # 验证新父组织是否存在
@@ -503,7 +583,7 @@ async def update_organization(
                 # 检查是否会形成循环引用
                 current_parent_id = new_parent.parent_id
                 while current_parent_id:
-                    if current_parent_id == organization_id:
+                    if current_parent_id == extracted_org_id:
                         return error_response(code=BAD_REQUEST, message="不能形成循环引用")
                     parent = db.query(Organization).filter(Organization.id == current_parent_id).first()
                     current_parent_id = parent.parent_id if parent else None
@@ -577,28 +657,42 @@ async def update_organization(
 # 组织删除
 @router.delete("/{organization_id}", response_model=BaseResponse)
 async def delete_organization(
-    organization_id: int,
+    organization_id: str,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """删除组织"""
     try:
-        organization = db.query(Organization).filter(Organization.id == organization_id).first()
+        # ID格式处理函数
+        def extract_id(id_str):
+            """提取ID的数字部分，兼容多种格式"""
+            if not id_str:
+                return None
+            # 如果是纯数字，直接返回
+            if id_str.isdigit():
+                return id_str
+            # 如果以O开头（组织ID）
+            if id_str.startswith('O') and id_str[1:].isdigit():
+                return id_str[1:]
+            return id_str
+        
+        extracted_org_id = extract_id(organization_id)
+        organization = db.query(Organization).filter(Organization.id == extracted_org_id).first()
         if not organization:
             return error_response(code=NOT_FOUND, message="组织不存在")
         
         # 检查是否有子组织
-        child_count = get_child_count(db, organization_id)
+        child_count = get_child_count(db, extracted_org_id)
         if child_count > 0:
             return error_response(code=BAD_REQUEST, message="组织下还有子组织，无法删除")
         
         # 检查是否有成员
-        member_count = get_member_count(db, organization_id)
+        member_count = get_member_count(db, extracted_org_id)
         if member_count > 0:
             return error_response(code=BAD_REQUEST, message="组织下还有成员，无法删除")
         
         # 检查是否有关联的项目
-        project_count = db.query(func.count(Project.id)).filter(Project.organization_id == organization_id).scalar() or 0
+        project_count = db.query(func.count(Project.id)).filter(Project.organization_id == extracted_org_id).scalar() or 0
         if project_count > 0:
             return error_response(code=BAD_REQUEST, message="组织下还有项目，无法删除")
         
@@ -673,14 +767,28 @@ async def batch_delete_organizations(
 # 移动组织
 @router.put("/{organization_id}/move", response_model=BaseResponse)
 async def move_organization(
-    organization_id: int,
+    organization_id: str,
     request: OrganizationMove,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """移动组织"""
     try:
-        organization = db.query(Organization).filter(Organization.id == organization_id).first()
+        # ID格式处理函数
+        def extract_id(id_str):
+            """提取ID的数字部分，兼容多种格式"""
+            if not id_str:
+                return None
+            # 如果是纯数字，直接返回
+            if id_str.isdigit():
+                return id_str
+            # 如果以O开头（组织ID）
+            if id_str.startswith('O') and id_str[1:].isdigit():
+                return id_str[1:]
+            return id_str
+        
+        extracted_org_id = extract_id(organization_id)
+        organization = db.query(Organization).filter(Organization.id == extracted_org_id).first()
         if not organization:
             return error_response(code=NOT_FOUND, message="组织不存在")
         
@@ -691,13 +799,13 @@ async def move_organization(
                 return error_response(code=BAD_REQUEST, message="父组织不存在")
             
             # 不能将组织移动到自己或自己的子组织下
-            if request.parent_id == organization_id:
+            if request.parent_id == extracted_org_id:
                 return error_response(code=BAD_REQUEST, message="不能将组织移动到自己下面")
             
             # 检查是否会形成循环引用
             current_parent_id = new_parent.parent_id
             while current_parent_id:
-                if current_parent_id == organization_id:
+                if current_parent_id == extracted_org_id:
                     return error_response(code=BAD_REQUEST, message="不能形成循环引用")
                 parent = db.query(Organization).filter(Organization.id == current_parent_id).first()
                 current_parent_id = parent.parent_id if parent else None
@@ -758,7 +866,7 @@ async def move_organization(
 # 组织统计
 @router.get("/{organization_id}/statistics", response_model=BaseResponse)
 async def get_organization_statistics(
-    organization_id: int,
+    organization_id: str,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -772,7 +880,7 @@ async def get_organization_statistics(
         direct_member_count = get_member_count(db, organization_id)
         
         # 统计所有子组织成员数量（包括子组织的子组织）
-        def get_all_descendant_member_count(org_id: int) -> int:
+        def get_all_descendant_member_count(org_id) -> int:
             count = get_member_count(db, org_id)
             children = db.query(Organization).filter(Organization.parent_id == org_id).all()
             for child in children:
@@ -785,7 +893,7 @@ async def get_organization_statistics(
         direct_child_count = get_child_count(db, organization_id)
         
         # 统计所有子组织数量（包括子组织的子组织）
-        def get_all_descendant_count(org_id: int) -> int:
+        def get_all_descendant_count(org_id) -> int:
             count = get_child_count(db, org_id)
             children = db.query(Organization).filter(Organization.parent_id == org_id).all()
             for child in children:
@@ -829,7 +937,7 @@ async def get_organization_statistics(
 # 添加组织成员
 @router.post("/{organization_id}/members", response_model=BaseResponse)
 async def add_organization_member(
-    organization_id: int,
+    organization_id: str,
     member_data: OrganizationMemberCreate,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
@@ -885,8 +993,8 @@ async def add_organization_member(
 # 更新组织成员角色
 @router.put("/{organization_id}/members/{user_id}", response_model=BaseResponse)
 async def update_organization_member(
-    organization_id: int,
-    user_id: int,
+    organization_id: str,
+    user_id: str,
     member_data: OrganizationMemberUpdate,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
@@ -943,8 +1051,8 @@ async def update_organization_member(
 # 移除组织成员
 @router.delete("/{organization_id}/members/{user_id}", response_model=BaseResponse)
 async def remove_organization_member(
-    organization_id: int,
-    user_id: int,
+    organization_id: str,
+    user_id: str,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -989,7 +1097,7 @@ async def remove_organization_member(
 # 获取组织成员列表
 @router.get("/{organization_id}/members", response_model=BaseResponse)
 async def get_organization_members(
-    organization_id: int,
+    organization_id: str,
     page: int = Query(1, ge=1, description="页码"),
     page_size: int = Query(10, ge=1, le=100, description="每页数量"),
     keyword: Optional[str] = Query(None, description="搜索关键词"),
@@ -1063,7 +1171,7 @@ async def get_organization_members(
 # 获取用户所属组织列表
 @router.get("/user/{user_id}", response_model=BaseResponse)
 async def get_user_organizations(
-    user_id: int,
+    user_id: str,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -1126,7 +1234,7 @@ async def get_user_organizations(
 # 获取组织路径
 @router.get("/{organization_id}/path", response_model=BaseResponse)
 async def get_organization_path(
-    organization_id: int,
+    organization_id: str,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -1163,7 +1271,7 @@ async def get_organization_path(
 # 获取子组织列表
 @router.get("/{organization_id}/children", response_model=BaseResponse)
 async def get_organization_children(
-    organization_id: int,
+    organization_id: str,
     include_inactive: bool = Query(False, description="是否包含非活跃组织"),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
@@ -1222,7 +1330,7 @@ async def get_organization_children(
 # 获取组织项目列表
 @router.get("/{organization_id}/projects", response_model=BaseResponse)
 async def get_organization_projects(
-    organization_id: int,
+    organization_id: str,
     page: int = Query(1, ge=1, description="页码"),
     page_size: int = Query(10, ge=1, le=100, description="每页数量"),
     keyword: Optional[str] = Query(None, description="搜索关键词"),
@@ -1232,12 +1340,29 @@ async def get_organization_projects(
 ):
     """获取组织项目列表"""
     try:
-        organization = db.query(Organization).filter(Organization.id == organization_id).first()
+        # ID格式处理函数
+        def extract_id(id_str):
+            """提取ID的数字部分，兼容多种格式"""
+            if not id_str:
+                return None
+            # 如果是纯数字，直接返回
+            if id_str.isdigit():
+                return int(id_str)
+            # 如果是以O开头的新格式，提取数字部分
+            if id_str.startswith('O') and id_str[1:].isdigit():
+                return int(id_str[1:])
+            return None
+        
+        extracted_org_id = extract_id(organization_id)
+        if not extracted_org_id:
+            return error_response(code=BAD_REQUEST, message="无效的组织ID格式")
+        
+        organization = db.query(Organization).filter(Organization.id == extracted_org_id).first()
         if not organization:
             return error_response(code=NOT_FOUND, message="组织不存在")
         
         # 构建查询
-        query = db.query(Project).filter(Project.organization_id == organization_id)
+        query = db.query(Project).filter(Project.organization_id == extracted_org_id)
         
         # 关键词搜索
         if keyword:

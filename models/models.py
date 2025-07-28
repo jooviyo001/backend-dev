@@ -3,7 +3,14 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from .database import Base
 import enum
-from utils.snowflake import generate_snowflake_id
+from utils.snowflake import (
+    generate_user_id, 
+    generate_organization_id, 
+    generate_project_id, 
+    generate_task_id,
+    generate_task_attachment_id,
+    generate_task_comment_id
+)
 
 # 枚举定义
 class TaskStatus(str, enum.Enum):
@@ -63,8 +70,8 @@ class MemberRole(str, enum.Enum):
 project_members = Table(
     'project_members',
     Base.metadata,
-    Column('project_id', String(20), ForeignKey('projects.id'), primary_key=True, comment='项目ID'),
-    Column('user_id', String(20), ForeignKey('users.id'), primary_key=True, comment='用户ID'),
+    Column('project_id', String(25), ForeignKey('projects.id'), primary_key=True, comment='项目ID'),
+    Column('user_id', String(25), ForeignKey('users.id'), primary_key=True, comment='用户ID'),
     Column('role', String(50), default='member', comment='成员角色')
 )
 
@@ -72,8 +79,8 @@ project_members = Table(
 organization_members = Table(
     'organization_members',
     Base.metadata,
-    Column('organization_id', String(20), ForeignKey('organizations.id'), primary_key=True, comment='组织ID'),
-    Column('user_id', String(20), ForeignKey('users.id'), primary_key=True, comment='用户ID'),
+    Column('organization_id', String(25), ForeignKey('organizations.id'), primary_key=True, comment='组织ID'),
+    Column('user_id', String(25), ForeignKey('users.id'), primary_key=True, comment='用户ID'),
     Column('position', String(100), comment='职位'),
     Column('role', Enum(MemberRole), default=MemberRole.MEMBER, comment='成员角色'),
     Column('joined_at', DateTime, default=func.now(), comment='加入时间')
@@ -97,9 +104,8 @@ class OrganizationStatus(str, enum.Enum):
 class User(Base):
     """用户表模型"""
     __tablename__ = "users"
-    avatar = Column(String(255), nullable=True, comment='用户头像URL')
     
-    id = Column(String(20), primary_key=True, index=True, default=generate_snowflake_id, comment='用户ID，雪花算法生成')
+    id = Column(String(25), primary_key=True, index=True, default=generate_user_id, comment='用户ID，格式：U + 雪花算法ID')
     username = Column(String(50), unique=True, index=True, nullable=False, comment='用户名，唯一标识')
     email = Column(String(100), unique=True, index=True, nullable=False, comment='邮箱地址，唯一标识')
     password_hash = Column(String(255), nullable=False, comment='密码哈希值')
@@ -108,13 +114,14 @@ class User(Base):
     phone = Column(String(20), comment='手机号码')
     position = Column(String(100), comment='用户岗位/职位')
     department = Column(String(100), comment='用户所属部门')
-    organization_id = Column(String(20), ForeignKey("organizations.id"), comment='用户所属组织ID')
+    organization_id = Column(String(25), ForeignKey("organizations.id"), comment='用户所属组织ID')
     role = Column(Enum(UserRole), default=UserRole.MEMBER, comment='用户角色')
     is_active = Column(Boolean, default=True, comment='是否激活状态')
     is_verified = Column(Boolean, default=False, comment='是否已验证邮箱')
     last_login = Column(DateTime, comment='最后登录时间')
     created_at = Column(DateTime, default=func.now(), comment='创建时间')
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now(), comment='更新时间')
+    
     
     # 关系
     organization = relationship("Organization", foreign_keys=[organization_id])
@@ -130,16 +137,16 @@ class Organization(Base):
     """组织表模型"""
     __tablename__ = "organizations"
     
-    id = Column(String(20), primary_key=True, index=True, default=generate_snowflake_id, comment='组织ID，雪花算法生成')
+    id = Column(String(25), primary_key=True, index=True, default=generate_organization_id, comment='组织ID，格式：O + 雪花算法ID')
     name = Column(String(100), nullable=False, comment='组织名称')
     code = Column(String(20), unique=True, nullable=False, index=True, comment='组织编码，唯一标识')
     type = Column(Enum(OrganizationType), nullable=False, comment='组织类型')
     status = Column(Enum(OrganizationStatus), default=OrganizationStatus.ACTIVE, comment='组织状态')
     description = Column(Text, comment='组织描述')
-    parent_id = Column(String(20), ForeignKey("organizations.id"), comment='父组织ID')
+    parent_id = Column(String(25), ForeignKey("organizations.id"), comment='父组织ID')
     level = Column(Integer, default=1, comment='组织层级')
     path = Column(String(500), comment='组织路径，如 "/1/2/3"')
-    manager_id = Column(String(20), ForeignKey("users.id"), comment='组织管理员ID')
+    manager_id = Column(String(25), ForeignKey("users.id"), comment='组织管理员ID')
     sort = Column(Integer, default=0, comment='排序字段')
     address = Column(String(255), comment='组织地址')
     phone = Column(String(20), comment='联系电话')
@@ -162,16 +169,16 @@ class Project(Base):
     """项目表模型"""
     __tablename__ = "projects"
     
-    id = Column(String(20), primary_key=True, index=True, default=generate_snowflake_id, comment='项目ID，雪花算法生成')
+    id = Column(String(25), primary_key=True, index=True, default=generate_project_id, comment='项目ID，格式：P + 雪花算法ID')
     name = Column(String(100), nullable=False, comment='项目名称')
     description = Column(Text, comment='项目描述')
     status = Column(Enum(ProjectStatus), default=ProjectStatus.PLANNING, comment='项目状态')
     priority = Column(Enum(ProjectPriority), default=ProjectPriority.MEDIUM, comment='项目优先级')
     start_date = Column(DateTime, comment='项目开始日期')
     end_date = Column(DateTime, comment='项目结束日期')
-    creator_id = Column(String(20), ForeignKey("users.id"), comment='项目创建者ID')
-    manager_id = Column(String(20), ForeignKey("users.id"), comment='项目管理者ID')
-    organization_id = Column(String(20), ForeignKey("organizations.id"), comment='所属组织ID')
+    creator_id = Column(String(25), ForeignKey("users.id"), comment='项目创建者ID')
+    manager_id = Column(String(25), ForeignKey("users.id"), comment='项目管理者ID')
+    organization_id = Column(String(25), ForeignKey("organizations.id"), comment='所属组织ID')
     is_archived = Column(Boolean, default=False, comment='是否已归档')
     created_at = Column(DateTime, default=func.now(), comment='创建时间')
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now(), comment='更新时间')
@@ -187,26 +194,29 @@ class Project(Base):
 class Task(Base):
     __tablename__ = "tasks"
     
-    id = Column(String(20), primary_key=True, index=True, default=generate_snowflake_id, comment='任务ID，雪花算法生成')
+    id = Column(String(25), primary_key=True, index=True, default=generate_task_id, comment='任务ID，格式：T + 雪花算法ID')
     title = Column(String(200), nullable=False, comment='任务标题')
     description = Column(Text, comment='任务描述')
     status = Column(Enum(TaskStatus), default=TaskStatus.TODO, comment='任务状态')
     priority = Column(Enum(TaskPriority), default=TaskPriority.MEDIUM, comment='任务优先级')
     type = Column(Enum(TaskType), default=TaskType.FEATURE, comment='任务类型')
-    project_id = Column(String(20), ForeignKey("projects.id"), comment='任务所属项目ID')
-    assignee_id = Column(String(20), ForeignKey("users.id"), comment='任务负责人ID')
-    reporter_id = Column(String(20), ForeignKey("users.id"), comment='任务报告人ID')
+    project_id = Column(String(25), ForeignKey("projects.id"), comment='任务所属项目ID')
+    assignee_id = Column(String(25), ForeignKey("users.id"), comment='任务负责人ID')
+    reporter_id = Column(String(25), ForeignKey("users.id"), comment='任务报告人ID')
     due_date = Column(DateTime, comment='任务截止时间')
     estimated_hours = Column(Integer, comment='任务预估工时')
     actual_hours = Column(Integer, comment='任务实际工时')
+    parent_task_id = Column(String(25), ForeignKey('tasks.id'), nullable=True, comment='父任务ID')
     tags = Column(String(500), comment='任务标签')  # JSON字符串存储标签
     created_at = Column(DateTime, default=func.now(), comment='创建时间')
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now(), comment='更新时间')
-    
+
     # 关系
     project = relationship("Project", back_populates="tasks")
-    assignee = relationship("User", back_populates="assigned_tasks", foreign_keys=[assignee_id])
-    reporter = relationship("User", back_populates="reported_tasks", foreign_keys=[reporter_id])
+    assignee = relationship("User", foreign_keys=[assignee_id], back_populates="assigned_tasks")
+    reporter = relationship("User", foreign_keys=[reporter_id], back_populates="reported_tasks")
+    parent_task = relationship("Task", remote_side=[id], back_populates="sub_tasks")
+    sub_tasks = relationship("Task", back_populates="parent_task")
     attachments = relationship("TaskAttachment", back_populates="task")
     comments = relationship("TaskComment", back_populates="task")
 
@@ -214,14 +224,14 @@ class Task(Base):
 class TaskAttachment(Base):
     __tablename__ = "task_attachments"
     
-    id = Column(String(20), primary_key=True, index=True, default=generate_snowflake_id, comment='任务附件ID，雪花算法生成')
-    task_id = Column(String(20), ForeignKey("tasks.id"), comment='任务附件所属任务ID')
+    id = Column(String(27), primary_key=True, index=True, default=generate_task_attachment_id, comment='任务附件ID，格式：TA + 雪花算法ID')
+    task_id = Column(String(25), ForeignKey("tasks.id"), comment='任务附件所属任务ID')
     filename = Column(String(255), nullable=False, comment='附件文件名')
     original_filename = Column(String(255), nullable=False, comment='附件原始文件名')
     file_path = Column(String(500), nullable=False, comment='附件文件路径')
     file_size = Column(Integer, comment='附件文件大小')
     content_type = Column(String(100), comment='附件文件类型')
-    uploaded_by = Column(String(20), ForeignKey("users.id"), comment='附件上传人ID')
+    uploaded_by = Column(String(25), ForeignKey("users.id"), comment='附件上传人ID')
     created_at = Column(DateTime, default=func.now(), comment='创建时间')
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now(), comment='更新时间')
     
@@ -233,9 +243,9 @@ class TaskAttachment(Base):
 class TaskComment(Base):
     __tablename__ = "task_comments"
     
-    id = Column(String(20), primary_key=True, index=True, default=generate_snowflake_id, comment='任务评论ID，雪花算法生成')
-    task_id = Column(String(20), ForeignKey("tasks.id"), comment='评论所属任务ID')
-    user_id = Column(String(20), ForeignKey("users.id"), comment='评论用户ID')
+    id = Column(String(27), primary_key=True, index=True, default=generate_task_comment_id, comment='任务评论ID，格式：TC + 雪花算法ID')
+    task_id = Column(String(25), ForeignKey("tasks.id"), comment='评论所属任务ID')
+    user_id = Column(String(25), ForeignKey("users.id"), comment='评论用户ID')
     content = Column(Text, nullable=False, comment='评论内容')
     created_at = Column(DateTime, default=func.now(), comment='创建时间')
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now(), comment='更新时间')

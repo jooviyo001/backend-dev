@@ -12,7 +12,7 @@ from pydantic import BaseModel
 from utils.status_codes import *
 
 # 导入路由模块
-from routers import auth, users, projects, organizations, dashboard
+from routers import auth, users, projects, organizations, dashboard, tasks
 from models.database import engine, Base
 from models import models
 from utils.snowflake import init_snowflake
@@ -132,6 +132,7 @@ app.include_router(users.router, prefix="/api/v1/users", tags=["用户管理"])
 app.include_router(projects.router, prefix="/api/v1/projects", tags=["项目管理"])
 app.include_router(organizations.router, prefix="/api/v1/organizations", tags=["组织管理"])
 app.include_router(dashboard.router, prefix="/api/v1/dashboard", tags=["仪表盘"])
+app.include_router(tasks.router, prefix="/api/v1/tasks", tags=["任务管理"])
 
 # 安全配置
 security = HTTPBearer()

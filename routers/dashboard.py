@@ -29,6 +29,7 @@ class DashboardStats(BaseModel):
     myTasks: int
     teamMembers: int
 
+# 最近任务
 class RecentTask(BaseModel):
     id: str
     title: str
@@ -38,6 +39,7 @@ class RecentTask(BaseModel):
     projectName: str
     assigneeName: str
 
+# 项目进度
 class ProjectProgress(BaseModel):
     projectId: str
     projectName: str
@@ -46,11 +48,13 @@ class ProjectProgress(BaseModel):
     completedTasks: int
     status: str
 
+# 任务状态分布
 class TaskStatusDistribution(BaseModel):
     status: str
     count: int
     percentage: float
 
+# 最近活动
 class RecentActivity(BaseModel):
     id: str
     type: str  # project|task|user
@@ -62,6 +66,7 @@ class RecentActivity(BaseModel):
     targetName: str
     createdAt: str
 
+# 用户工作负载
 class UserWorkload(BaseModel):
     userId: str
     userName: str
@@ -71,6 +76,7 @@ class UserWorkload(BaseModel):
     overdueTasks: int
     workloadPercentage: float
 
+# 项目趋势
 class ProjectTrend(BaseModel):
     period: str
     totalProjects: int
@@ -78,6 +84,15 @@ class ProjectTrend(BaseModel):
     activeProjects: int
     date: str
 
+# 任务趋势
+class TaskTrend(BaseModel):
+    period: str
+    totalTasks: int
+    completedTasks: int
+    activeTasks: int
+    date: str
+
+# 任务趋势
 @router.get("/stats", response_model=BaseResponse)
 async def get_dashboard_stats(
     dateFrom: Optional[str] = Query(None, description="日期范围开始"),
@@ -292,11 +307,22 @@ async def get_task_status_distribution(
     
     # 项目过滤
     if projectId:
-        try:
-            project_id_int = int(projectId)
-            query = query.filter(Task.project_id == project_id_int)
-        except ValueError:
-            pass
+        # ID格式处理函数
+        def extract_id(id_str):
+            """提取ID的数字部分，兼容多种格式"""
+            if not id_str:
+                return None
+            # 如果是纯数字，直接返回
+            if id_str.isdigit():
+                return int(id_str)
+            # 如果是以P开头的新格式，提取数字部分
+            if id_str.startswith('P') and id_str[1:].isdigit():
+                return int(id_str[1:])
+            return None
+        
+        extracted_project_id = extract_id(projectId)
+        if extracted_project_id:
+            query = query.filter(Task.project_id == extracted_project_id)
     
     # 日期过滤
     if dateFrom:
@@ -398,11 +424,23 @@ async def get_user_workload(
     
     # 部门过滤（如果有部门字段的话）
     if departmentId:
-        try:
-            dept_id = int(departmentId)
+        # ID格式处理函数
+        def extract_id(id_str):
+            """提取ID的数字部分，兼容多种格式"""
+            if not id_str:
+                return None
+            # 如果是纯数字，直接返回
+            if id_str.isdigit():
+                return int(id_str)
+            # 如果是以O开头的新格式，提取数字部分
+            if id_str.startswith('O') and id_str[1:].isdigit():
+                return int(id_str[1:])
+            return None
+        
+        extracted_dept_id = extract_id(departmentId)
+        if extracted_dept_id:
             # 假设User模型有department_id字段，如果没有可以去掉这个过滤
-            # query = query.filter(User.department_id == dept_id)
-        except ValueError:
+            # query = query.filter(User.department_id == extracted_dept_id)
             pass
     
     if limit:
@@ -489,10 +527,22 @@ async def get_project_trends(
         
         # 部门过滤（如果Project模型有department_id字段）
         if departmentId:
-            try:
-                dept_id = int(departmentId)
-                # query = query.filter(Project.department_id == dept_id)
-            except ValueError:
+            # ID格式处理函数
+            def extract_id(id_str):
+                """提取ID的数字部分，兼容多种格式"""
+                if not id_str:
+                    return None
+                # 如果是纯数字，直接返回
+                if id_str.isdigit():
+                    return int(id_str)
+                # 如果是以O开头的新格式，提取数字部分
+                if id_str.startswith('O') and id_str[1:].isdigit():
+                    return int(id_str[1:])
+                return None
+            
+            extracted_dept_id = extract_id(departmentId)
+            if extracted_dept_id:
+                # query = query.filter(Project.department_id == extracted_dept_id)
                 pass
         
         # 统计该时间段内的项目
