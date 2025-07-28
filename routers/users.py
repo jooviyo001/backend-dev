@@ -110,23 +110,23 @@ async def create_user_profile(
     
     # 更新用户信息
     if profile_data.username:
-        user.username = profile_data.username
+        user.username = profile_data.username  # type: ignore
     if profile_data.name:  # 支持name字段
-        user.full_name = profile_data.name
+        user.full_name = profile_data.name  # type: ignore
     if profile_data.email:
-        user.email = profile_data.email
+        user.email = profile_data.email  # type: ignore
     if profile_data.phone:
-        user.phone = profile_data.phone
+        user.phone = profile_data.phone  # type: ignore
     if profile_data.full_name:
-        user.full_name = profile_data.full_name
+        user.full_name = profile_data.full_name  # type: ignore
     if profile_data.avatar:
-        user.avatar = profile_data.avatar
+        user.avatar = profile_data.avatar  # type: ignore
     if profile_data.role:
-        user.role = profile_data.role
+        user.role = profile_data.role  # type: ignore
     if profile_data.is_active is not None:
-        user.is_active = profile_data.is_active
+        user.is_active = profile_data.is_active  # type: ignore
     if profile_data.is_verified is not None:
-        user.is_verified = profile_data.is_verified
+        user.is_verified = profile_data.is_verified  # type: ignore
     
     # 处理时间字段 - 支持ISO格式和y-m-d h:m:s格式
     def parse_datetime(date_str):
@@ -148,17 +148,15 @@ async def create_user_profile(
     if profile_data.last_login:
         parsed_time = parse_datetime(profile_data.last_login)
         if parsed_time:
-            user.last_login = parsed_time
-    
+            user.last_login = parsed_time  # type: ignore
     if profile_data.created_at:
         parsed_time = parse_datetime(profile_data.created_at)
         if parsed_time:
-            user.created_at = parsed_time
-    
+            user.created_at = parsed_time  # type: ignore
     if profile_data.updated_at:
         parsed_time = parse_datetime(profile_data.updated_at)
         if parsed_time:
-            user.updated_at = parsed_time
+            user.updated_at = parsed_time  # type: ignore
     
     db.commit()
     db.refresh(user)
@@ -176,9 +174,9 @@ async def create_user_profile(
         "is_verified": user.is_verified,
         "position": profile_data.position or "",  # 扩展字段
         "department": profile_data.department or "",  # 扩展字段
-        "last_login": user.last_login.strftime("%Y-%m-%d %H:%M:%S") if user.last_login else "",
-        "created_at": user.created_at.strftime("%Y-%m-%d %H:%M:%S") if user.created_at else "",
-        "updated_at": user.updated_at.strftime("%Y-%m-%d %H:%M:%S") if user.updated_at else ""
+        "last_login": user.last_login.strftime("%Y-%m-%d %H:%M:%S") if user.last_login else "",  # type: ignore
+        "created_at": user.created_at.strftime("%Y-%m-%d %H:%M:%S") if user.created_at else "",  # type: ignore
+        "updated_at": user.updated_at.strftime("%Y-%m-%d %H:%M:%S") if user.updated_at else ""  # type: ignore
     }
     
     return BaseResponse(
@@ -231,12 +229,12 @@ async def create_user(
     # 创建新用户
     hashed_password = get_password_hash(user_data.password)
     db_user = User(
-        username=user_data.username,
-        email=user_data.email,
-        password_hash=hashed_password,
-        full_name=user_data.full_name,
-        phone=user_data.phone,
-        role=user_data.role
+        username=user_data.username,  # type: ignore
+        email=user_data.email,  # type: ignore
+        password_hash=hashed_password,  # type: ignore
+        full_name=user_data.full_name,  # type: ignore
+        phone=user_data.phone,  # type: ignore
+        role=user_data.role  # type: ignore
     )
     
     db.add(db_user)
@@ -268,7 +266,7 @@ async def update_user(
 
     for key, value in update_data.items():
         if key == "password" and value:
-            user.password_hash = get_password_hash(value)
+            user.password_hash = get_password_hash(value)  # type: ignore
         elif key == "avatar":
             setattr(user, key, value)
         else:
@@ -284,61 +282,6 @@ async def update_user(
     )
 
 # 删除用户
-@router.delete("/{user_id}", response_model=BaseResponse)
-async def delete_user(
-    user_id: str,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(require_permission("user:write"))
-):
-    """删除用户"""
-    if user_id == current_user.id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="不能删除自己"
-        )
-    
-    user = db.query(User).filter(User.id == user_id).first()
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="用户不存在"
-        )
-    
-    # 检查用户名是否已被其他用户使用
-    if user_data.username and user_data.username != user.username:
-        existing_user = db.query(User).filter(
-            and_(User.username == user_data.username, User.id != user_id)
-        ).first()
-        if existing_user:
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail="用户名已存在"
-            )
-    
-    # 检查邮箱是否已被其他用户使用
-    if user_data.email and user_data.email != user.email:
-        existing_user = db.query(User).filter(
-            and_(User.email == user_data.email, User.id != user_id)
-        ).first()
-        if existing_user:
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail="邮箱已存在"
-            )
-    
-    # 更新用户信息
-    update_data = user_data.dict(exclude_unset=True)
-    for field, value in update_data.items():
-        setattr(user, field, value)
-    
-    db.commit()
-    db.refresh(user)
-    
-    return BaseResponse(
-        message="更新用户信息成功",
-        data=UserResponse.from_orm(user)
-    )
-
 @router.delete("/{user_id}", response_model=BaseResponse)
 async def delete_user(
     user_id: str,
@@ -378,7 +321,7 @@ async def activate_user(
             detail="用户不存在"
         )
     
-    user.is_active = True
+    user.is_active = True  # type: ignore
     db.commit()
     
     return BaseResponse(message="激活用户成功")
@@ -403,7 +346,7 @@ async def deactivate_user(
             detail="用户不存在"
         )
     
-    user.is_active = False
+    user.is_active = False  # type: ignore
     db.commit()
     
     return BaseResponse(message="停用用户成功")
@@ -432,7 +375,7 @@ async def toggle_user_status(
     
     # 根据传入的状态设置用户状态
     new_status = status_data.status == "active"
-    user.is_active = new_status
+    user.is_active = new_status  # type: ignore
     db.commit()
     db.refresh(user)
     

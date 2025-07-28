@@ -97,8 +97,8 @@ class RegisterRequest(UserCreate):
         return v
 
 # 注册响应模式
-class RegisterResponse(BaseResponse):
-    data: UserResponse
+class RegisterResponse(BaseModel):
+    data: Optional[UserResponse] = None
 
 # 用户状态切换模式
 class UserStatusToggle(BaseModel):
@@ -246,7 +246,7 @@ class OrganizationMove(BaseModel):
 
 # 批量操作模式
 class OrganizationBatchDelete(BaseModel):
-    ids: List[int] = Field(..., min_items=1, description="组织ID数组")
+    ids: List[int] = Field(..., min_length=1, description="组织ID数组")
 
 # 项目相关模式
 class ProjectBase(BaseModel):
