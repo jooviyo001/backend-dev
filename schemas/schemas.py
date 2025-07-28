@@ -74,7 +74,7 @@ class UserProfileUpdateRequest(BaseModel):
     role: Optional[UserRole] = None
 
 class UserResponse(UserBase):
-    id: int
+    id: str  # 支持雪花ID格式，如 'U208228089547722752'
     is_active: bool
     is_verified: bool
     position: Optional[str] = None  # 职位
@@ -132,8 +132,8 @@ class OrganizationBase(BaseModel):
     code: str = Field(..., min_length=2, max_length=20, pattern=r"^[A-Za-z0-9_-]+$", description="组织编码")
     type: OrganizationType = Field(..., description="组织类型")
     description: Optional[str] = Field(None, max_length=200, description="组织描述")
-    parent_id: Optional[int] = Field(None, description="父组织ID")
-    manager_id: Optional[int] = Field(None, description="负责人ID")
+    parent_id: Optional[str] = Field(None, description="父组织ID")  # 改为str
+    manager_id: Optional[str] = Field(None, description="负责人ID")  # 改为str
     sort: int = Field(0, ge=0, le=999, description="排序权重")
     address: Optional[str] = Field(None, max_length=255, description="地址")
     phone: Optional[str] = Field(None, max_length=20, description="电话")
@@ -151,7 +151,7 @@ class OrganizationUpdate(BaseModel):
     type: Optional[OrganizationType] = Field(None, description="组织类型")
     status: Optional[OrganizationStatus] = Field(None, description="组织状态")
     description: Optional[str] = Field(None, max_length=200, description="组织描述")
-    manager_id: Optional[int] = Field(None, description="负责人ID")
+    manager_id: Optional[str] = Field(None, description="负责人ID")  # 改为str
     sort: Optional[int] = Field(None, ge=0, le=999, description="排序权重")
     address: Optional[str] = Field(None, max_length=255, description="地址")
     phone: Optional[str] = Field(None, max_length=20, description="电话")
@@ -160,17 +160,17 @@ class OrganizationUpdate(BaseModel):
 
 # 组织响应模式
 class OrganizationResponse(BaseModel):
-    id: int
+    id: str  # 改为str
     name: str
     code: str
     type: OrganizationType
     status: OrganizationStatus
     description: Optional[str] = None
-    parent_id: Optional[int] = None
+    parent_id: Optional[str] = None  # 改为str
     parent_name: Optional[str] = None
     level: int
     path: Optional[str] = None
-    manager_id: Optional[int] = None
+    manager_id: Optional[str] = None  # 改为str
     manager_name: Optional[str] = None
     member_count: int = 0
     child_count: int = 0
@@ -189,12 +189,12 @@ class OrganizationResponse(BaseModel):
 
 # 组织树节点模式
 class OrganizationTreeNode(BaseModel):
-    id: int
+    id: str  # 改为str
     name: str
     code: str
     type: OrganizationType
     status: OrganizationStatus
-    parent_id: Optional[int] = None
+    parent_id: Optional[str] = None  # 改为str
     level: int
     children: List["OrganizationTreeNode"] = [] # 递归引用自身
 
@@ -202,14 +202,14 @@ class OrganizationTreeNode(BaseModel):
 class TaskBase(BaseModel):
     title: str = Field(..., min_length=1, max_length=100, description="任务标题")
     description: Optional[str] = Field(None, max_length=500, description="任务描述")
-    project_id: int = Field(..., description="所属项目ID")
-    assignee_id: Optional[int] = Field(None, description="执行人ID")
-    reporter_id: Optional[int] = Field(None, description="报告人ID")
+    project_id: str = Field(..., description="所属项目ID")  # 改为str
+    assignee_id: Optional[str] = Field(None, description="执行人ID")  # 改为str
+    reporter_id: Optional[str] = Field(None, description="报告人ID")  # 改为str
     status: TaskStatus = Field(TaskStatus.TODO, description="任务状态")
     priority: TaskPriority = Field(TaskPriority.MEDIUM, description="任务优先级")
     type: TaskType = Field(TaskType.FEATURE, description="任务类型")
     due_date: Optional[datetime] = Field(None, description="截止日期")
-    parent_task_id: Optional[int] = Field(None, description="父任务ID")
+    parent_task_id: Optional[str] = Field(None, description="父任务ID")  # 改为str
     
 class TaskCreate(TaskBase):
     pass
@@ -217,45 +217,40 @@ class TaskCreate(TaskBase):
 class TaskUpdate(BaseModel):
     title: Optional[str] = Field(None, min_length=1, max_length=100, description="任务标题")
     description: Optional[str] = Field(None, max_length=500, description="任务描述")
-    project_id: Optional[int] = Field(None, description="所属项目ID")
-    assignee_id: Optional[int] = Field(None, description="执行人ID")
-    reporter_id: Optional[int] = Field(None, description="报告人ID")
+    project_id: Optional[str] = Field(None, description="所属项目ID")  # 改为str
+    assignee_id: Optional[str] = Field(None, description="执行人ID")  # 改为str
+    reporter_id: Optional[str] = Field(None, description="报告人ID")  # 改为str
     status: Optional[TaskStatus] = Field(None, description="任务状态")
     priority: Optional[TaskPriority] = Field(None, description="任务优先级")
     type: Optional[TaskType] = Field(None, description="任务类型")
     due_date: Optional[datetime] = Field(None, description="截止日期")
-    parent_task_id: Optional[int] = Field(None, description="父任务ID")
+    parent_task_id: Optional[str] = Field(None, description="父任务ID")  # 改为str
 
 class TaskResponse(BaseModel):
-    id: int
+    id: str  # 改为str
     title: str
     description: Optional[str] = None
-    project_id: int
+    project_id: str  # 改为str
     project_name: Optional[str] = None
-    assignee_id: Optional[int] = None
+    assignee_id: Optional[str] = None  # 改为str
     assignee_name: Optional[str] = None
-    reporter_id: Optional[int] = None
+    reporter_id: Optional[str] = None  # 改为str
     reporter_name: Optional[str] = None
     status: TaskStatus
     priority: TaskPriority
     type: TaskType
     due_date: Optional[datetime] = None
-    parent_task_id: Optional[int] = None
+    parent_task_id: Optional[str] = None  # 改为str
     parent_task_title: Optional[str] = None
     created_at: datetime
     updated_at: datetime
 
     class Config:
         from_attributes = True
-    member_count: int = 0
-    children: List['OrganizationTreeNode'] = []
-    
-    class Config:
-        from_attributes = True
 
 # 组织成员模式
 class OrganizationMemberBase(BaseModel):
-    user_id: int = Field(..., description="用户ID")
+    user_id: str = Field(..., description="用户ID")  # 改为str
     position: Optional[str] = Field(None, max_length=100, description="职位")
     role: MemberRole = Field(MemberRole.MEMBER, description="角色")
 
@@ -267,9 +262,9 @@ class OrganizationMemberUpdate(BaseModel):
     role: Optional[MemberRole] = Field(None, description="角色")
 
 class OrganizationMemberResponse(BaseModel):
-    id: int
-    organization_id: int
-    user_id: int
+    id: str  # 改为str
+    organization_id: str  # 改为str
+    user_id: str  # 改为str
     user_name: Optional[str] = None
     user_email: Optional[str] = None
     user_avatar: Optional[str] = None
@@ -291,11 +286,11 @@ class OrganizationStatistics(BaseModel):
 
 # 组织移动模式
 class OrganizationMove(BaseModel):
-    parent_id: Optional[int] = Field(None, description="新父组织ID")
+    parent_id: Optional[str] = Field(None, description="新父组织ID")  # 改为str
 
 # 批量操作模式
 class OrganizationBatchDelete(BaseModel):
-    ids: List[int] = Field(..., min_length=1, description="组织ID数组")
+    ids: List[str] = Field(..., min_length=1, description="组织ID数组")  # 改为str
 
 # 项目相关模式
 class ProjectBase(BaseModel):
@@ -305,12 +300,12 @@ class ProjectBase(BaseModel):
     priority: ProjectPriority = ProjectPriority.MEDIUM
     start_date: Optional[datetime] = None
     end_date: Optional[datetime] = None
-    organization_id: Optional[int] = None
+    organization_id: Optional[str] = None  # 改为str
 
 # 项目创建模式
 class ProjectCreate(ProjectBase):
-    manager_id: Optional[int] = Field(None, description="项目经理ID")
-    member_ids: Optional[List[int]] = Field(default_factory=list, description="项目成员ID列表")
+    manager_id: Optional[str] = Field(None, description="项目经理ID")  # 改为str
+    member_ids: Optional[List[str]] = Field(default_factory=list, description="项目成员ID列表")  # 改为str
 
 # 项目更新模式
 class ProjectUpdate(BaseModel):
@@ -320,21 +315,21 @@ class ProjectUpdate(BaseModel):
     priority: Optional[ProjectPriority] = None
     start_date: Optional[datetime] = None
     end_date: Optional[datetime] = None
-    manager_id: Optional[int] = None
-    organization_id: Optional[int] = None
+    manager_id: Optional[str] = None  # 改为str
+    organization_id: Optional[str] = None  # 改为str
 
 # 项目响应模式
 class ProjectResponse(BaseModel):
-    id: int
+    id: str  # 改为str
     name: str
     description: Optional[str] = None
     status: ProjectStatus = ProjectStatus.PLANNING
     priority: Optional[ProjectPriority] = None
     start_date: Optional[datetime] = None
     end_date: Optional[datetime] = None
-    organization_id: Optional[int] = None
-    creator_id: int
-    manager_id: Optional[int] = None
+    organization_id: Optional[str] = None  # 改为str
+    creator_id: str  # 改为str
+    manager_id: Optional[str] = None  # 改为str
     is_archived: bool
     created_at: datetime
     updated_at: datetime
@@ -352,8 +347,8 @@ class TaskBase(BaseModel):
     status: TaskStatus = TaskStatus.TODO
     priority: TaskPriority = TaskPriority.MEDIUM
     type: TaskType = TaskType.FEATURE
-    project_id: int
-    assignee_id: Optional[int] = None
+    project_id: str  # 改为str
+    assignee_id: Optional[str] = None  # 改为str
     due_date: Optional[datetime] = None
     estimated_hours: Optional[int] = None
     tags: Optional[List[str]] = None
@@ -369,16 +364,16 @@ class TaskUpdate(BaseModel):
     status: Optional[TaskStatus] = None
     priority: Optional[TaskPriority] = None
     type: Optional[TaskType] = None
-    project_id: Optional[int] = None
-    assignee_id: Optional[int] = None
+    project_id: Optional[str] = None  # 改为str
+    assignee_id: Optional[str] = None  # 改为str
     due_date: Optional[datetime] = None
     estimated_hours: Optional[int] = None
     actual_hours: Optional[int] = None
     tags: Optional[List[str]] = None
 
 class TaskResponse(TaskBase):
-    id: int
-    reporter_id: int
+    id: str  # 改为str
+    reporter_id: Optional[str] = None  # 改为str
     actual_hours: Optional[int] = None
     created_at: datetime
     updated_at: datetime
@@ -401,21 +396,21 @@ class TaskStatistics(BaseModel):
 
 # 批量操作模式
 class BatchDeleteRequest(BaseModel):
-    ids: List[int]
+    ids: List[str] = Field(..., min_length=1, description="任务ID数组")  # 改为str
 
 class BatchAssignRequest(BaseModel):
-    task_ids: List[int]
-    assignee_id: int
+    task_ids: List[str] = Field(..., min_length=1, description="任务ID数组")  # 改为str
+    assignee_id: str = Field(..., description="分配者ID")  # 改为str
 
 # 附件相关模式
 class AttachmentResponse(BaseModel):
-    id: int
-    task_id: int
+    id: str  # 改为str
+    task_id: str  # 改为str
     filename: str
     original_filename: str
     file_size: int
     content_type: str
-    uploaded_by: int
+    uploaded_by: str  # 改为str
     created_at: datetime
     
     class Config:
@@ -427,14 +422,14 @@ class CommentBase(BaseModel):
 
 # 评论创建模式
 class CommentCreate(CommentBase):
-    task_id: int
-    user_id: int
+    task_id: str  # 改为str
+    user_id: str  # 改为str
 
 # 评论响应模式
 class CommentResponse(CommentBase):
-    id: int
-    task_id: int
-    user_id: int
+    id: str  # 改为str
+    task_id: str  # 改为str
+    user_id: str  # 改为str
     created_at: datetime
     updated_at: datetime
     user: Optional[UserResponse] = None

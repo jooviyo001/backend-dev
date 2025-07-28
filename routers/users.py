@@ -17,36 +17,49 @@ router = APIRouter()
 
 @router.get("/list", response_model=BaseResponse)
 async def get_users(
-    keyword: Optional[str] = Query(None, description="关键词搜索"),
+    search: Optional[str] = Query(None, description="搜索关键词"),
     role: Optional[str] = Query(None, description="角色过滤"),
-    is_active: Optional[bool] = Query(None, description="状态过滤"),
+    status: Optional[str] = Query(None, description="状态过滤"),
+    department: Optional[str] = Query(None, description="部门过滤"),
     page: int = Query(1, ge=1, description="页码"),
-    size: int = Query(10, ge=1, le=100, description="每页数量"),
+    limit: Optional[int] = Query(None, ge=1, le=100, description="每页数量"),
+    pageSize: Optional[int] = Query(None, ge=1, le=100, description="每页数量(兼容参数)"),
     db: Session = Depends(get_db),
     current_user = Depends(require_permission("user:read"))
 ):
     """获取用户列表"""
     from utils.response_utils import list_response, paginate_query
     
+    # 处理分页参数，优先使用 limit，如果没有则使用 pageSize，默认为 10
+    size = limit or pageSize or 10
+    
     query = db.query(User)
     
-    # 关键词搜索
-    if keyword:
+    # 搜索关键词过滤
+    if search and search.strip():
+        search_term = search.strip()
         query = query.filter(
             or_(
-                User.username.contains(keyword),
-                User.full_name.contains(keyword),
-                User.email.contains(keyword)
+                User.username.contains(search_term),
+                User.full_name.contains(search_term),
+                User.email.contains(search_term)
             )
         )
     
     # 角色过滤
-    if role:
-        query = query.filter(User.role == role)
+    if role and role.strip():
+        query = query.filter(User.role == role.strip())
     
     # 状态过滤
-    if is_active is not None:
-        query = query.filter(User.is_active == is_active)
+    if status and status.strip():
+        if status.strip().lower() == "active":
+            query = query.filter(User.is_active == True)
+        elif status.strip().lower() == "inactive":
+            query = query.filter(User.is_active == False)
+    
+    # 部门过滤
+    if department and department.strip():
+        query = query.filter(User.department == department.strip())
     
     # 分页
     total, users = paginate_query(query, page, size)
