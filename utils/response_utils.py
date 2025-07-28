@@ -18,27 +18,10 @@ ID_PREFIX_MAP = {
 
 def _add_id_prefix(data: Any) -> Any:
     """
-    递归地为响应数据中的ID添加前缀
+    处理响应数据（已移除ID前缀添加逻辑，直接返回原始雪花ID）
     """
     if isinstance(data, dict):
-        # 检查是否是ORM模型对象（通过__tablename__判断）
-        if "id" in data and data["id"] is not None:
-            model_name = data.get("__tablename__")
-            if model_name and model_name in ID_PREFIX_MAP:
-                prefix = ID_PREFIX_MAP[model_name]
-                data["id"] = f"{prefix}_{data['id']}"
-            else:
-                # 备用方案：通过特定字段判断
-                if "username" in data: # User模型
-                    data["id"] = f"{ID_PREFIX_MAP['users']}_{data['id']}"
-                elif "name" in data and "creator_id" in data: # Project模型
-                    data["id"] = f"{ID_PREFIX_MAP['projects']}_{data['id']}"
-                elif "name" in data: # Organization模型 (假设没有creator_id)
-                    data["id"] = f"{ID_PREFIX_MAP['organizations']}_{data['id']}"
-                elif "title" in data and "project_id" in data: # Task模型
-                    data["id"] = f"{ID_PREFIX_MAP['tasks']}_{data['id']}"
-        
-        # 递归处理字典中的其他值
+        # 递归处理字典中的值
         for key, value in data.items():
             data[key] = _add_id_prefix(value)
     elif isinstance(data, list):
