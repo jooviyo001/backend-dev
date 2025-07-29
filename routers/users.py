@@ -7,7 +7,7 @@ from math import ceil
 from models.database import get_db
 from models.models import User
 from schemas.schemas import (
-    UserCreate, UserUpdate, UserResponse, BaseResponse, PaginationResponse, UserStatusToggle
+    UserCreate, UserUpdate, UserResponse, BaseResponse, PaginationResponse
 )
 from utils.auth import (
     get_current_active_user, require_permission, get_password_hash
@@ -15,6 +15,7 @@ from utils.auth import (
 
 router = APIRouter()
 
+# 获取用户列表接口
 @router.get("/list", response_model=BaseResponse)
 async def get_users(
     search: Optional[str] = Query(None, description="搜索关键词"),
@@ -71,7 +72,6 @@ async def get_users(
         size=size,
         message="获取用户列表成功"
     )
-
 
 
 # 获取用户详情接口
@@ -177,9 +177,22 @@ async def update_user(
             # 处理密码更新
             user.password_hash = get_password_hash(value)  # type: ignore
         elif key == "status" and value:
-            # 处理状态更新
+            # 处理状态更新 - 添加安全检查
+            if actual_user_id == current_user.id and value == "inactive":
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="不能停用自己"
+                )
             user.is_active = (value == "active")  # type: ignore
-        elif key in ["avatar", "username", "email", "full_name", "phone", "position", "department", "role", "is_active", "is_verified", "organization_id"]:
+        elif key == "is_active" and value is not None:
+            # 处理直接的is_active字段更新 - 添加安全检查
+            if actual_user_id == current_user.id and not value:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="不能停用自己"
+                )
+            user.is_active = value  # type: ignore
+        elif key in ["avatar", "username", "email", "full_name", "phone", "position", "department", "role", "is_verified", "organization_id"]:
             # 处理其他字段
             setattr(user, key, value)
 
@@ -226,48 +239,3 @@ async def delete_user(
     db.commit()
     
     return BaseResponse(message="删除用户成功")
-
-
-
-@router.put("/{user_id}/toggle-status", response_model=BaseResponse)
-async def toggle_user_status(
-    user_id: str,
-    status_data: UserStatusToggle,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(require_permission("user:write"))
-):
-    """切换用户状态"""
-    # 处理用户ID格式 - 支持新的U前缀格式和旧格式兼容
-    actual_user_id = user_id
-    if user_id.startswith("USER_"):
-        # 兼容旧的 "USER_xxx" 格式
-        actual_user_id = user_id.replace("USER_", "")
-    elif not user_id.startswith("U"):
-        # 如果是纯数字，保持兼容
-        actual_user_id = user_id
-    
-    # 检查是否尝试修改自己的状态为inactive
-    if actual_user_id == current_user.id and status_data.status == "inactive":
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="不能停用自己"
-        )
-    
-    user = db.query(User).filter(User.id == actual_user_id).first()
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="用户不存在"
-        )
-    
-    # 根据传入的状态设置用户状态
-    new_status = status_data.status == "active"
-    user.is_active = new_status  # type: ignore
-    db.commit()
-    db.refresh(user)
-    
-    status_text = "激活" if new_status else "停用"
-    return BaseResponse(
-        message=f"{status_text}用户成功",
-        data=UserResponse.from_orm(user)
-    )

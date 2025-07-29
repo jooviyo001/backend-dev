@@ -116,15 +116,7 @@ class RegisterRequest(UserCreate):
 class RegisterResponse(BaseModel):
     data: Optional[UserResponse] = None
 
-# 用户状态切换模式
-class UserStatusToggle(BaseModel):
-    status: str = Field(..., description="用户状态: active 或 inactive")
-    
-    @validator('status')
-    def validate_status(cls, v):
-        if v not in ['active', 'inactive']:
-            raise ValueError('状态必须是 active 或 inactive')
-        return v
+
 
 # 组织相关模式
 class OrganizationBase(BaseModel):
