@@ -73,12 +73,14 @@ class UserProfileUpdateRequest(BaseModel):
     is_verified: Optional[bool] = None
     role: Optional[UserRole] = None
 
+# 用户返回体定义
 class UserResponse(UserBase):
     id: str  # 支持雪花ID格式，如 'U208228089547722752'
     is_active: bool
     is_verified: bool
     position: Optional[str] = None  # 职位
     department: Optional[str] = None  # 部门
+    organization_id: Optional[str] = None  # 所属组织ID
     last_login: Optional[datetime] = None
     created_at: datetime
     updated_at: datetime
