@@ -382,6 +382,21 @@ class TaskResponse(TaskBase):
     class Config:
         from_attributes = True
 
+# 任务列表响应模式（简化版，用于列表展示）
+class TaskListResponse(BaseModel):
+    id: str  # 任务ID
+    title: str  # 任务标题
+    project_name: Optional[str] = None  # 所属项目
+    assignee_name: Optional[str] = None  # 负责人
+    priority: TaskPriority  # 优先级
+    status: TaskStatus  # 状态
+    due_date: Optional[datetime] = None  # 截止日期
+    created_at: datetime  # 创建日期
+    updated_at: datetime  # 更新时间
+    
+    class Config:
+        from_attributes = True
+
 # 任务统计模式
 class TaskStatistics(BaseModel):
     total: int

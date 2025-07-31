@@ -15,8 +15,22 @@ from utils.auth import (
 
 router = APIRouter()
 
-# 获取用户列表接口
+# 获取用户列表（简化版，用于列表展示）
 @router.get("/list", response_model=BaseResponse)
+async def get_users(
+    db: Session = Depends(get_db),
+    current_user = Depends(require_permission("user:read"))
+):
+    """获取用户列表（简化版，用于列表展示）"""
+    from utils.response_utils import list_response
+    users = db.query(User).all()
+    return list_response(
+        items=[UserResponse.from_orm(user) for user in users],
+        message="获取用户列表成功"
+    )
+
+# 获取用户列表接口（分页）
+@router.get("/page", response_model=BaseResponse)
 async def get_users(
     search: Optional[str] = Query(None, description="搜索关键词"),
     role: Optional[str] = Query(None, description="角色过滤"),

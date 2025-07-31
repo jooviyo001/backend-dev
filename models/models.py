@@ -192,8 +192,9 @@ class Project(Base):
 
 # 任务模型
 class Task(Base):
+    """任务表模型"""
     __tablename__ = "tasks"
-    
+    # 任务ID，格式：T + 雪花算法ID
     id = Column(String(25), primary_key=True, index=True, default=generate_task_id, comment='任务ID，格式：T + 雪花算法ID')
     title = Column(String(200), nullable=False, comment='任务标题')
     description = Column(Text, comment='任务描述')
@@ -222,6 +223,7 @@ class Task(Base):
 
 # 任务附件模型
 class TaskAttachment(Base):
+    """任务附件表模型"""
     __tablename__ = "task_attachments"
     
     id = Column(String(27), primary_key=True, index=True, default=generate_task_attachment_id, comment='任务附件ID，格式：TA + 雪花算法ID')
@@ -241,6 +243,7 @@ class TaskAttachment(Base):
 
 # 任务评论模型
 class TaskComment(Base):
+    """任务评论表模型"""
     __tablename__ = "task_comments"
     
     id = Column(String(27), primary_key=True, index=True, default=generate_task_comment_id, comment='任务评论ID，格式：TC + 雪花算法ID')
