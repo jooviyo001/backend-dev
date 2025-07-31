@@ -132,6 +132,8 @@ security = HTTPBearer()
 # 全局异常处理
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request, exc):
+    from utils.response_utils import format_timestamp
+    
     # 根据HTTP状态码映射到自定义状态码
     if exc.status_code == 400:
         code = BAD_REQUEST
@@ -164,31 +166,33 @@ async def http_exception_handler(request, exc):
             "code": code,
             "message": exc.detail,
             "data": None,
-            "timestamp": datetime.now().isoformat()
+            "timestamp": format_timestamp()
         }
     )
 
 # 根路径
 @app.get("/")
 async def root():
+    from utils.response_utils import format_timestamp
     return {
         "code": "200",
         "message": "项目管理系统API",
         "data": {
             "version": "1.0.0",
-            "timestamp": datetime.now().isoformat()
+            "timestamp": format_timestamp()
         }
     }
 
 # 健康检查
 @app.get("/health")
 async def health_check():
+    from utils.response_utils import format_timestamp
     return {
         "code": "200",
         "message": "服务运行正常",
         "data": {
             "status": "healthy",
-            "timestamp": datetime.now().isoformat()
+            "timestamp": format_timestamp()
         }
     }
 
@@ -209,4 +213,34 @@ app.include_router(dashboard.router, prefix="/api/v1/dashboard", tags=["仪表�
 app.include_router(tasks.router, prefix="/api/v1/tasks", tags=["任务管理"])
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    # 从环境变量获取配置，如果没有则使用默认值
+    from dotenv import load_dotenv
+    load_dotenv()
+    
+    host = os.getenv("HOST", "0.0.0.0")
+    port = int(os.getenv("PORT", "8000"))
+    debug = os.getenv("DEBUG", "false").lower() == "true"
+    
+    print(f"🚀 启动项目管理系统API服务器...")
+    print(f"📍 地址: http://{host}:{port}")
+    print(f"🔧 调试模式: {debug}")
+    print(f"📚 API文档: http://{host}:{port}/docs")
+    print(f"📖 ReDoc文档: http://{host}:{port}/redoc")
+    
+    if debug:
+        # 开发模式使用import string以支持reload
+        uvicorn.run(
+            "main:app",
+            host=host,
+            port=port,
+            reload=True,
+            log_level="debug"
+        )
+    else:
+        # 生产模式直接传递app对象
+        uvicorn.run(
+            app,
+            host=host,
+            port=port,
+            log_level="info"
+        )

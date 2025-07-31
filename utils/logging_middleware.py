@@ -6,6 +6,7 @@
 import time
 import json
 import logging
+import os
 from typing import Callable
 from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -28,6 +29,8 @@ class RequestResponseLoggingMiddleware(BaseHTTPMiddleware):
         super().__init__(app)
         self.log_level = getattr(logging, log_level.upper(), logging.INFO)
         logger.setLevel(self.log_level)
+        # 检查是否为调试模式
+        self.debug_mode = os.getenv("DEBUG", "false").lower() == "true"
     
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
         # 生成请求ID用于追踪
@@ -51,8 +54,8 @@ class RequestResponseLoggingMiddleware(BaseHTTPMiddleware):
                     # 尝试解析JSON
                     try:
                         request_body = json.loads(body.decode('utf-8'))
-                        # 隐藏敏感信息
-                        if isinstance(request_body, dict):
+                        # 根据调试模式决定是否隐藏敏感信息
+                        if isinstance(request_body, dict) and not self.debug_mode:
                             request_body = self._mask_sensitive_data(request_body)
                     except (json.JSONDecodeError, UnicodeDecodeError):
                         request_body = f"<binary data: {len(body)} bytes>"
@@ -121,8 +124,12 @@ class RequestResponseLoggingMiddleware(BaseHTTPMiddleware):
     
     def _log_request(self, request_id: str, method: str, url: str, headers: dict, client_ip: str, body):
         """记录请求日志"""
-        # 过滤敏感头信息
-        filtered_headers = self._filter_headers(headers)
+        # 根据调试模式决定是否过滤敏感头信息
+        if self.debug_mode:
+            filtered_headers = headers  # 调试模式下显示所有头信息
+            logger.info(f"[{request_id}] 🐛 调试模式: 显示所有敏感信息")
+        else:
+            filtered_headers = self._filter_headers(headers)
         
         logger.info("=" * 80)
         logger.info(f"[{request_id}] 📥 收到请求")
@@ -176,6 +183,9 @@ class RequestResponseLoggingMiddleware(BaseHTTPMiddleware):
     
     def _filter_headers(self, headers: dict) -> dict:
         """过滤敏感的请求头信息"""
+        if self.debug_mode:
+            return headers  # 调试模式下不过滤
+            
         sensitive_headers = {
             'authorization', 'cookie', 'x-api-key', 'x-auth-token',
             'password', 'secret', 'token'
@@ -193,6 +203,9 @@ class RequestResponseLoggingMiddleware(BaseHTTPMiddleware):
     
     def _mask_sensitive_data(self, data: dict) -> dict:
         """隐藏敏感数据"""
+        if self.debug_mode:
+            return data  # 调试模式下不隐藏敏感数据
+            
         sensitive_fields = {
             'password', 'passwd', 'secret', 'token', 'key',
             'authorization', 'auth', 'credential', 'private'

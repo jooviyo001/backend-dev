@@ -5,6 +5,20 @@ from math import ceil
 from datetime import datetime
 from .status_codes import SUCCESS, get_message
 
+def format_timestamp(dt: datetime = None) -> str:
+    """
+    格式化时间戳为标准格式
+    
+    参数:
+        dt: datetime对象，如果为None则使用当前时间
+    
+    返回:
+        格式化后的时间字符串，格式为 "YYYY-MM-DD HH:MM:SS"
+    """
+    if dt is None:
+        dt = datetime.now()
+    return dt.strftime("%Y-%m-%d %H:%M:%S")
+
 # 定义ID前缀映射
 ID_PREFIX_MAP = {
     "users": "USER",
@@ -53,7 +67,7 @@ def standard_response(data: Any = None, code: str = SUCCESS, message: Optional[s
         "code": code,
         "message": message,
         "data": processed_data,
-        "timestamp": datetime.now().isoformat()
+        "timestamp": format_timestamp()
     }
 
 def success_response(data: Any = None, message: str = None, code: str = SUCCESS):
