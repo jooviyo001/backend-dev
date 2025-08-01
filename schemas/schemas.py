@@ -147,6 +147,7 @@ class OrganizationUpdate(BaseModel):
     name: Optional[str] = Field(None, min_length=2, max_length=50, description="组织名称")
     code: Optional[str] = Field(None, min_length=2, max_length=20, pattern=r"^[A-Za-z0-9_-]+$", description="组织编码")
     type: Optional[OrganizationType] = Field(None, description="组织类型")
+    parent_id: Optional[str] = Field(None, description="父组织ID")  # 改为str   
     status: Optional[OrganizationStatus] = Field(None, description="组织状态")
     description: Optional[str] = Field(None, max_length=200, description="组织描述")
     manager_id: Optional[str] = Field(None, description="负责人ID")  # 改为str
@@ -155,6 +156,14 @@ class OrganizationUpdate(BaseModel):
     phone: Optional[str] = Field(None, max_length=20, description="电话")
     email: Optional[EmailStr] = Field(None, description="邮箱")
     website: Optional[str] = Field(None, max_length=255, description="网站")
+
+class OrganizationStatusUpdate(BaseModel):
+    status: OrganizationStatus = Field(..., description="组织状态")
+
+# 组织批量更新模式
+class OrganizationBatchUpdate(BaseModel):
+    ids: List[str] = Field(..., min_length=1, description="组织ID数组")
+    status: OrganizationStatus = Field(..., description="组织状态")
 
 # 组织响应模式
 class OrganizationResponse(BaseModel):

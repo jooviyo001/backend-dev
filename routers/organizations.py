@@ -1,3 +1,4 @@
+from this import d
 from fastapi import APIRouter, Depends, HTTPException, Query, Path
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import and_, or_, func, text
@@ -8,7 +9,11 @@ from schemas.schemas import (
     OrganizationCreate, OrganizationUpdate, OrganizationResponse, 
     OrganizationTreeNode, OrganizationMemberCreate, OrganizationMemberUpdate, 
     OrganizationMemberResponse, OrganizationStatistics, OrganizationMove,
-    OrganizationBatchDelete, PaginationResponse, BaseResponse
+    OrganizationBatchDelete,
+    PaginationResponse,
+    BaseResponse,
+    OrganizationStatusUpdate,
+    OrganizationBatchUpdate
 )
 from utils.auth import get_current_user
 from utils.response_utils import success_response, error_response
@@ -18,9 +23,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(
-    tags=["organizations"]
-)
+router = APIRouter()
 
 # 辅助函数：构建组织路径
 def build_organization_path(db: Session, org_id) -> str:
@@ -81,24 +84,10 @@ async def get_organizations(
 ):
     """获取组织列表"""
     try:
-        # ID格式处理函数
+        # ID格式处理函数 - 保持原始格式
         def extract_id(id_str):
-            """提取ID的数字部分，兼容多种格式"""
-            if not id_str:
-                return None
-            # 如果是纯数字，直接返回
-            if id_str.isdigit():
-                return id_str
-            # 如果以O开头（组织ID）
-            if id_str.startswith('O') and id_str[1:].isdigit():
-                return id_str[1:]
-            # 如果以U开头（用户ID）
-            if id_str.startswith('U') and id_str[1:].isdigit():
-                return id_str[1:]
-            # 如果以USER_开头（旧格式）
-            if id_str.startswith('USER_'):
-                return id_str[5:]
-            return id_str
+            """保持ID的原始格式，不进行转换"""
+            return id_str if id_str else None
         
         query = db.query(Organization)
         
@@ -207,18 +196,10 @@ async def get_organizations_page(
 ):
     """获取组织分页数据"""
     try:
-        # ID格式处理函数
+        # ID格式处理函数 - 保持原始格式
         def extract_id(id_str):
-            """提取ID的数字部分，兼容多种格式"""
-            if not id_str:
-                return None
-            # 如果是纯数字，直接返回
-            if id_str.isdigit():
-                return id_str
-            # 如果以O开头（组织ID）
-            if id_str.startswith('O') and id_str[1:].isdigit():
-                return id_str[1:]
-            return id_str
+            """保持ID的原始格式，不进行转换"""
+            return id_str if id_str else None
         
         query = db.query(Organization)
         
@@ -304,18 +285,10 @@ async def get_organization_tree(
 ):
     """获取组织树形结构"""
     try:
-        # ID格式处理函数
+        # ID格式处理函数 - 保持原始格式
         def extract_id(id_str):
-            """提取ID的数字部分，兼容多种格式"""
-            if not id_str:
-                return None
-            # 如果是纯数字，直接返回
-            if id_str.isdigit():
-                return id_str
-            # 如果以O开头（组织ID）
-            if id_str.startswith('O') and id_str[1:].isdigit():
-                return id_str[1:]
-            return id_str
+            """保持ID的原始格式，不进行转换"""
+            return id_str if id_str else None
         
         def build_tree_node(org: Organization) -> OrganizationTreeNode:
             """构建树节点"""
@@ -360,20 +333,8 @@ async def get_organization(
 ):
     """获取组织详情"""
     try:
-        # ID格式处理函数
-        def extract_id(id_str):
-            """提取ID的数字部分，兼容多种格式"""
-            if not id_str:
-                return None
-            # 如果是纯数字，直接返回
-            if id_str.isdigit():
-                return id_str
-            # 如果以O开头（组织ID）
-            if id_str.startswith('O') and id_str[1:].isdigit():
-                return id_str[1:]
-            return id_str
-        
-        extracted_org_id = extract_id(organization_id)
+        # 直接使用传入的organization_id，不进行格式转换
+        extracted_org_id = organization_id
         organization = db.query(Organization).options(
             joinedload(Organization.parent),
             joinedload(Organization.manager)
@@ -415,7 +376,7 @@ async def get_organization(
         return error_response(code=INTERNAL_ERROR, message="获取组织详情失败")
 
 # 组织创建
-@router.post("/", response_model=BaseResponse)
+@router.post("/create", response_model=BaseResponse)
 async def create_organization(
     organization: OrganizationCreate,
     current_user: User = Depends(get_current_user),
@@ -426,7 +387,7 @@ async def create_organization(
         # 检查组织编码是否已存在
         existing_code = db.query(Organization).filter(Organization.code == organization.code).first()
         if existing_code:
-            return error_response(code=BAD_REQUEST, message="组织编码已存在")
+            return error_response(code=BAD_REQUEST, data={"code": organization.code}, message="组织编码已存在")
         
         # 检查同级组织名称是否已存在
         existing_name = db.query(Organization).filter(
@@ -436,20 +397,21 @@ async def create_organization(
             )
         ).first()
         if existing_name:
-            return error_response(code=BAD_REQUEST, message="同级组织中名称已存在")
+            return error_response(code=BAD_REQUEST, data={"name": organization.name}, message="同级组织中名称已存在")
+
         
         # 验证父组织是否存在
         parent_org = None
         if organization.parent_id:
             parent_org = db.query(Organization).filter(Organization.id == organization.parent_id).first()
             if not parent_org:
-                return error_response(code=BAD_REQUEST, message="父组织不存在")
+                return error_response(code=BAD_REQUEST, data={"parent_id": organization.parent_id}, message="父组织不存在")
         
         # 验证负责人是否存在
         if organization.manager_id:
             manager = db.query(User).filter(User.id == organization.manager_id).first()
             if not manager:
-                return error_response(code=BAD_REQUEST, message="负责人不存在")
+                return error_response(code=BAD_REQUEST, data={"manager_id": organization.manager_id}, message="负责人不存在")
         
         # 计算层级
         level = 1 if not parent_org else parent_org.level + 1
@@ -513,10 +475,10 @@ async def create_organization(
     except Exception as e:
         logger.error(f"创建组织失败: {str(e)}")
         db.rollback()
-        return error_response(code=INTERNAL_ERROR, message="创建组织失败")
+        return error_response(code=INTERNAL_ERROR, data={"detail": str(e)}, message="创建组织失败")
 
 # 组织更新
-@router.put("/{organization_id}", response_model=BaseResponse)
+@router.put("/update/{organization_id}", response_model=BaseResponse)
 async def update_organization(
     organization_id: str,
     organization_data: OrganizationUpdate,
@@ -525,20 +487,8 @@ async def update_organization(
 ):
     """更新组织信息"""
     try:
-        # ID格式处理函数
-        def extract_id(id_str):
-            """提取ID的数字部分，兼容多种格式"""
-            if not id_str:
-                return None
-            # 如果是纯数字，直接返回
-            if id_str.isdigit():
-                return id_str
-            # 如果以O开头（组织ID）
-            if id_str.startswith('O') and id_str[1:].isdigit():
-                return id_str[1:]
-            return id_str
-        
-        extracted_org_id = extract_id(organization_id)
+        # 直接使用传入的organization_id，不进行格式转换
+        extracted_org_id = organization_id
         organization = db.query(Organization).options(
             joinedload(Organization.parent),
             joinedload(Organization.manager)
@@ -652,10 +602,10 @@ async def update_organization(
     except Exception as e:
         logger.error(f"更新组织信息失败: {str(e)}")
         db.rollback()
-        return error_response(code=INTERNAL_ERROR, message="更新组织信息失败")
+        return error_response(code=INTERNAL_ERROR, data={"detail": str(e)}, message="更新组织信息失败")
 
 # 组织删除
-@router.delete("/{organization_id}", response_model=BaseResponse)
+@router.delete("/delete/{organization_id}", response_model=BaseResponse)
 async def delete_organization(
     organization_id: str,
     current_user: User = Depends(get_current_user),
@@ -663,43 +613,32 @@ async def delete_organization(
 ):
     """删除组织"""
     try:
-        # ID格式处理函数
-        def extract_id(id_str):
-            """提取ID的数字部分，兼容多种格式"""
-            if not id_str:
-                return None
-            # 如果是纯数字，直接返回
-            if id_str.isdigit():
-                return id_str
-            # 如果以O开头（组织ID）
-            if id_str.startswith('O') and id_str[1:].isdigit():
-                return id_str[1:]
-            return id_str
-        
-        extracted_org_id = extract_id(organization_id)
+        # 直接使用传入的organization_id，不进行格式转换
+        extracted_org_id = organization_id
         organization = db.query(Organization).filter(Organization.id == extracted_org_id).first()
         if not organization:
-            return error_response(code=NOT_FOUND, message="组织不存在")
+            return error_response(code=NOT_FOUND, data={"organization_id": organization_id}, message="组织不存在")
         
         # 检查是否有子组织
         child_count = get_child_count(db, extracted_org_id)
         if child_count > 0:
-            return error_response(code=BAD_REQUEST, message="组织下还有子组织，无法删除")
+            return error_response(code=BAD_REQUEST, data={"child_count": child_count}, message="组织下还有子组织，无法删除")
         
         # 检查是否有成员
         member_count = get_member_count(db, extracted_org_id)
         if member_count > 0:
-            return error_response(code=BAD_REQUEST, message="组织下还有成员，无法删除")
+            return error_response(code=BAD_REQUEST, data={"member_count": member_count}, message="组织下还有成员，无法删除")
+
         
         # 检查是否有关联的项目
         project_count = db.query(func.count(Project.id)).filter(Project.organization_id == extracted_org_id).scalar() or 0
         if project_count > 0:
-            return error_response(code=BAD_REQUEST, message="组织下还有项目，无法删除")
+            return error_response(code=BAD_REQUEST, data={"project_count": project_count}, message="组织下还有项目，无法删除")
         
         db.delete(organization)
         db.commit()
         
-        return success_response(message="删除组织成功")
+        return success_response(data={"organization_id": organization_id}, message="删除组织成功")
         
     except Exception as e:
         logger.error(f"删除组织失败: {str(e)}")
@@ -764,6 +703,50 @@ async def batch_delete_organizations(
         db.rollback()
         return error_response(code=INTERNAL_ERROR, message="批量删除组织失败")
 
+# 批量启用/禁用组织
+@router.post("/batch-update-status", response_model=BaseResponse)
+async def batch_update_organization_status(
+    request: OrganizationBatchUpdate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """批量启用/禁用组织"""
+    try:
+        updated_count = 0
+        failed_ids = []
+
+        for org_id in request.ids:
+            try:
+                organization = db.query(Organization).filter(Organization.id == org_id).first()
+                if not organization:
+                    failed_ids.append(org_id)
+                    continue
+
+                organization.status = request.status
+                organization.is_active = (request.status == OrganizationStatus.active)
+                db.add(organization)
+                updated_count += 1
+
+            except Exception as e:
+                logger.error(f"更新组织 {org_id} 状态失败: {str(e)}")
+                failed_ids.append(org_id)
+
+        db.commit()
+
+        message = f"成功更新 {updated_count} 个组织的状态"
+        if failed_ids:
+            message += f"，{len(failed_ids)} 个组织状态更新失败"
+
+        return success_response(
+            data={"updated_count": updated_count, "failed_ids": failed_ids},
+            message=message
+        )
+
+    except Exception as e:
+        logger.error(f"批量更新组织状态失败: {str(e)}")
+        db.rollback()
+        return error_response(code=INTERNAL_ERROR, message="批量更新组织状态失败")
+
 # 移动组织
 @router.put("/{organization_id}/move", response_model=BaseResponse)
 async def move_organization(
@@ -774,20 +757,8 @@ async def move_organization(
 ):
     """移动组织"""
     try:
-        # ID格式处理函数
-        def extract_id(id_str):
-            """提取ID的数字部分，兼容多种格式"""
-            if not id_str:
-                return None
-            # 如果是纯数字，直接返回
-            if id_str.isdigit():
-                return id_str
-            # 如果以O开头（组织ID）
-            if id_str.startswith('O') and id_str[1:].isdigit():
-                return id_str[1:]
-            return id_str
-        
-        extracted_org_id = extract_id(organization_id)
+        # 直接使用传入的organization_id，不进行格式转换
+        extracted_org_id = organization_id
         organization = db.query(Organization).filter(Organization.id == extracted_org_id).first()
         if not organization:
             return error_response(code=NOT_FOUND, message="组织不存在")
@@ -1340,22 +1311,8 @@ async def get_organization_projects(
 ):
     """获取组织项目列表"""
     try:
-        # ID格式处理函数
-        def extract_id(id_str):
-            """提取ID的数字部分，兼容多种格式"""
-            if not id_str:
-                return None
-            # 如果是纯数字，直接返回
-            if id_str.isdigit():
-                return int(id_str)
-            # 如果是以O开头的新格式，提取数字部分
-            if id_str.startswith('O') and id_str[1:].isdigit():
-                return int(id_str[1:])
-            return None
-        
-        extracted_org_id = extract_id(organization_id)
-        if not extracted_org_id:
-            return error_response(code=BAD_REQUEST, message="无效的组织ID格式")
+        # 直接使用传入的organization_id，不进行格式转换
+        extracted_org_id = organization_id
         
         organization = db.query(Organization).filter(Organization.id == extracted_org_id).first()
         if not organization:

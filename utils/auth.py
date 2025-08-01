@@ -87,7 +87,7 @@ def get_current_user(credentials: Optional[HTTPAuthorizationCredentials] = Depen
         from models.models import UserRole
         temp_user = User()
         temp_user.id = 1
-        temp_user.username = "debug_admin"
+        temp_user.username = "debug_admin"  # 调试模式下的管理员用户名
         temp_user.email = "debug@admin.com"
         temp_user.role = UserRole.ADMIN
         temp_user.is_active = True

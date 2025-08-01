@@ -6,6 +6,7 @@ from math import ceil
 
 from models.database import get_db
 from models.models import User
+from routers import dashboard
 from schemas.schemas import (
     UserCreate, UserUpdate, UserResponse, BaseResponse, PaginationResponse
 )
@@ -80,7 +81,7 @@ async def get_users(
     total, users = paginate_query(query, page, size)
     
     return list_response(
-        items=[UserResponse.from_orm(user) for user in users],
+        data=[UserResponse.from_orm(user) for user in users],
         total=total,
         page=page,
         size=size,

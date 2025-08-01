@@ -102,7 +102,7 @@ def error_response(code: str, message: Optional[str] = None, data: Any = None, s
         content=standard_response(data=data, code=code, message=message)
     )
 
-def list_response(items: List[Any], total: int = None, page: int = 1, size: int = 10, message: str = None, code: str = SUCCESS):
+def list_response(data: List[Any], total: int = None, page: int = 1, size: int = 10, message: str = None, code: str = SUCCESS):
     """
     生成列表数据的标准响应
     
@@ -118,10 +118,10 @@ def list_response(items: List[Any], total: int = None, page: int = 1, size: int 
         包含分页信息的标准格式响应
     """
     if total is None:
-        total = len(items)
+        total = len(data)
     
     data = {
-        "items": items,
+        "records": data,
         "total": total,
         "page": page,
         "size": size,
@@ -143,6 +143,6 @@ def paginate_query(query, page: int = 1, size: int = 10):
         (总记录数, 分页后的记录列表)
     """
     total = query.count()
-    items = query.offset((page - 1) * size).limit(size).all()
+    data = query.offset((page - 1) * size).limit(size).all()
     
-    return total, items
+    return total, data
