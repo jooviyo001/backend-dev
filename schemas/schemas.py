@@ -350,15 +350,16 @@ class ProjectResponse(BaseModel):
     start_date: Optional[datetime] = None
     end_date: Optional[datetime] = None
     organization_id: Optional[str] = None  # 改为str
+    organization_name: Optional[str] = None
     creator_id: str  # 改为str
+    creator_name: Optional[str] = None
     manager_id: Optional[str] = None  # 改为str
+    manager_name: Optional[str] = None
     is_archived: bool
     created_at: datetime
     updated_at: datetime
     creator: Optional[UserResponse] = None
-    manager: Optional[UserResponse] = None
     members: Optional[List[UserResponse]] = None
-    member_ids: Optional[List[str]] = None  # 兼容旧字段，但不再推荐使用
     tasks: Optional[List[TaskResponse]] = None
     
     class Config:

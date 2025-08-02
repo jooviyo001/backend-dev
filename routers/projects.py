@@ -125,9 +125,34 @@ async def get_project(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="项目不存在"
         )
-    
-    project_response_data = ProjectResponse.from_orm(project)
-    project_response_data.members = [BaseResponse.from_orm(member) for member in project.members]
+    # 项目详情
+    project_response_data = ProjectResponse.model_validate(project, from_attributes=True)
+    # 项目成员
+    project_response_data.members = [
+        {"full_name": member.full_name, "role": member.role, "id": member.id}
+        for member in project.members
+    ]
+    # 项目任务
+    project_response_data.tasks = [
+        {"title": task.title, "status": task.status, "id": task.id}
+        for task in project.tasks
+    ]
+    # 项目组织
+    project_response_data.organization_name = project.organization.name if project.organization else ""
+    # 项目组织ID
+    project_response_data.organization_id = project.organization_id
+    # 项目创建者
+    project_response_data.creator_name = project.creator.full_name if project.creator else ""
+    # 项目负责人
+    project_response_data.manager_name = project.manager.full_name if project.manager else ""
+    # 项目创建时间
+    project_response_data.created_at = project.created_at
+    # 项目更新时间
+    project_response_data.updated_at = project.updated_at
+    # 项目创建者ID
+    project_response_data.creator_id = project.creator_id
+    # 项目负责人ID
+    project_response_data.manager_id = project.manager_id
 
     return BaseResponse(
         message="获取项目详情成功",
