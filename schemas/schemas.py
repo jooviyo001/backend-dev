@@ -15,6 +15,9 @@ class BaseResponse(BaseModel):
     # 使用字符串类型的格式化时间戳
     timestamp: str = Field(default_factory=default_timestamp)
     
+    class Config:
+        from_attributes = True
+
 # 分页响应模式
 class PaginationResponse(BaseModel):
     total: int
@@ -314,6 +317,12 @@ class ProjectCreate(ProjectBase):
     manager_id: Optional[str] = Field(None, description="项目经理ID")  # 改为str
     member_ids: Optional[List[str]] = Field(default_factory=list, description="项目成员ID列表")  # 改为str
 
+    @validator('manager_id', pre=True)
+    def convert_nan_to_none(cls, v):
+        if isinstance(v, str) and v.lower() == 'nan':
+            return None
+        return v
+
 # 项目更新模式
 class ProjectUpdate(BaseModel):
     name: Optional[str] = None
@@ -324,6 +333,12 @@ class ProjectUpdate(BaseModel):
     end_date: Optional[datetime] = None
     manager_id: Optional[str] = None  # 改为str
     organization_id: Optional[str] = None  # 改为str
+
+    @validator('manager_id', pre=True)
+    def convert_nan_to_none(cls, v):
+        if isinstance(v, str) and v.lower() == 'nan':
+            return None
+        return v
 
 # 项目响应模式
 class ProjectResponse(BaseModel):
@@ -342,7 +357,9 @@ class ProjectResponse(BaseModel):
     updated_at: datetime
     creator: Optional[UserResponse] = None
     manager: Optional[UserResponse] = None
-    organization: Optional[OrganizationResponse] = None
+    members: Optional[List[UserResponse]] = None
+    member_ids: Optional[List[str]] = None  # 兼容旧字段，但不再推荐使用
+    tasks: Optional[List[TaskResponse]] = None
     
     class Config:
         from_attributes = True

@@ -28,29 +28,8 @@ async def get_projects(
     current_user: User = Depends(require_permission("project:read"))
 ):
     """获取项目列表"""
-    from utils.response_utils import list_response, paginate_query
-    
-    # ID格式处理函数
-    def extract_id(id_str):
-        """提取ID的数字部分，兼容多种格式"""
-        if not id_str:
-            return None
-        # 如果是纯数字，直接返回
-        if id_str.isdigit():
-            return id_str
-        # 如果以O开头（组织ID）
-        if id_str.startswith('O') and id_str[1:].isdigit():
-            return id_str[1:]
-        # 如果以U开头（用户ID）
-        if id_str.startswith('U') and id_str[1:].isdigit():
-            return id_str[1:]
-        # 如果以P开头（项目ID）
-        if id_str.startswith('P') and id_str[1:].isdigit():
-            return id_str[1:]
-        # 如果以USER_开头（旧格式）
-        if id_str.startswith('USER_'):
-            return id_str[5:]
-        return id_str
+    from utils.response_utils import list_response, paginate_query    
+
     
     query = db.query(Project).filter(Project.is_archived == False)
     
@@ -69,19 +48,17 @@ async def get_projects(
     
     # 组织过滤
     if organization_id:
-        org_id = extract_id(organization_id)
-        query = query.filter(Project.organization_id == org_id)
+        query = query.filter(Project.organization_id == organization_id)
     
     # 创建者过滤
     if creator_id:
-        creator_id_num = extract_id(creator_id)
-        query = query.filter(Project.creator_id == creator_id_num)
+        query = query.filter(Project.creator_id == creator_id)
     
     # 分页
     total, projects = paginate_query(query, page, size)
     
     return list_response(
-        items=[ProjectResponse.from_orm(project) for project in projects],
+        records=[ProjectResponse.from_orm(project) for project in projects],
         total=total,
         page=page,
         size=size,
@@ -141,21 +118,31 @@ async def get_project(
     current_user: User = Depends(require_permission("project:read"))
 ):
     """获取项目详情"""
-    # ID格式处理函数
-    def extract_id(id_str):
-        """提取ID的数字部分，兼容多种格式"""
-        if not id_str:
-            return None
-        # 如果是纯数字，直接返回
-        if id_str.isdigit():
-            return id_str
-        # 如果以P开头（项目ID）
-        if id_str.startswith('P') and id_str[1:].isdigit():
-            return id_str[1:]
-        return id_str
+    print(f"Received project_id: {project_id}") # 添加这行日志
+    project = db.query(Project).filter(Project.id == project_id).first()
+    if not project:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="项目不存在"
+        )
     
-    project_id_num = extract_id(project_id)
-    project = db.query(Project).filter(Project.id == project_id_num).first()
+    project_response_data = ProjectResponse.from_orm(project)
+    project_response_data.members = [BaseResponse.from_orm(member) for member in project.members]
+
+    return BaseResponse(
+        message="获取项目详情成功",
+        data=project_response_data
+    )
+
+@router.get("/{project_id}/members", response_model=BaseResponse)
+async def get_project_members(
+    project_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_permission("project:read"))
+):
+    """获取项目成员列表"""
+    print(f"Received project_id for members: {project_id}") # 添加这行日志
+    project = db.query(Project).filter(Project.id == project_id).first()
     if not project:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -163,8 +150,8 @@ async def get_project(
         )
     
     return BaseResponse(
-        message="获取项目详情成功",
-        data=ProjectResponse.from_orm(project)
+        message="获取项目成员列表成功",
+        data=[{"full_name": member.full_name, "role": member.role, "id": member.id} for member in project.members]
     )
 
 # 创建项目
@@ -247,10 +234,15 @@ async def create_project(
             db_project.members.append(manager)
     
     db.commit()
+    db.refresh(db_project)
+
+    # 填充 ProjectResponse 的 members 字段
+    project_response_data = ProjectResponse.from_orm(db_project)
+    project_response_data.members = [UserResponse.from_orm(member) for member in db_project.members]
     
     return BaseResponse(
         message="创建项目成功",
-        data=ProjectResponse.from_orm(db_project)
+        data=project_response_data
     )
 
 # 更新项目
@@ -296,15 +288,66 @@ async def update_project(
     
     # 更新项目信息
     update_data = project_data.dict(exclude_unset=True)
+    
+    # 处理 manager_id 更新
+    if 'manager_id' in update_data:
+        if update_data['manager_id']:
+            manager = db.query(User).filter(User.id == update_data['manager_id']).first()
+            if not manager:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="指定的项目经理不存在"
+                )
+            project.manager_id = update_data['manager_id']
+        else:
+            project.manager_id = None
+        del update_data['manager_id'] # 避免重复设置
+
+    # 处理 member_ids 更新
+    if 'member_ids' in update_data:
+        # 清空现有成员
+        project.members.clear()
+        members_to_add = []
+        if update_data['member_ids']:
+            for member_id in update_data['member_ids']:
+                member = db.query(User).filter(User.id == member_id).first()
+                if not member:
+                    raise HTTPException(
+                        status_code=status.HTTP_404_NOT_FOUND,
+                        detail=f"用户ID {member_id} 不存在"
+                    )
+                members_to_add.append(member)
+        
+        # 添加指定的项目成员
+        for member in members_to_add:
+            if member not in project.members:
+                project.members.append(member)
+        
+        del update_data['member_ids'] # 避免重复设置
+
+    # 更新其他字段
     for field, value in update_data.items():
         setattr(project, field, value)
+
+    # 确保当前用户和项目经理（如果存在）是成员
+    if current_user not in project.members:
+        project.members.append(current_user)
     
+    if project.manager_id:
+        manager = db.query(User).filter(User.id == project.manager_id).first()
+        if manager and manager not in project.members:
+            project.members.append(manager)
+
     db.commit()
     db.refresh(project)
     
+    # 填充 ProjectResponse 的 members 字段
+    project_response_data = ProjectResponse.from_orm(project)
+    project_response_data.members = [UserResponse.from_orm(member) for member in project.members]
+
     return BaseResponse(
         message="更新项目信息成功",
-        data=ProjectResponse.from_orm(project)
+        data=project_response_data
     )
 
 # 删除项目

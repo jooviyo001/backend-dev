@@ -81,7 +81,7 @@ async def get_users(
     total, users = paginate_query(query, page, size)
     
     return list_response(
-        data=[UserResponse.from_orm(user) for user in users],
+        records=[UserResponse.from_orm(user) for user in users],
         total=total,
         page=page,
         size=size,

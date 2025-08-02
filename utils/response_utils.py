@@ -102,7 +102,7 @@ def error_response(code: str, message: Optional[str] = None, data: Any = None, s
         content=standard_response(data=data, code=code, message=message)
     )
 
-def list_response(data: List[Any], total: int = None, page: int = 1, size: int = 10, message: str = None, code: str = SUCCESS):
+def list_response(records: List[Any], total: int = None, page: int = 1, size: int = 10, message: str = None, code: str = SUCCESS):
     """
     生成列表数据的标准响应
     
@@ -118,10 +118,10 @@ def list_response(data: List[Any], total: int = None, page: int = 1, size: int =
         包含分页信息的标准格式响应
     """
     if total is None:
-        total = len(data)
+        total = len(records)
     
     data = {
-        "records": data,
+        "records": records,
         "total": total,
         "page": page,
         "size": size,
