@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Query
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import or_, and_
 from typing import Optional, List
 from math import ceil
@@ -55,11 +55,25 @@ async def get_projects(
     if creator_id:
         query = query.filter(Project.creator_id == creator_id)
     
+    # 预加载关联数据
+    query = query.options(
+        joinedload(Project.manager),
+        joinedload(Project.organization)
+    )
+    
     # 分页
     total, projects = paginate_query(query, page, size)
     
+    # 构建响应数据，手动设置关联字段
+    project_responses = []
+    for project in projects:
+        project_response = ProjectResponse.from_orm(project)
+        project_response.manager_name = project.manager.name if project.manager else None
+        project_response.organization_name = project.organization.name if project.organization else None
+        project_responses.append(project_response)
+    
     return list_response(
-        records=[ProjectResponse.from_orm(project) for project in projects],
+        records=project_responses,
         total=total,
         page=page,
         size=size,
@@ -104,10 +118,24 @@ async def get_my_projects(
     if status:
         query = query.filter(Project.status == status)
     
+    # 预加载关联数据
+    query = query.options(
+        joinedload(Project.manager),
+        joinedload(Project.organization)
+    )
+    
     projects = query.all()
     
+    # 构建响应数据，手动设置关联字段
+    project_responses = []
+    for project in projects:
+        project_response = ProjectResponse.from_orm(project)
+        project_response.manager_name = project.manager.name if project.manager else None
+        project_response.organization_name = project.organization.name if project.organization else None
+        project_responses.append(project_response)
+    
     return list_response(
-        items=[ProjectResponse.from_orm(project) for project in projects],
+        items=project_responses,
         message="获取我的项目成功"
     )
 
