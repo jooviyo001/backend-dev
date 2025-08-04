@@ -109,7 +109,7 @@ class User(Base):
     username = Column(String(50), unique=True, index=True, nullable=False, comment='用户名，唯一标识')
     email = Column(String(100), unique=True, index=True, nullable=False, comment='邮箱地址，唯一标识')
     password_hash = Column(String(255), nullable=False, comment='密码哈希值')
-    full_name = Column(String(100), comment='用户真实姓名')
+    name = Column(String(100), comment='用户真实姓名')
     avatar = Column(String(255), comment='头像URL地址')
     phone = Column(String(20), comment='手机号码')
     position = Column(String(100), comment='用户岗位/职位')

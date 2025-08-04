@@ -7,7 +7,7 @@ from math import ceil
 from models.database import get_db
 from models.models import Project, User, Organization
 from schemas.schemas import (
-    ProjectCreate, ProjectUpdate, ProjectResponse, BaseResponse, PaginationResponse
+    ProjectCreate, ProjectUpdate, ProjectResponse, BaseResponse, PaginationResponse, UserResponse
 )
 from utils.auth import (
     get_current_active_user, require_permission
@@ -129,28 +129,31 @@ async def get_project(
     project_response_data = ProjectResponse.model_validate(project, from_attributes=True)
     # 项目成员
     project_response_data.members = [
-        {"full_name": member.full_name, "role": member.role, "id": member.id}
+        {"name": member.name, "role": member.role, "id": member.id}
         for member in project.members
     ]
     # 项目任务
     project_response_data.tasks = [
-        {"title": task.title, "status": task.status, "id": task.id}
+        {
+            "title": task.title, 
+            "status": task.status, 
+            "id": task.id,
+            "created_at": task.created_at,
+            "updated_at": task.updated_at,
+            "assignee_name": task.assignee.name if task.assignee else None
+        }
         for task in project.tasks
     ]
     # 项目组织
     project_response_data.organization_name = project.organization.name if project.organization else ""
     # 项目组织ID
     project_response_data.organization_id = project.organization_id
-    # 项目创建者
-    project_response_data.creator_name = project.creator.full_name if project.creator else ""
     # 项目负责人
-    project_response_data.manager_name = project.manager.full_name if project.manager else ""
+    project_response_data.manager_name = project.manager.name if project.manager else ""
     # 项目创建时间
     project_response_data.created_at = project.created_at
     # 项目更新时间
     project_response_data.updated_at = project.updated_at
-    # 项目创建者ID
-    project_response_data.creator_id = project.creator_id
     # 项目负责人ID
     project_response_data.manager_id = project.manager_id
 
@@ -176,7 +179,7 @@ async def get_project_members(
     
     return BaseResponse(
         message="获取项目成员列表成功",
-        data=[{"full_name": member.full_name, "role": member.role, "id": member.id} for member in project.members]
+        data=[{"name": member.name, "role": member.role, "id": member.id} for member in project.members]
     )
 
 # 创建项目
@@ -279,21 +282,7 @@ async def update_project(
     current_user: User = Depends(require_permission("project:write"))
 ):
     """更新项目信息"""
-    # ID格式处理函数
-    def extract_id(id_str):
-        """提取ID的数字部分，兼容多种格式"""
-        if not id_str:
-            return None
-        # 如果是纯数字，直接返回
-        if id_str.isdigit():
-            return id_str
-        # 如果以P开头（项目ID）
-        if id_str.startswith('P') and id_str[1:].isdigit():
-            return id_str[1:]
-        return id_str
-    
-    project_id_num = extract_id(project_id)
-    project = db.query(Project).filter(Project.id == project_id_num).first()
+    project = db.query(Project).filter(Project.id == project_id).first()
     if not project:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -303,7 +292,7 @@ async def update_project(
     # 检查项目名是否已被其他项目使用
     if project_data.name and project_data.name != project.name:
         existing_project = db.query(Project).filter(
-            and_(Project.name == project_data.name, Project.id != project_id_num)
+            and_(Project.name == project_data.name, Project.id != project_id)
         ).first()
         if existing_project:
             raise HTTPException(
@@ -368,6 +357,10 @@ async def update_project(
     
     # 填充 ProjectResponse 的 members 字段
     project_response_data = ProjectResponse.from_orm(project)
+    # 填充 ProjectResponse 的 creator 字段
+    if project.creator:
+        project_response_data.creator = UserResponse.from_orm(project.creator)
+    # 填充 ProjectResponse 的 members 字段
     project_response_data.members = [UserResponse.from_orm(member) for member in project.members]
 
     return BaseResponse(
@@ -383,21 +376,7 @@ async def delete_project(
     current_user: User = Depends(require_permission("project:write"))
 ):
     """删除项目"""
-    # ID格式处理函数
-    def extract_id(id_str):
-        """提取ID的数字部分，兼容多种格式"""
-        if not id_str:
-            return None
-        # 如果是纯数字，直接返回
-        if id_str.isdigit():
-            return id_str
-        # 如果以P开头（项目ID）
-        if id_str.startswith('P') and id_str[1:].isdigit():
-            return id_str[1:]
-        return id_str
-    
-    project_id_num = extract_id(project_id)
-    project = db.query(Project).filter(Project.id == project_id_num).first()
+    project = db.query(Project).filter(Project.id == project_id).first()
     if not project:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -417,21 +396,7 @@ async def archive_project(
     current_user: User = Depends(require_permission("project:write"))
 ):
     """归档项目"""
-    # ID格式处理函数
-    def extract_id(id_str):
-        """提取ID的数字部分，兼容多种格式"""
-        if not id_str:
-            return None
-        # 如果是纯数字，直接返回
-        if id_str.isdigit():
-            return id_str
-        # 如果以P开头（项目ID）
-        if id_str.startswith('P') and id_str[1:].isdigit():
-            return id_str[1:]
-        return id_str
-    
-    project_id_num = extract_id(project_id)
-    project = db.query(Project).filter(Project.id == project_id_num).first()
+    project = db.query(Project).filter(Project.id == project_id).first()
     if not project:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -451,21 +416,7 @@ async def restore_project(
     current_user: User = Depends(require_permission("project:write"))
 ):
     """恢复已归档的项目"""
-    # ID格式处理函数
-    def extract_id(id_str):
-        """提取ID的数字部分，兼容多种格式"""
-        if not id_str:
-            return None
-        # 如果是纯数字，直接返回
-        if id_str.isdigit():
-            return id_str
-        # 如果以P开头（项目ID）
-        if id_str.startswith('P') and id_str[1:].isdigit():
-            return id_str[1:]
-        return id_str
-    
-    project_id_num = extract_id(project_id)
-    project = db.query(Project).filter(Project.id == project_id_num).first()
+    project = db.query(Project).filter(Project.id == project_id).first()
     if not project:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -486,36 +437,14 @@ async def add_project_member(
     current_user: User = Depends(require_permission("project:write"))
 ):
     """添加项目成员"""
-    # ID格式处理函数
-    def extract_id(id_str):
-        """提取ID的数字部分，兼容多种格式"""
-        if not id_str:
-            return None
-        # 如果是纯数字，直接返回
-        if id_str.isdigit():
-            return id_str
-        # 如果以P开头（项目ID）
-        if id_str.startswith('P') and id_str[1:].isdigit():
-            return id_str[1:]
-        # 如果以U开头（用户ID）
-        if id_str.startswith('U') and id_str[1:].isdigit():
-            return id_str[1:]
-        # 如果以USER_开头（旧格式）
-        if id_str.startswith('USER_'):
-            return id_str[5:]
-        return id_str
-    
-    project_id_num = extract_id(project_id)
-    user_id_num = extract_id(user_id)
-    
-    project = db.query(Project).filter(Project.id == project_id_num).first()
+    project = db.query(Project).filter(Project.id == project_id).first()
     if not project:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="项目不存在"
         )
     
-    user = db.query(User).filter(User.id == user_id_num).first()
+    user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -534,69 +463,7 @@ async def add_project_member(
     
     return BaseResponse(message="添加项目成员成功")
 
-# 项目移除成员
-@router.delete("/{project_id}/members/{user_id}", response_model=BaseResponse)
-async def remove_project_member(
-    project_id: str,
-    user_id: str,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(require_permission("project:write"))
-):
-    """移除项目成员"""
-    # ID格式处理函数
-    def extract_id(id_str):
-        """提取ID的数字部分，兼容多种格式"""
-        if not id_str:
-            return None
-        # 如果是纯数字，直接返回
-        if id_str.isdigit():
-            return id_str
-        # 如果以P开头（项目ID）
-        if id_str.startswith('P') and id_str[1:].isdigit():
-            return id_str[1:]
-        # 如果以U开头（用户ID）
-        if id_str.startswith('U') and id_str[1:].isdigit():
-            return id_str[1:]
-        # 如果以USER_开头（旧格式）
-        if id_str.startswith('USER_'):
-            return id_str[5:]
-        return id_str
-    
-    project_id_num = extract_id(project_id)
-    user_id_num = extract_id(user_id)
-    
-    project = db.query(Project).filter(Project.id == project_id_num).first()
-    if not project:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="项目不存在"
-        )
-    
-    user = db.query(User).filter(User.id == user_id_num).first()
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="用户不存在"
-        )
-    
-    # 检查用户是否是项目成员
-    if user not in project.members:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="用户不是项目成员"
-        )
-    
-    # 不能移除项目创建者
-    if user_id_num == project.creator_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="不能移除项目创建者"
-        )
-    
-    project.members.remove(user)
-    db.commit()
-    
-    return BaseResponse(message="移除项目成员成功")
+
 
 # 项目成员列表
 @router.get("/{project_id}/members", response_model=BaseResponse)
@@ -606,28 +473,13 @@ async def get_project_members(
     current_user: User = Depends(require_permission("project:read"))
 ):
     """获取项目成员列表"""
-    # ID格式处理函数
-    def extract_id(id_str):
-        """提取ID的数字部分，兼容多种格式"""
-        if not id_str:
-            return None
-        # 如果是纯数字，直接返回
-        if id_str.isdigit():
-            return id_str
-        # 如果以P开头（项目ID）
-        if id_str.startswith('P') and id_str[1:].isdigit():
-            return id_str[1:]
-        return id_str
-    
-    project_id_num = extract_id(project_id)
-    project = db.query(Project).filter(Project.id == project_id_num).first()
+    project = db.query(Project).filter(Project.id == project_id).first()
     if not project:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="项目不存在"
         )
     
-    from schemas.schemas import UserResponse
     return BaseResponse(
         message="获取项目成员成功",
         data=[UserResponse.from_orm(member) for member in project.members]

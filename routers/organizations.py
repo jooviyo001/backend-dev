@@ -144,7 +144,7 @@ async def get_organizations(
             if org.manager_id:
                 try:
                     manager = db.query(User).filter(User.id == org.manager_id).first()
-                    manager_name = manager.full_name if manager else None
+                    manager_name = manager.name if manager else None
                 except Exception:
                     manager_name = None
             
@@ -246,7 +246,7 @@ async def get_organizations_page(
                 level=org.level,
                 path=org.path,
                 manager_id=org.manager_id,
-                manager_name=db.query(User).filter(User.id == org.manager_id).first().full_name if org.manager_id else None,
+                manager_name=db.query(User).filter(User.id == org.manager_id).first().name if org.manager_id else None,
                 member_count=get_member_count(db, org.id),
                 child_count=get_child_count(db, org.id),
                 sort=org.sort,
@@ -355,7 +355,7 @@ async def get_organization(
             level=organization.level,
             path=organization.path,
             manager_id=organization.manager_id,
-            manager_name=organization.manager.full_name if organization.manager else None,
+            manager_name=organization.manager.name if organization.manager else None,
             member_count=get_member_count(db, organization.id),
             child_count=get_child_count(db, organization.id),
             sort=organization.sort,
@@ -583,7 +583,7 @@ async def update_organization(
             level=organization.level,
             path=organization.path,
             manager_id=organization.manager_id,
-            manager_name=organization.manager.full_name if organization.manager else None,
+            manager_name=organization.manager.name if organization.manager else None,
             member_count=get_member_count(db, organization.id),
             child_count=get_child_count(db, organization.id),
             sort=organization.sort,
@@ -813,7 +813,7 @@ async def move_organization(
             level=organization.level,
             path=organization.path,
             manager_id=organization.manager_id,
-            manager_name=organization.manager.full_name if organization.manager else None,
+            manager_name=organization.manager.name if organization.manager else None,
             member_count=get_member_count(db, organization.id),
             child_count=get_child_count(db, organization.id),
             sort=organization.sort,
@@ -948,7 +948,7 @@ async def add_organization_member(
         member_response = OrganizationMemberResponse(
             user_id=member_data.user_id,
             username=user.username,
-            full_name=user.full_name,
+            name=user.name,
             email=user.email,
             role=member_data.role,
             joined_at=func.now()
@@ -1006,7 +1006,7 @@ async def update_organization_member(
         member_response = OrganizationMemberResponse(
             user_id=user_id,
             username=user.username,
-            full_name=user.full_name,
+            name=user.name,
             email=user.email,
             role=member_data.role,
             joined_at=member.joined_at
@@ -1099,7 +1099,7 @@ async def get_organization_members(
             query = query.filter(
                 or_(
                     User.username.contains(keyword),
-                    User.full_name.contains(keyword),
+                    User.name.contains(keyword),
                     User.email.contains(keyword)
                 )
             )
@@ -1118,7 +1118,7 @@ async def get_organization_members(
             member_data = OrganizationMemberResponse(
                 user_id=user.id,
                 username=user.username,
-                full_name=user.full_name,
+                name=user.name,
                 email=user.email,
                 role=role,
                 joined_at=joined_at
@@ -1181,7 +1181,7 @@ async def get_user_organizations(
                 level=org.level,
                 path=org.path,
                 manager_id=org.manager_id,
-                manager_name=org.manager.full_name if org.manager else None,
+                manager_name=org.manager.name if org.manager else None,
                 member_count=get_member_count(db, org.id),
                 child_count=get_child_count(db, org.id),
                 sort=org.sort,
@@ -1277,7 +1277,7 @@ async def get_organization_children(
                 level=child.level,
                 path=child.path,
                 manager_id=child.manager_id,
-                manager_name=child.manager.full_name if child.manager else None,
+                manager_name=child.manager.name if child.manager else None,
                 member_count=get_member_count(db, child.id),
                 child_count=get_child_count(db, child.id),
                 sort=child.sort,

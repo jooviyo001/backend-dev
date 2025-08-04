@@ -12,14 +12,9 @@ from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import StreamingResponse
 import uuid
+from logging.handlers import RotatingFileHandler
 
 # 配置日志格式
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    datefmt='%Y-%m-%d %H:%M:%S'
-)
-
 logger = logging.getLogger("API_Logger")
 
 class RequestResponseLoggingMiddleware(BaseHTTPMiddleware):
@@ -28,9 +23,41 @@ class RequestResponseLoggingMiddleware(BaseHTTPMiddleware):
     def __init__(self, app, log_level: str = "INFO"):
         super().__init__(app)
         self.log_level = getattr(logging, log_level.upper(), logging.INFO)
-        logger.setLevel(self.log_level)
-        # 检查是否为调试模式
         self.debug_mode = os.getenv("DEBUG", "false").lower() == "true"
+
+        # 清除所有已存在的处理器，避免重复日志
+        if logger.handlers:
+            for handler in logger.handlers:
+                logger.removeHandler(handler)
+        
+        logger.setLevel(self.log_level)
+
+        if self.debug_mode:
+            # 调试模式：只输出到控制台，精简格式
+            console_handler = logging.StreamHandler()
+            formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+            console_handler.setFormatter(formatter)
+            logger.addHandler(console_handler)
+        else:
+            # 非调试模式：输出到文件，并控制台输出服务状态
+            # 文件处理器
+            log_file_path = os.path.join(os.getcwd(), "logs", "api.log")
+            os.makedirs(os.path.dirname(log_file_path), exist_ok=True)
+            file_handler = RotatingFileHandler(
+                log_file_path,
+                maxBytes=10 * 1024 * 1024,  # 10 MB
+                backupCount=5              # 最多保留5个备份文件
+            )
+            file_formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+            file_handler.setFormatter(file_formatter)
+            logger.addHandler(file_handler)
+
+            # 控制台处理器（用于服务状态等少量信息）
+            console_handler = logging.StreamHandler()
+            console_formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+            console_handler.setFormatter(console_formatter)
+            logger.addHandler(console_handler)
+
     
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
         # 生成请求ID用于追踪
@@ -67,8 +94,12 @@ class RequestResponseLoggingMiddleware(BaseHTTPMiddleware):
             except Exception as e:
                 logger.warning(f"读取请求体失败: {e}")
         
-        # 记录请求日志
-        self._log_request(request_id, method, url, headers, client_ip, request_body)
+        if self.debug_mode:
+            # 调试模式下精简日志
+            self._log_debug_request(request_id, method, url, request_body)
+        else:
+            # 非调试模式下详细日志写入文件
+            self._log_request_to_file(request_id, method, url, headers, client_ip, request_body)
         
         # 处理请求
         try:
@@ -111,8 +142,12 @@ class RequestResponseLoggingMiddleware(BaseHTTPMiddleware):
                     logger.warning(f"读取响应体失败: {e}")
                     response_body = f"<error reading response: {e}>"
             
-            # 记录响应日志
-            self._log_response(request_id, status_code, response_headers, response_body, process_time)
+            if self.debug_mode:
+                # 调试模式下精简日志
+                self._log_debug_response(request_id, status_code, response_body, process_time)
+            else:
+                # 非调试模式下详细日志写入文件
+                self._log_response_to_file(request_id, status_code, response_headers, response_body, process_time)
             
             return response
             
@@ -122,70 +157,47 @@ class RequestResponseLoggingMiddleware(BaseHTTPMiddleware):
             logger.error(f"[{request_id}] 请求处理异常: {str(e)}, 耗时: {process_time:.3f}s")
             raise
     
-    def _log_request(self, request_id: str, method: str, url: str, headers: dict, client_ip: str, body):
-        """记录请求日志"""
-        # 根据调试模式决定是否过滤敏感头信息
-        if self.debug_mode:
-            filtered_headers = headers  # 调试模式下显示所有头信息
-            logger.info(f"[{request_id}] 🐛 调试模式: 显示所有敏感信息")
-        else:
-            filtered_headers = self._filter_headers(headers)
-        
-        logger.info("=" * 80)
+    def _log_debug_request(self, request_id: str, method: str, url: str, body):
+        """调试模式下记录精简请求日志"""
+        logger.info(f"[{request_id}] 接口: {method} {url}")
+        if body is not None:
+            logger.info(f"[{request_id}] 请求体: {json.dumps(body, ensure_ascii=False)}")
+
+    def _log_debug_response(self, request_id: str, status_code: int, body, process_time: float):
+        """调试模式下记录精简响应日志"""
+        logger.info(f"[{request_id}] 状态码: {status_code}")
+        logger.info(f"[{request_id}] 处理时间: {process_time:.3f}s")
+        if body is not None:
+            logger.info(f"[{request_id}] 响应体: {json.dumps(body, ensure_ascii=False)}")
+        logger.info("-" * 40) # 分隔符
+
+    def _log_request_to_file(self, request_id: str, method: str, url: str, headers: dict, client_ip: str, body):
+        """非调试模式下记录详细请求日志到文件"""
+        filtered_headers = self._filter_headers(headers)
         logger.info(f"[{request_id}] 📥 收到请求")
         logger.info(f"[{request_id}] 方法: {method}")
         logger.info(f"[{request_id}] URL: {url}")
         logger.info(f"[{request_id}] 客户端IP: {client_ip}")
-        
         if filtered_headers:
-            logger.info(f"[{request_id}] 请求头:")
-            for key, value in filtered_headers.items():
-                logger.info(f"[{request_id}]   {key}: {value}")
-        
+            logger.info(f"[{request_id}] 请求头: {json.dumps(filtered_headers, ensure_ascii=False)}")
         if body is not None:
-            logger.info(f"[{request_id}] 请求体:")
-            if isinstance(body, dict):
-                logger.info(f"[{request_id}]   {json.dumps(body, ensure_ascii=False, indent=2)}")
-            else:
-                logger.info(f"[{request_id}]   {body}")
-    
-    def _log_response(self, request_id: str, status_code: int, headers: dict, body, process_time: float):
-        """记录响应日志"""
-        # 根据状态码选择日志级别
-        if status_code >= 500:
-            log_func = logger.error
-            emoji = "❌"
-        elif status_code >= 400:
-            log_func = logger.warning
-            emoji = "⚠️"
-        else:
-            log_func = logger.info
-            emoji = "✅"
-        
-        log_func(f"[{request_id}] {emoji} 响应完成")
-        log_func(f"[{request_id}] 状态码: {status_code}")
-        log_func(f"[{request_id}] 处理时间: {process_time:.3f}s")
-        
-        # 记录重要的响应头
+            logger.info(f"[{request_id}] 请求体: {json.dumps(body, ensure_ascii=False)}")
+
+    def _log_response_to_file(self, request_id: str, status_code: int, headers: dict, body, process_time: float):
+        """非调试模式下记录详细响应日志到文件"""
+        logger.info(f"[{request_id}] 📤 响应完成")
+        logger.info(f"[{request_id}] 状态码: {status_code}")
+        logger.info(f"[{request_id}] 处理时间: {process_time:.3f}s")
         important_headers = ['content-type', 'content-length', 'location']
-        for header in important_headers:
-            if header in headers:
-                log_func(f"[{request_id}] {header}: {headers[header]}")
-        
+        logged_headers = {h: headers[h] for h in important_headers if h in headers}
+        if logged_headers:
+            logger.info(f"[{request_id}] 响应头: {json.dumps(logged_headers, ensure_ascii=False)}")
         if body is not None:
-            log_func(f"[{request_id}] 响应体:")
-            if isinstance(body, dict):
-                log_func(f"[{request_id}]   {json.dumps(body, ensure_ascii=False, indent=2)}")
-            else:
-                log_func(f"[{request_id}]   {body}")
-        
+            logger.info(f"[{request_id}] 响应体: {json.dumps(body, ensure_ascii=False)}")
         logger.info("=" * 80)
     
     def _filter_headers(self, headers: dict) -> dict:
         """过滤敏感的请求头信息"""
-        if self.debug_mode:
-            return headers  # 调试模式下不过滤
-            
         sensitive_headers = {
             'authorization', 'cookie', 'x-api-key', 'x-auth-token',
             'password', 'secret', 'token'
@@ -198,6 +210,7 @@ class RequestResponseLoggingMiddleware(BaseHTTPMiddleware):
                 filtered[key] = "***MASKED***"
             else:
                 filtered[key] = value
+        return filtered
         
         return filtered
     

@@ -57,7 +57,7 @@ async def get_users(
         query = query.filter(
             or_(
                 User.username.contains(search_term),
-                User.full_name.contains(search_term),
+                User.name.contains(search_term),
                 User.email.contains(search_term)
             )
         )
@@ -146,7 +146,7 @@ async def create_user(
         username=user_data.username,  # type: ignore
         email=user_data.email,  # type: ignore
         password_hash=hashed_password,  # type: ignore
-        full_name=user_data.full_name,  # type: ignore
+        name=user_data.name,  # type: ignore
         phone=user_data.phone,  # type: ignore
         role=user_data.role  # type: ignore
     )
@@ -207,7 +207,7 @@ async def update_user(
                     detail="不能停用自己"
                 )
             user.is_active = value  # type: ignore
-        elif key in ["avatar", "username", "email", "full_name", "phone", "position", "department", "role", "is_verified", "organization_id"]:
+        elif key in ["avatar", "username", "email", "name", "phone", "position", "department", "role", "is_verified", "organization_id"]: 
             # 处理其他字段
             setattr(user, key, value)
 

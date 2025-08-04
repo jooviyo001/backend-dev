@@ -238,7 +238,7 @@ async def get_recent_tasks(
             priority=task.priority.value,
             dueDate=task.due_date.isoformat() if task.due_date else None,
             projectName=task.project.name if task.project else "未分配项目",
-            assigneeName=task.assignee.full_name if task.assignee else "未分配"
+            assigneeName=task.assignee.name if task.assignee else "未分配"
         )
         recent_tasks.append(recent_task)
     
@@ -397,7 +397,7 @@ async def get_recent_activities(
             action=action,
             description=f"{'创建' if action == 'created' else '更新'}了任务: {task.title}",
             userId=str(task.assignee_id) if task.assignee_id else str(current_user.id),
-            userName=task.assignee.full_name if task.assignee else current_user.full_name,
+            userName=task.assignee.name if task.assignee else current_user.name,
             targetId=str(task.id),
             targetName=task.title,
             createdAt=task.updated_at.isoformat()
@@ -475,7 +475,7 @@ async def get_user_workload(
         
         user_workload = UserWorkload(
             userId=str(user.id),
-            userName=user.full_name,
+            userName=user.name,
             totalTasks=total_tasks,
             completedTasks=completed_tasks,
             inProgressTasks=in_progress_tasks,

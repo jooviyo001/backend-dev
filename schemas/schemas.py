@@ -30,7 +30,7 @@ class PaginationResponse(BaseModel):
 class UserBase(BaseModel):
     username: str
     email: EmailStr
-    full_name: Optional[str] = None
+    name: Optional[str] = None
     phone: Optional[str] = None
     position: Optional[str] = None
     department: Optional[str] = None
@@ -42,7 +42,7 @@ class UserCreate(UserBase):
 class UserUpdate(BaseModel):
     username: Optional[str] = None
     email: Optional[EmailStr] = None
-    full_name: Optional[str] = None
+    name: Optional[str] = None
     phone: Optional[str] = None
     position: Optional[str] = None
     department: Optional[str] = None
@@ -70,7 +70,7 @@ class UserUpdate(BaseModel):
 
 class UserProfileUpdateRequest(BaseModel):
     username: Optional[str] = None
-    full_name: Optional[str] = None
+    name: Optional[str] = None
     email: Optional[EmailStr] = None
     phone: Optional[str] = None
     position: Optional[str] = None
@@ -351,8 +351,6 @@ class ProjectResponse(BaseModel):
     end_date: Optional[datetime] = None
     organization_id: Optional[str] = None  # 改为str
     organization_name: Optional[str] = None
-    creator_id: str  # 改为str
-    creator_name: Optional[str] = None
     manager_id: Optional[str] = None  # 改为str
     manager_name: Optional[str] = None
     is_archived: bool
@@ -384,30 +382,32 @@ class TaskCreate(TaskBase):
 
 # 任务更新模式
 class TaskUpdate(BaseModel):
-    title: Optional[str] = None
-    description: Optional[str] = None
-    status: Optional[TaskStatus] = None
-    priority: Optional[TaskPriority] = None
-    type: Optional[TaskType] = None
-    project_id: Optional[str] = None  # 改为str
-    assignee_id: Optional[str] = None  # 改为str
-    due_date: Optional[datetime] = None
-    estimated_hours: Optional[int] = None
-    actual_hours: Optional[int] = None
-    tags: Optional[List[str]] = None
+    title: Optional[str] = None  # 任务标题
+    description: Optional[str] = None  # 任务描述
+    status: Optional[TaskStatus] = None  # 任务状态
+    priority: Optional[TaskPriority] = None  # 任务优先级
+    type: Optional[TaskType] = None  # 任务类型
+    project_id: Optional[str] = None  # 项目ID
+    assignee_id: Optional[str] = None  # 负责人ID
+    reporter_id: Optional[str] = None  # 报告人ID
+    due_date: Optional[datetime] = None  # 截止日期
+    estimated_hours: Optional[int] = None  # 预估工时
+    actual_hours: Optional[int] = None  # 实际工时
+    tags: Optional[List[str]] = None  # 标签
 
 class TaskResponse(TaskBase):
     id: str  # 改为str
-    reporter_id: Optional[str] = None  # 改为str
-    actual_hours: Optional[int] = None
-    created_at: datetime
-    updated_at: datetime
-    project: Optional[ProjectResponse] = None
-    assignee: Optional[UserResponse] = None
-    reporter: Optional[UserResponse] = None
+    reporter_id: Optional[str] = None  # 报告人ID
+    reporter_name: Optional[str] = None  # 报告人姓名
+    actual_hours: Optional[int] = None  # 实际工时
+    created_at: datetime = Field(default_factory=datetime.now)  # 创建时间
+    updated_at: datetime = Field(default_factory=datetime.now)  # 更新时间
+    project: Optional[ProjectResponse] = None  # 项目信息
+    assignee: Optional[UserResponse] = None  # 负责人信息
+    reporter: Optional[UserResponse] = None  # 报告人信息
     
     class Config:
-        from_attributes = True
+        from_attributes = True  # 允许从 ORM 模型创建
 
 # 任务列表响应模式（简化版，用于列表展示）
 class TaskListResponse(BaseModel):

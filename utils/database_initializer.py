@@ -112,7 +112,7 @@ class DatabaseInitializer:
                 "username": "admin",
                 "email": "admin@example.com",
                 "password": "admin123",
-                "full_name": "系统管理员",
+                "name": "系统管理员",
                 "role": UserRole.ADMIN,
                 "phone": "13800138000"
             },
@@ -120,7 +120,7 @@ class DatabaseInitializer:
                 "username": "manager",
                 "email": "manager@example.com",
                 "password": "manager123",
-                "full_name": "项目经理",
+                "name": "项目经理",
                 "role": UserRole.MANAGER,
                 "phone": "13800138001"
             },
@@ -128,7 +128,7 @@ class DatabaseInitializer:
                 "username": "member",
                 "email": "member@example.com",
                 "password": "member123",
-                "full_name": "普通成员",
+                "name": "普通成员",
                 "role": UserRole.MEMBER,
                 "phone": "13800138002"
             },
@@ -136,7 +136,7 @@ class DatabaseInitializer:
                 "username": "alice",
                 "email": "alice@example.com",
                 "password": "alice123",
-                "full_name": "Alice Wang",
+                "name": "Alice Wang",
                 "role": UserRole.MEMBER,
                 "phone": "13800138003"
             },
@@ -144,7 +144,7 @@ class DatabaseInitializer:
                 "username": "user",
                 "email": "user@example.com",
                 "password": "user123",
-                "full_name": "普通用户",
+                "name": "普通用户",
                 "role": UserRole.MEMBER,
                 "phone": "13800138004"
             }
@@ -157,7 +157,7 @@ class DatabaseInitializer:
                 username=user_data["username"],
                 email=user_data["email"],
                 password_hash=get_password_hash(user_data["password"]),
-                full_name=user_data["full_name"],
+                name=user_data["name"],
                 role=user_data["role"],
                 phone=user_data.get("phone"),
                 is_active=True,

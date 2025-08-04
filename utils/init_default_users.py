@@ -20,7 +20,7 @@ DEFAULT_USERS = [
         "username": "admin",
         "email": "admin@example.com",
         "password": "admin123",
-        "full_name": "系统管理员",
+        "name": "系统管理员",
         "role": UserRole.ADMIN,
         "is_verified": True,
         "is_active": True
@@ -29,7 +29,7 @@ DEFAULT_USERS = [
         "username": "manager",
         "email": "manager@example.com", 
         "password": "manager123",
-        "full_name": "项目经理",
+        "name": "项目经理",
         "role": UserRole.MANAGER,
         "is_verified": True,
         "is_active": True
@@ -38,7 +38,7 @@ DEFAULT_USERS = [
         "username": "developer",
         "email": "developer@example.com",
         "password": "developer123", 
-        "full_name": "开发人员",
+        "name": "开发人员",
         "role": UserRole.MEMBER,
         "is_verified": True,
         "is_active": True
@@ -85,7 +85,7 @@ def create_default_user(db: Session, user_config: dict) -> User:
         username=user_config["username"],
         email=user_config["email"],
         password_hash=get_password_hash(user_config["password"]),
-        full_name=user_config["full_name"],
+        name=user_config["name"],
         role=user_config["role"],
         is_verified=user_config["is_verified"],
         is_active=user_config["is_active"]
@@ -131,7 +131,7 @@ def init_default_users():
             logger.info(f"用户名: {user_config['username']}")
             logger.info(f"邮箱: {user_config['email']}")
             logger.info(f"密码: {user_config['password']}")
-            logger.info(f"姓名: {user_config['full_name']}")
+            logger.info(f"姓名: {user_config['name']}")
             logger.info("---")
         
         return True

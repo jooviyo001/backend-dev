@@ -49,7 +49,7 @@ def upgrade() -> None:
     sa.Column('username', sa.String(length=50), nullable=False, comment='用户名，唯一标识'),
     sa.Column('email', sa.String(length=100), nullable=False, comment='邮箱地址，唯一标识'),
     sa.Column('password_hash', sa.String(length=255), nullable=False, comment='密码哈希值'),
-    sa.Column('full_name', sa.String(length=100), nullable=True, comment='用户真实姓名'),
+    sa.Column('name', sa.String(length=100), nullable=True, comment='用户真实姓名'),
     sa.Column('avatar', sa.String(length=255), nullable=True, comment='头像URL地址'),
     sa.Column('phone', sa.String(length=20), nullable=True, comment='手机号码'),
     sa.Column('position', sa.String(length=100), nullable=True, comment='用户岗位/职位'),

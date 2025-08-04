@@ -67,7 +67,7 @@ async def register(register_data: RegisterRequest, db: Session = Depends(get_db)
         username=register_data.username,
         email=register_data.email,
         password_hash=hashed_password,
-        full_name=register_data.full_name,
+        name=register_data.name,
         phone=register_data.phone,
         role=register_data.role
     )
