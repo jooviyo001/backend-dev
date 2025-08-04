@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr, validator, Field
+from pydantic import BaseModel, EmailStr, Field, field_validator
 from typing import Optional, List, Any
 from datetime import datetime
 from models.models import TaskStatus, TaskPriority, TaskType, ProjectStatus, ProjectPriority, UserRole, OrganizationType, OrganizationStatus, MemberRole
@@ -48,20 +48,20 @@ class UserUpdate(BaseModel):
     department: Optional[str] = None
     organization_id: Optional[str] = None
     role: Optional[UserRole] = None
-    is_active: Optional[bool] = None
+    is_active: Optional[bool] = None  # 用户是否活跃
     is_verified: Optional[bool] = Field(None, description="用户是否已验证")
     avatar: Optional[str] = None
     password: Optional[str] = Field(None, description="新密码")
     status: Optional[str] = Field(None, description="用户状态")
     
-    @validator('department', pre=True)
+    @field_validator('department', mode='before')
     def convert_department(cls, v):
         """处理department字段，如果是数组则取第一个元素"""
         if isinstance(v, list) and len(v) > 0:
             return v[0]
         return v
     
-    @validator('status')
+    @field_validator('status')
     def validate_status(cls, v):
         """验证status字段"""
         if v is not None and v not in ['active', 'inactive']:
@@ -74,7 +74,8 @@ class UserProfileUpdateRequest(BaseModel):
     email: Optional[EmailStr] = None
     phone: Optional[str] = None
     position: Optional[str] = None
-    department: Optional[str] = None
+    organization_id: Optional[str] = None  # 组织ID
+    department: Optional[str] = None  # 部门
     avatar: Optional[str] = None
     is_active: Optional[bool] = None
     is_verified: Optional[bool] = None
@@ -114,10 +115,11 @@ class LoginResponse(BaseModel):
 # 注册模式
 class RegisterRequest(UserCreate):
     confirm_password: str
-    
-    @validator('confirm_password')
-    def passwords_match(cls, v, values):
-        if 'password' in values and v != values['password']:
+            
+    @field_validator('confirm_password')
+    @classmethod
+    def passwords_match(cls, v, info):
+        if 'password' in info.data and v != info.data['password']:
             raise ValueError('密码不匹配')
         return v
 
@@ -319,7 +321,8 @@ class ProjectCreate(ProjectBase):
     manager_id: Optional[str] = Field(None, description="项目经理ID")  # 改为str
     member_ids: Optional[List[str]] = Field(default_factory=list, description="项目成员ID列表")  # 改为str
 
-    @validator('manager_id', pre=True)
+    @field_validator('manager_id', mode='before')
+    @classmethod
     def convert_nan_to_none(cls, v):
         if isinstance(v, str) and v.lower() == 'nan':
             return None
@@ -330,15 +333,17 @@ class ProjectUpdate(BaseModel):
     name: Optional[str] = None
     description: Optional[str] = None
     status: Optional[ProjectStatus] = None
-    priority: Optional[ProjectPriority] = None
-    start_date: Optional[datetime] = None
-    end_date: Optional[datetime] = None
-    manager_id: Optional[str] = None  # 改为str
-    organization_id: Optional[str] = None  # 改为str
+    priority: Optional[ProjectPriority] = None # 项目优先级
+    start_date: Optional[datetime] = None # 项目开始日期
+    end_date: Optional[datetime] = None  # 项目结束日期
+    manager_id: Optional[str] = None  # 项目负责人ID
+    organization_id: Optional[str] = None  # 组织ID
+    is_archived: Optional[bool] = False  # 是否已归档，布尔类型，默认false  
     budget: Optional[float] = Field(None, ge=0, description="项目预算，数值类型，≥0")
     tags: Optional[List[str]] = Field(None, description="项目标签，字符串数组")
 
-    @validator('manager_id', pre=True)
+    @field_validator('manager_id', mode='before')
+    @classmethod
     def convert_nan_to_none(cls, v):
         if isinstance(v, str) and v.lower() == 'nan':
             return None
@@ -365,6 +370,22 @@ class ProjectResponse(BaseModel):
     creator: Optional[UserResponse] = None
     members: Optional[List[UserResponse]] = None
     tasks: Optional[List[TaskResponse]] = None
+    
+    @field_validator('tags', mode='before')
+    @classmethod
+    def parse_tags(cls, v):
+        """解析tags字段，支持JSON字符串转换为列表"""
+        if v is None:
+            return []
+        if isinstance(v, str):
+            try:
+                import json
+                return json.loads(v) if v else []
+            except (json.JSONDecodeError, TypeError):
+                return []
+        if isinstance(v, list):
+            return v
+        return []
     
     class Config:
         from_attributes = True
