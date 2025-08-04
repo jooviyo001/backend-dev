@@ -8,7 +8,7 @@ import json
 from models.database import get_db
 from models.models import Project, User, Organization, Task
 from schemas.schemas import (
-    ProjectCreate, ProjectUpdate, ProjectResponse, BaseResponse, PaginationResponse, UserResponse
+    ProjectCreate, ProjectUpdate, ProjectResponse, BaseResponse, UserResponse
 )
 from utils.auth import (
     get_current_active_user, require_permission
