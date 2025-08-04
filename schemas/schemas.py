@@ -311,6 +311,8 @@ class ProjectBase(BaseModel):
     start_date: Optional[datetime] = None
     end_date: Optional[datetime] = None
     organization_id: Optional[str] = None  # 改为str
+    budget: Optional[float] = Field(None, ge=0, description="项目预算，数值类型，≥0")
+    tags: Optional[List[str]] = Field(default_factory=list, description="项目标签，字符串数组")
 
 # 项目创建模式
 class ProjectCreate(ProjectBase):
@@ -333,6 +335,8 @@ class ProjectUpdate(BaseModel):
     end_date: Optional[datetime] = None
     manager_id: Optional[str] = None  # 改为str
     organization_id: Optional[str] = None  # 改为str
+    budget: Optional[float] = Field(None, ge=0, description="项目预算，数值类型，≥0")
+    tags: Optional[List[str]] = Field(None, description="项目标签，字符串数组")
 
     @validator('manager_id', pre=True)
     def convert_nan_to_none(cls, v):
@@ -353,7 +357,9 @@ class ProjectResponse(BaseModel):
     organization_name: Optional[str] = None
     manager_id: Optional[str] = None  # 改为str
     manager_name: Optional[str] = None
-    is_archived: bool
+    budget: Optional[float] = None  # 项目预算，数值类型，≥0
+    tags: Optional[List[str]] = None  # 项目标签，字符串数组
+    is_archived: bool = False  # 是否已归档，布尔类型，默认false
     created_at: datetime
     updated_at: datetime
     creator: Optional[UserResponse] = None

@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import or_, and_
 from typing import Optional, List
 from math import ceil
+import json
 
 from models.database import get_db
 from models.models import Project, User, Organization, Task
@@ -157,6 +158,13 @@ async def get_project(
     project_response_data.updated_at = project.updated_at
     # 项目负责人ID
     project_response_data.manager_id = project.manager_id
+    # 项目预算
+    project_response_data.budget = float(project.budget) if project.budget else None
+    # 项目标签 - 从JSON字符串解析为数组
+    try:
+        project_response_data.tags = json.loads(project.tags) if project.tags else []
+    except (json.JSONDecodeError, TypeError):
+        project_response_data.tags = []
 
     return BaseResponse(
         message="获取项目详情成功",
@@ -240,7 +248,9 @@ async def create_project(
         end_date=project_data.end_date,
         creator_id=current_user.id,
         manager_id=project_data.manager_id,
-        organization_id=project_data.organization_id
+        organization_id=project_data.organization_id,
+        budget=project_data.budget,
+        tags=json.dumps(project_data.tags) if project_data.tags else None
     )
     
     db.add(db_project)
@@ -303,6 +313,14 @@ async def update_project(
     
     # 更新项目信息
     update_data = project_data.dict(exclude_unset=True)
+    
+    # 处理 tags 字段 - 转换为JSON字符串
+    if 'tags' in update_data:
+        if update_data['tags'] is not None:
+            project.tags = json.dumps(update_data['tags'])
+        else:
+            project.tags = None
+        del update_data['tags']
     
     # 处理 manager_id 更新
     if 'manager_id' in update_data:
