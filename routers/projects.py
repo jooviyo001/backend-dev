@@ -5,7 +5,7 @@ from typing import Optional, List
 from math import ceil
 
 from models.database import get_db
-from models.models import Project, User, Organization
+from models.models import Project, User, Organization, Task
 from schemas.schemas import (
     ProjectCreate, ProjectUpdate, ProjectResponse, BaseResponse, PaginationResponse, UserResponse
 )
@@ -132,7 +132,8 @@ async def get_project(
         {"name": member.name, "role": member.role, "id": member.id}
         for member in project.members
     ]
-    # 项目任务
+    # 项目任务 - 只返回最新的前5条
+    latest_tasks = db.query(Task).filter(Task.project_id == project_id).order_by(Task.created_at.desc()).limit(5).all()
     project_response_data.tasks = [
         {
             "title": task.title, 
@@ -142,7 +143,7 @@ async def get_project(
             "updated_at": task.updated_at,
             "assignee_name": task.assignee.name if task.assignee else None
         }
-        for task in project.tasks
+        for task in latest_tasks
     ]
     # 项目组织
     project_response_data.organization_name = project.organization.name if project.organization else ""
