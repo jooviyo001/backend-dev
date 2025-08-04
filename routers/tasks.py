@@ -180,7 +180,7 @@ async def get_tasks_page(
     total, tasks = paginate_query(query, page, size)
 
     return list_response(
-        items=[TaskResponse.from_orm(task) for task in tasks],
+        records=[TaskResponse.model_validate(task, from_attributes=True) for task in tasks],
         total=total,
         page=page,
         size=size,
