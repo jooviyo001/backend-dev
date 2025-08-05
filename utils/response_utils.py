@@ -2,10 +2,9 @@ from datetime import datetime
 from typing import Any, Optional, List, Dict, Union
 from fastapi.responses import JSONResponse
 from math import ceil
-from datetime import datetime
 from .status_codes import SUCCESS, get_message
 
-def format_timestamp(dt: datetime = None) -> str:
+def format_timestamp(dt: Optional[datetime] = None) -> str:
     """
     格式化时间戳为标准格式
     
@@ -21,12 +20,12 @@ def format_timestamp(dt: datetime = None) -> str:
 
 # 定义ID前缀映射
 ID_PREFIX_MAP = {
-    "users": "USER",
-    "projects": "PROJ",
-    "tasks": "TASK",
-    "organizations": "ORG",
-    "task_attachments": "ATT",
-    "task_comments": "COMM",
+    "users": "U",
+    "projects": "P",
+    "tasks": "T",
+    "organizations": "O",
+    "task_attachments": "A",
+    "task_comments": "C",
     # 可以根据需要添加其他模型的映射
 }
 
@@ -70,7 +69,7 @@ def standard_response(data: Any = None, code: str = SUCCESS, message: Optional[s
         "timestamp": format_timestamp()
     }
 
-def success_response(data: Any = None, message: str = None, code: str = SUCCESS):
+def success_response(data: Any = None, message: Optional[str] = None, code: str = SUCCESS):
     """
     生成成功响应
     
@@ -102,7 +101,7 @@ def error_response(code: str, message: Optional[str] = None, data: Any = None, s
         content=standard_response(data=data, code=code, message=message)
     )
 
-def list_response(records: List[Any], total: int = None, page: int = 1, size: int = 10, message: str = None, code: str = SUCCESS):
+def list_response(records: List[Any], total: Optional[int] = None, page: int = 1, size: int = 10, message: Optional[str] = None, code: str = SUCCESS):
     """
     生成列表数据的标准响应
     

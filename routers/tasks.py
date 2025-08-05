@@ -464,6 +464,9 @@ async def get_task_detail(
         # 如果以U开头（用户ID）
         if id_str.startswith('U') and id_str[1:].isdigit():
             return id_str[1:]
+        # 如果以O开头（组织ID）
+        if id_str.startswith('O') and id_str[1:].isdigit():
+            return id_str[1:]
         return id_str
     
     # 提取任务ID
@@ -479,7 +482,7 @@ async def get_task_detail(
         joinedload(Task.project),
         joinedload(Task.assignee),
         joinedload(Task.reporter)
-    ).filter(Task.id == extracted_task_id).first()
+    ).filter(Task.id == task_id).first()  # 修复：使用原始task_id而不是extracted_task_id
     
     if not task:
         raise HTTPException(
@@ -488,6 +491,7 @@ async def get_task_detail(
         )
     
     # 返回任务详情
+    print("准备返回任务详情: ", task)
     return standard_response(
         data=TaskResponse.model_validate(task),
         message="获取任务详情成功"

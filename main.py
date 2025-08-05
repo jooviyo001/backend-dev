@@ -73,9 +73,28 @@ class ResponseMiddleware(BaseHTTPMiddleware):
             return response
             
         try:
-            # 确保响应体可以被多次读取
-            response_body = [chunk async for chunk in response.body_iterator]
-            body = b"".join(response_body)
+            # 获取响应体内容
+            body = b""
+            if hasattr(response, 'body'):
+                # 如果响应已经有body属性，直接使用
+                body = response.body
+                # 如果body是memoryview类型，需要先转换为bytes
+                if not isinstance(body, bytes):
+                    body = bytes(body)
+            else:
+                # 尝试安全访问body_iterator属性
+                body_iterator = getattr(response, 'body_iterator', None)
+                if body_iterator is not None:
+                    # 对于流式响应，需要迭代获取内容
+                    try:
+                        async for chunk in body_iterator:
+                            body += chunk
+                    except Exception:
+                        # 如果无法访问body_iterator，直接返回原响应
+                        return response
+                else:
+                    # 无法获取响应体，直接返回原响应
+                    return response
 
             if not body:
                 return response
