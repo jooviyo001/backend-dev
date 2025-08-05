@@ -320,7 +320,8 @@ class ProjectResponse(BaseModel):
     updated_at: datetime
     creator: Optional[UserResponse] = None
     members: Optional[List[UserResponse]] = None
-    tasks: Optional[List["TaskResponse"]] = None
+    # 添加tasks字段，但使用简化版的任务列表响应模型
+    tasks: Optional[List["TaskListResponse"]] = None
     
     @field_validator('tags', mode='before')
     @classmethod
@@ -383,6 +384,22 @@ class TaskResponse(TaskBase):
     project: Optional[ProjectResponse] = None  # 项目信息
     assignee: Optional[UserResponse] = None  # 负责人信息
     reporter: Optional[UserResponse] = None  # 报告人信息
+    
+    @field_validator('tags', mode='before')
+    @classmethod
+    def parse_tags(cls, v):
+        """解析tags字段，支持JSON字符串转换为列表"""
+        if v is None:
+            return []
+        if isinstance(v, str):
+            try:
+                import json
+                return json.loads(v) if v else []
+            except (json.JSONDecodeError, TypeError):
+                return []
+        if isinstance(v, list):
+            return v
+        return []
     
     class Config:
         from_attributes = True  # 允许从 ORM 模型创建

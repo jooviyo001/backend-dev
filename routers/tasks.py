@@ -6,7 +6,7 @@ from datetime import date, datetime
 
 from models.database import get_db
 from models.models import Task, User, Project, TaskStatus, TaskPriority, TaskType
-from schemas.schemas import BaseResponse, PaginationResponse, TaskResponse, TaskListResponse, TaskUpdate
+from schemas.schemas import BaseResponse, PaginationResponse, TaskResponse, TaskListResponse, TaskUpdate, TaskCreate
 from utils.auth import get_current_active_user, require_permission
 from utils.response_utils import list_response, paginate_query, standard_response
 
@@ -187,6 +187,73 @@ async def get_tasks_page(
         message="获取任务列表成功"
     )
 
+@router.post("/create", response_model=BaseResponse)
+async def create_task(
+    task_data: TaskCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_permission("task:write"))
+):
+    """创建新任务"""
+    try:
+        # 检查项目是否存在
+        project = db.query(Project).filter(Project.id == task_data.project_id).first()
+        if not project:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="项目不存在"
+            )
+        
+        # 检查负责人是否存在（如果指定了负责人）
+        if task_data.assignee_id:
+            assignee = db.query(User).filter(User.id == task_data.assignee_id).first()
+            if not assignee:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="指定的负责人不存在"
+                )
+        
+        # 创建任务对象
+        task = Task(
+            title=task_data.title,
+            description=task_data.description,
+            status=task_data.status,
+            priority=task_data.priority,
+            type=task_data.type,
+            project_id=task_data.project_id,
+            assignee_id=task_data.assignee_id,
+            reporter_id=current_user.id,  # 报告人是当前用户
+            due_date=task_data.due_date,
+            estimated_hours=task_data.estimated_hours,
+            tags=None  # 先设置为None，后续处理tags
+        )
+        
+        # 处理标签，转换为JSON字符串
+        if task_data.tags is not None:
+            import json
+            task.tags = json.dumps(task_data.tags, ensure_ascii=False)  # type: ignore
+        
+        # 添加到数据库
+        db.add(task)
+        db.commit()
+        db.refresh(task)
+        
+        # 转换为响应模型
+        task_response = TaskResponse.model_validate(task)
+        
+        return standard_response(
+            data=task_response,
+            message="任务创建成功"
+        )
+        
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"创建任务失败: {str(e)}"
+        )
+
 @router.delete("/{task_id}", response_model=BaseResponse)
 async def delete_task(
     task_id: str,
@@ -365,3 +432,63 @@ async def update_task(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"更新任务失败: {str(e)}"
         )
+
+@router.get("/{task_id}", response_model=BaseResponse)
+async def get_task_detail(
+    task_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_permission("task:read"))
+):
+    """获取任务详情
+    
+    Args:
+        task_id: 任务ID（支持T前缀格式或纯数字）
+    
+    Returns:
+        任务详细信息
+    """
+    # ID格式处理函数
+    def extract_id(id_str):
+        """提取ID的数字部分，兼容多种格式"""
+        if not id_str:
+            return None
+        # 如果是纯数字，直接返回
+        if id_str.isdigit():
+            return id_str
+        # 如果以T开头（任务ID）
+        if id_str.startswith('T') and id_str[1:].isdigit():
+            return id_str[1:]
+        # 如果以P开头（项目ID）
+        if id_str.startswith('P') and id_str[1:].isdigit():
+            return id_str[1:]
+        # 如果以U开头（用户ID）
+        if id_str.startswith('U') and id_str[1:].isdigit():
+            return id_str[1:]
+        return id_str
+    
+    # 提取任务ID
+    extracted_task_id = extract_id(task_id)
+    if not extracted_task_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="无效的任务ID格式"
+        )
+    
+    # 查找任务，预加载关联数据
+    task = db.query(Task).options(
+        joinedload(Task.project),
+        joinedload(Task.assignee),
+        joinedload(Task.reporter)
+    ).filter(Task.id == extracted_task_id).first()
+    
+    if not task:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="任务不存在"
+        )
+    
+    # 返回任务详情
+    return standard_response(
+        data=TaskResponse.model_validate(task),
+        message="获取任务详情成功"
+    )
