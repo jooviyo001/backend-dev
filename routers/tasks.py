@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, Query, HTTPException, status
 from sqlalchemy.orm import Session, joinedload
-from sqlalchemy import or_, and_, desc
+from sqlalchemy import func, and_, desc, or_
 from typing import Optional, List
 from datetime import date, datetime
 
@@ -231,9 +231,10 @@ async def delete_task(
         )
     
     # 检查权限：只有任务创建者、负责人或管理员可以删除任务
-    if (current_user.role != "admin" and 
-        current_user.id != task.reporter_id and 
-        current_user.id != task.assignee_id):
+    user_is_admin: bool = current_user.role == "admin"  # type: ignore
+    user_is_reporter: bool = current_user.id == task.reporter_id  # type: ignore
+    user_is_assignee: bool = current_user.id == task.assignee_id  # type: ignore
+    if not (user_is_admin or user_is_reporter or user_is_assignee):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="没有权限删除此任务"
@@ -307,9 +308,10 @@ async def update_task(
         )
     
     # 检查权限：只有任务创建者、负责人或管理员可以更新任务
-    if (current_user.role != "admin" and 
-        current_user.id != task.reporter_id and 
-        current_user.id != task.assignee_id):
+    user_is_admin: bool = current_user.role == "admin"  # type: ignore
+    user_is_reporter: bool = current_user.id == task.reporter_id  # type: ignore
+    user_is_assignee: bool = current_user.id == task.assignee_id  # type: ignore
+    if not (user_is_admin or user_is_reporter or user_is_assignee):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="没有权限更新此任务"
@@ -347,7 +349,7 @@ async def update_task(
             setattr(task, field, value)
         
         # 更新时间戳
-        task.updated_at = datetime.now()
+        task.updated_at = datetime.now()  # type: ignore
         
         db.commit()
         db.refresh(task)

@@ -210,56 +210,6 @@ class OrganizationTreeNode(BaseModel):
     level: int
     children: List["OrganizationTreeNode"] = [] # 递归引用自身
 
-# 任务相关模式
-class TaskBase(BaseModel):
-    title: str = Field(..., min_length=1, max_length=100, description="任务标题")
-    description: Optional[str] = Field(None, max_length=500, description="任务描述")
-    project_id: str = Field(..., description="所属项目ID")  # 改为str
-    assignee_id: Optional[str] = Field(None, description="执行人ID")  # 改为str
-    reporter_id: Optional[str] = Field(None, description="报告人ID")  # 改为str
-    status: TaskStatus = Field(TaskStatus.TODO, description="任务状态")
-    priority: TaskPriority = Field(TaskPriority.MEDIUM, description="任务优先级")
-    type: TaskType = Field(TaskType.FEATURE, description="任务类型")
-    due_date: Optional[datetime] = Field(None, description="截止日期")
-    parent_task_id: Optional[str] = Field(None, description="父任务ID")  # 改为str
-    
-class TaskCreate(TaskBase):
-    pass
-
-class TaskUpdate(BaseModel):
-    title: Optional[str] = Field(None, min_length=1, max_length=100, description="任务标题")
-    description: Optional[str] = Field(None, max_length=500, description="任务描述")
-    project_id: Optional[str] = Field(None, description="所属项目ID")  # 改为str
-    assignee_id: Optional[str] = Field(None, description="执行人ID")  # 改为str
-    reporter_id: Optional[str] = Field(None, description="报告人ID")  # 改为str
-    status: Optional[TaskStatus] = Field(None, description="任务状态")
-    priority: Optional[TaskPriority] = Field(None, description="任务优先级")
-    type: Optional[TaskType] = Field(None, description="任务类型")
-    due_date: Optional[datetime] = Field(None, description="截止日期")
-    parent_task_id: Optional[str] = Field(None, description="父任务ID")  # 改为str
-
-class TaskResponse(BaseModel):
-    id: str  # 改为str
-    title: str
-    description: Optional[str] = None
-    project_id: str  # 改为str
-    project_name: Optional[str] = None
-    assignee_id: Optional[str] = None  # 改为str
-    assignee_name: Optional[str] = None
-    reporter_id: Optional[str] = None  # 改为str
-    reporter_name: Optional[str] = None
-    status: TaskStatus
-    priority: TaskPriority
-    type: TaskType
-    due_date: Optional[datetime] = None
-    parent_task_id: Optional[str] = None  # 改为str
-    parent_task_title: Optional[str] = None
-    created_at: datetime
-    updated_at: datetime
-
-    class Config:
-        from_attributes = True
-
 # 组织成员模式
 class OrganizationMemberBase(BaseModel):
     user_id: str = Field(..., description="用户ID")  # 改为str
@@ -370,7 +320,7 @@ class ProjectResponse(BaseModel):
     updated_at: datetime
     creator: Optional[UserResponse] = None
     members: Optional[List[UserResponse]] = None
-    tasks: Optional[List[TaskResponse]] = None
+    tasks: Optional[List["TaskResponse"]] = None
     
     @field_validator('tags', mode='before')
     @classmethod
