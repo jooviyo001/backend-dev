@@ -120,10 +120,11 @@ async def get_tasks_page(
     current_user: User = Depends(require_permission("task:read"))
 ):
     """获取任务分页数据"""
-    # 使用joinedload预加载用户数据，但只获取ID和名称
+    # 使用joinedload预加载用户数据和项目数据，但只获取ID和名称
     query = db.query(Task).options(
         joinedload(Task.assignee),  # 预加载负责人信息
-        joinedload(Task.reporter)   # 预加载报告人信息
+        joinedload(Task.reporter),  # 预加载报告人信息
+        joinedload(Task.project)    # 预加载项目信息
     )
 
     if keyword:

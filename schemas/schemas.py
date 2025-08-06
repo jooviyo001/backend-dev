@@ -421,6 +421,7 @@ class TaskResponse(TaskBase):
     reporter_id: Optional[str] = None  # 报告人ID
     reporter_name: Optional[str] = None  # 报告人姓名
     assignee_name: Optional[str] = None  # 负责人姓名
+    project_name: Optional[str] = None  # 项目名称
     actual_hours: Optional[float] = None  # 实际工时
     start_date: Optional[datetime] = None  # 任务开始日期
     created_at: datetime = Field(default_factory=datetime.now)  # 创建时间
@@ -443,6 +444,10 @@ class TaskResponse(TaskBase):
         # 从关联的assignee对象中获取名称
         if hasattr(obj, 'assignee') and obj.assignee:
             instance.assignee_name = obj.assignee.name
+        
+        # 从关联的project对象中获取项目名称
+        if hasattr(obj, 'project') and obj.project:
+            instance.project_name = obj.project.name
             
         # 不包含完整的用户对象，只保留ID和名称字段
         return instance
