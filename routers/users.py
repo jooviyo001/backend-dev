@@ -20,13 +20,56 @@ router = APIRouter()
 @router.get("/list", response_model=BaseResponse)
 async def get_users(
     db: Session = Depends(get_db),
-    current_user = Depends(require_permission("user:read"))
+    current_user = Depends(require_permission("user:read")) # 用上该对象，确保用户有读取权限
+
 ):
     """获取用户列表（简化版，用于列表展示）"""
     from utils.response_utils import list_response
-    users = db.query(User).all()
+    from sqlalchemy.orm import joinedload
+    
+    # 搜索关键词过滤
+    if search and search.strip():
+        search_term = search.strip()
+        query = db.query(User).filter(
+            or_(
+                User.username.contains(search_term),
+                User.name.contains(search_term),
+                User.email.contains(search_term)
+            )
+        )
+        # 角色过滤
+        if role and role.strip():
+            query = query.filter(User.role == role.strip())
+        # 状态过滤
+        if status and status.strip():
+            if status.strip().lower() == "active":
+                query = query.filter(User.is_active == True)
+            elif status.strip().lower() == "inactive":
+                query = query.filter(User.is_active == False)
+        # 部门过滤
+        if department and department.strip():
+            query = query.filter(User.department == department.strip())
+        # 组织过滤
+        if organization and organization.strip():
+            query = query.filter(User.organization_name == organization.strip())
+
+        # 岗位过滤
+        if position and position.strip():
+            query = query.filter(User.position == position.strip())
+        # 组织过滤
+        if organization and organization.strip():
+            query = query.filter(User.organization_name == organization.strip())
+        # 手机号过滤
+        if phone and phone.strip():
+            query = query.filter(User.phone == phone.strip())
+        # 邮箱过滤
+        if email and email.strip():
+            query = query.filter(User.email == email.strip())
+
+    # 预加载组织信息以获取组织名称
+    users = db.query(User).options(joinedload(User.organization)).all()
     return list_response(
-        items=[UserResponse.from_orm(user) for user in users],
+        items=[UserResponse.model_validate(user, from_attributes=True) for user in users],
         message="获取用户列表成功"
     )
 
@@ -49,7 +92,9 @@ async def get_users(
     # 处理分页参数，优先使用 limit，如果没有则使用 pageSize，默认为 10
     size = limit or pageSize or 10
     
-    query = db.query(User)
+    # 预加载组织信息以获取组织名称
+    from sqlalchemy.orm import joinedload
+    query = db.query(User).options(joinedload(User.organization))
     
     # 搜索关键词过滤
     if search and search.strip():
@@ -81,7 +126,7 @@ async def get_users(
     total, users = paginate_query(query, page, size)
     
     return list_response(
-        records=[UserResponse.from_orm(user) for user in users],
+        records=[UserResponse.model_validate(user, from_attributes=True) for user in users],
         total=total,
         page=page,
         size=size,
@@ -106,7 +151,9 @@ async def get_user(
         # 如果是纯数字，保持兼容
         actual_user_id = user_id
     
-    user = db.query(User).filter(User.id == actual_user_id).first()
+    # 预加载组织信息以获取组织名称
+    from sqlalchemy.orm import joinedload
+    user = db.query(User).options(joinedload(User.organization)).filter(User.id == actual_user_id).first()
     if not user:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -115,7 +162,7 @@ async def get_user(
     
     return BaseResponse(
         message="获取用户详情成功",
-        data=UserResponse.from_orm(user)
+        data=UserResponse.model_validate(user, from_attributes=True)
     )
 
 # 创建用户
@@ -155,9 +202,13 @@ async def create_user(
     db.commit()
     db.refresh(db_user)
     
+    # 预加载组织信息以获取组织名称
+    from sqlalchemy.orm import joinedload
+    user_with_org = db.query(User).options(joinedload(User.organization)).filter(User.id == db_user.id).first()
+    
     return BaseResponse(
         message="创建用户成功",
-        data=UserResponse.from_orm(db_user)
+        data=UserResponse.model_validate(user_with_org, from_attributes=True)
     )
 
 # 更新用户
@@ -215,9 +266,13 @@ async def update_user(
     db.commit()
     db.refresh(user)
 
+    # 预加载组织信息以获取组织名称
+    from sqlalchemy.orm import joinedload
+    user_with_org = db.query(User).options(joinedload(User.organization)).filter(User.id == user.id).first()
+
     return BaseResponse(
         message="用户信息更新成功",
-        data=UserResponse.from_orm(user)
+        data=UserResponse.model_validate(user_with_org, from_attributes=True)
     )
 
 # 删除用户

@@ -33,8 +33,13 @@ class UserBase(BaseModel):
     name: Optional[str] = None
     phone: Optional[str] = None
     position: Optional[str] = None
-    department: Optional[str] = None
+    organization_name: Optional[str] = None  # 组织名称
     role: UserRole = UserRole.MEMBER
+    status: Optional[str] = Field(None, description="用户状态")
+    last_login: Optional[datetime] = None
+    created_at: datetime
+    updated_at: datetime
+
 
 class UserCreate(UserBase):
     password: str
@@ -87,12 +92,26 @@ class UserResponse(UserBase):
     is_active: bool
     is_verified: bool
     position: Optional[str] = None  # 职位
-    department: Optional[str] = None  # 部门
     organization_id: Optional[str] = None  # 所属组织ID
+    organization_name: Optional[str] = None  # 组织名称
+    role: UserRole = UserRole.MEMBER  # 用户角色
+    status: Optional[str] = Field(None, description="用户状态")
     last_login: Optional[datetime] = None
     created_at: datetime
     updated_at: datetime
     avatar: Optional[str] = None
+    
+    @classmethod
+    def model_validate(cls, obj, **kwargs):
+        """自定义验证方法，从关联对象中填充组织名称字段"""
+        # 先调用父类的验证
+        instance = super().model_validate(obj, **kwargs)
+        
+        # 从关联的organization对象中获取组织名称
+        if hasattr(obj, 'organization') and obj.organization:
+            instance.organization_name = obj.organization.name
+            
+        return instance
     
     class Config:
         from_attributes = True
@@ -102,6 +121,7 @@ class ChangePasswordRequest(BaseModel):
     currentPassword: str
     newPassword: str
 
+# 登录模式
 class LoginRequest(BaseModel):
     username: str
     password: str

@@ -76,9 +76,13 @@ async def register(register_data: RegisterRequest, db: Session = Depends(get_db)
     db.commit()
     db.refresh(db_user)
     
+    # 预加载组织信息以获取组织名称
+    from sqlalchemy.orm import joinedload
+    user_with_org = db.query(User).options(joinedload(User.organization)).filter(User.id == db_user.id).first()
+    
     return BaseResponse(
         message="注册成功",
-        data=UserResponse.from_orm(db_user)
+        data=UserResponse.model_validate(user_with_org, from_attributes=True)
     )
 
 @router.post("/logout", response_model=BaseResponse)
@@ -114,12 +118,15 @@ async def get_current_user_info(
     
     if org_query:
         position = org_query.position
-        department = org_query.name
+    
+    # 预加载组织信息以获取组织名称
+    from sqlalchemy.orm import joinedload
+    user_with_org = db.query(User).options(joinedload(User.organization)).filter(User.id == current_user.id).first()
     
     # 创建用户响应数据
-    user_data = UserResponse.from_orm(current_user)
-    user_data.position = position
-    user_data.department = department
+    user_data = UserResponse.model_validate(user_with_org, from_attributes=True)
+    if position:
+        user_data.position = position
     
     return BaseResponse(
         message="获取用户信息成功",
@@ -140,9 +147,13 @@ async def update_user_profile(
     db.commit()
     db.refresh(current_user)
     
+    # 预加载组织信息以获取组织名称
+    from sqlalchemy.orm import joinedload
+    user_with_org = db.query(User).options(joinedload(User.organization)).filter(User.id == current_user.id).first()
+    
     return BaseResponse(
         message="个人资料更新成功",
-        data=UserResponse.from_orm(current_user)
+        data=UserResponse.model_validate(user_with_org, from_attributes=True)
     )
 
 from fastapi import Body
