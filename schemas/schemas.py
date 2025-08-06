@@ -415,7 +415,7 @@ class TaskUpdate(BaseModel):
     actual_hours: Optional[float] = None  # 实际工时
     tags: Optional[List[str]] = None  # 标签
 
-# 任务响应模式
+# 更新任务响应模式
 class TaskResponse(TaskBase):
     id: str  # 改为str
     reporter_id: Optional[str] = None  # 报告人ID
