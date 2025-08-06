@@ -207,8 +207,8 @@ class Task(Base):
     assignee_id = Column(String(25), ForeignKey("users.id"), comment='任务负责人ID')
     reporter_id = Column(String(25), ForeignKey("users.id"), comment='任务报告人ID')
     due_date = Column(DateTime, comment='任务截止时间')
-    estimated_hours = Column(Integer, comment='任务预估工时')
-    actual_hours = Column(Integer, comment='任务实际工时')
+    estimated_hours = Column(Numeric(5, 2), comment='任务预估工时')
+    actual_hours = Column(Numeric(5, 2), comment='任务实际工时')
     parent_task_id = Column(String(25), ForeignKey('tasks.id'), nullable=True, comment='父任务ID')
     tags = Column(String(500), comment='任务标签')  # JSON字符串存储标签
     created_at = Column(DateTime, default=func.now(), comment='创建时间')

@@ -352,7 +352,7 @@ class TaskBase(BaseModel):
     project_id: str  # 改为str
     assignee_id: Optional[str] = None  # 改为str
     due_date: Optional[datetime] = None
-    estimated_hours: Optional[int] = None
+    estimated_hours: Optional[float] = None
     tags: Optional[List[str]] = None
 
 # 任务创建模式
@@ -370,15 +370,16 @@ class TaskUpdate(BaseModel):
     assignee_id: Optional[str] = None  # 负责人ID
     reporter_id: Optional[str] = None  # 报告人ID
     due_date: Optional[datetime] = None  # 截止日期
-    estimated_hours: Optional[int] = None  # 预估工时
-    actual_hours: Optional[int] = None  # 实际工时
+    estimated_hours: Optional[float] = None  # 预估工时
+    actual_hours: Optional[float] = None  # 实际工时
     tags: Optional[List[str]] = None  # 标签
 
+# 任务响应模式
 class TaskResponse(TaskBase):
     id: str  # 改为str
     reporter_id: Optional[str] = None  # 报告人ID
     reporter_name: Optional[str] = None  # 报告人姓名
-    actual_hours: Optional[int] = None  # 实际工时
+    actual_hours: Optional[float] = None  # 实际工时
     created_at: datetime = Field(default_factory=datetime.now)  # 创建时间
     updated_at: datetime = Field(default_factory=datetime.now)  # 更新时间
     project: Optional[ProjectResponse] = None  # 项目信息
