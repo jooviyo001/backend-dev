@@ -120,11 +120,11 @@ async def get_tasks_page(
     current_user: User = Depends(require_permission("task:read"))
 ):
     """获取任务分页数据"""
-    # ID格式处理函数，直接使用原来的加有前缀的字符串ID
-    def extract_id(id_str):
-        return id_str
-    
-    query = db.query(Task)
+    # 使用joinedload预加载用户数据，但只获取ID和名称
+    query = db.query(Task).options(
+        joinedload(Task.assignee),  # 预加载负责人信息
+        joinedload(Task.reporter)   # 预加载报告人信息
+    )
 
     if keyword:
         query = query.filter(
@@ -136,17 +136,13 @@ async def get_tasks_page(
     if status:
         query = query.filter(Task.status == status)
     if organization_id:
-        org_id = extract_id(organization_id)
-        query = query.join(Project).filter(Project.organization_id == org_id)
+        query = query.join(Project).filter(Project.organization_id == organization_id)
     if project_id:
-        proj_id = extract_id(project_id)
-        query = query.filter(Task.project_id == proj_id)
+        query = query.filter(Task.project_id == project_id)
     if assignee_id:
-        assignee_id_num = extract_id(assignee_id)
-        query = query.filter(Task.assignee_id == assignee_id_num)
+        query = query.filter(Task.assignee_id == assignee_id)
     if reporter_id:
-        reporter_id_num = extract_id(reporter_id)
-        query = query.filter(Task.reporter_id == reporter_id_num)
+        query = query.filter(Task.reporter_id == reporter_id)
     if priority:
         query = query.filter(Task.priority == priority)
     if type:
@@ -457,7 +453,6 @@ async def get_task_detail(
     
     # 返回任务详情，排除project字段
     task_data = TaskResponse.model_validate(task)
-    task_data.project = None  # 明确设置project字段为None
     
     return standard_response(
         data=task_data,

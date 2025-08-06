@@ -420,13 +420,32 @@ class TaskResponse(TaskBase):
     id: str  # 改为str
     reporter_id: Optional[str] = None  # 报告人ID
     reporter_name: Optional[str] = None  # 报告人姓名
+    assignee_name: Optional[str] = None  # 负责人姓名
     actual_hours: Optional[float] = None  # 实际工时
     start_date: Optional[datetime] = None  # 任务开始日期
     created_at: datetime = Field(default_factory=datetime.now)  # 创建时间
     updated_at: datetime = Field(default_factory=datetime.now)  # 更新时间
     # project: Optional[ProjectResponse] = None  # 项目信息
-    assignee: Optional[UserResponse] = None  # 负责人信息
-    reporter: Optional[UserResponse] = None  # 报告人信息
+    # 移除完整的用户对象，只保留ID和名称字段
+    # assignee: Optional[UserResponse] = None  # 负责人信息
+    # reporter: Optional[UserResponse] = None  # 报告人信息
+    
+    @classmethod
+    def model_validate(cls, obj, **kwargs):
+        """自定义验证方法，从关联对象中填充名称字段，只返回ID和名称"""
+        # 先调用父类的验证
+        instance = super().model_validate(obj, **kwargs)
+        
+        # 从关联的reporter对象中获取名称
+        if hasattr(obj, 'reporter') and obj.reporter:
+            instance.reporter_name = obj.reporter.name
+        
+        # 从关联的assignee对象中获取名称
+        if hasattr(obj, 'assignee') and obj.assignee:
+            instance.assignee_name = obj.assignee.name
+            
+        # 不包含完整的用户对象，只保留ID和名称字段
+        return instance
     
     @field_validator('tags', mode='before')
     @classmethod
