@@ -42,10 +42,27 @@ app = FastAPI(
 # CORS中间件配置
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # 生产环境应该限制具体域名
+    allow_origins=[
+        "http://localhost:8080",  # 前端开发服务器
+        "http://127.0.0.1:8080",  # 前端开发服务器（备用）
+        "http://localhost:3000",  # 可能的其他前端端口
+        "http://127.0.0.1:3000",  # 可能的其他前端端口（备用）
+        "*"  # 开发环境允许所有来源，生产环境应该移除
+    ],
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+    allow_headers=[
+        "Accept",
+        "Accept-Language",
+        "Content-Language",
+        "Content-Type",
+        "Authorization",
+        "X-Requested-With",
+        "X-CSRF-Token",
+        "Cache-Control",
+        "Pragma"
+    ],
+    expose_headers=["*"],  # 允许前端访问所有响应头
 )
 
 # 请求响应日志中间件
