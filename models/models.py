@@ -206,6 +206,7 @@ class Task(Base):
     project_id = Column(String(25), ForeignKey("projects.id"), comment='任务所属项目ID')
     assignee_id = Column(String(25), ForeignKey("users.id"), comment='任务负责人ID')
     reporter_id = Column(String(25), ForeignKey("users.id"), comment='任务报告人ID')
+    start_date = Column(DateTime, comment='任务开始时间')
     due_date = Column(DateTime, comment='任务截止时间')
     estimated_hours = Column(Numeric(5, 2), comment='任务预估工时')
     actual_hours = Column(Numeric(5, 2), comment='任务实际工时')

@@ -120,29 +120,8 @@ async def get_tasks_page(
     current_user: User = Depends(require_permission("task:read"))
 ):
     """获取任务分页数据"""
-    # ID格式处理函数
+    # ID格式处理函数，直接使用原来的加有前缀的字符串ID
     def extract_id(id_str):
-        """提取ID的数字部分，兼容多种格式"""
-        if not id_str:
-            return None
-        # 如果是纯数字，直接返回
-        if id_str.isdigit():
-            return id_str
-        # 如果以O开头（组织ID）
-        if id_str.startswith('O') and id_str[1:].isdigit():
-            return id_str[1:]
-        # 如果以P开头（项目ID）
-        if id_str.startswith('P') and id_str[1:].isdigit():
-            return id_str[1:]
-        # 如果以U开头（用户ID）
-        if id_str.startswith('U') and id_str[1:].isdigit():
-            return id_str[1:]
-        # 如果以T开头（任务ID）
-        if id_str.startswith('T') and id_str[1:].isdigit():
-            return id_str[1:]
-        # 如果以USER_开头（旧格式）
-        if id_str.startswith('USER_'):
-            return id_str[5:]
         return id_str
     
     query = db.query(Task)
@@ -222,6 +201,7 @@ async def create_task(
             project_id=task_data.project_id,
             assignee_id=task_data.assignee_id,
             reporter_id=current_user.id,  # 报告人是当前用户
+            start_date=task_data.start_date,
             due_date=task_data.due_date,
             estimated_hours=task_data.estimated_hours,
             tags=None  # 先设置为None，后续处理tags
@@ -289,8 +269,8 @@ async def delete_task(
             detail="无效的任务ID格式"
         )
     
-    # 查找任务
-    task = db.query(Task).filter(Task.id == extracted_task_id).first()
+    # 查找任务（使用原始task_id，因为数据库中存储的是带前缀的ID）
+    task = db.query(Task).filter(Task.id == task_id).first()
     if not task:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -339,35 +319,16 @@ async def update_task(
     Returns:
         更新后的任务信息
     """
-    # ID格式处理函数
-    def extract_id(id_str):
-        """提取ID的数字部分，兼容多种格式"""
-        if not id_str:
-            return None
-        # 如果是纯数字，直接返回
-        if id_str.isdigit():
-            return id_str
-        # 如果以T开头（任务ID）
-        if id_str.startswith('T') and id_str[1:].isdigit():
-            return id_str[1:]
-        # 如果以P开头（项目ID）
-        if id_str.startswith('P') and id_str[1:].isdigit():
-            return id_str[1:]
-        # 如果以U开头（用户ID）
-        if id_str.startswith('U') and id_str[1:].isdigit():
-            return id_str[1:]
-        return id_str
-    
-    # 提取任务ID
-    extracted_task_id = extract_id(task_id)
-    if not extracted_task_id:
+    # ID格式处理函数,使用原来的ID
+
+    if not task_id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="无效的任务ID格式"
         )
     
-    # 查找任务
-    task = db.query(Task).filter(Task.id == extracted_task_id).first()
+    # 查找任务（使用原始带前缀的task_id）
+    task = db.query(Task).filter(Task.id == task_id).first()
     if not task:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -385,11 +346,16 @@ async def update_task(
         )
     
     # 更新任务字段
-    update_data = task_update.dict(exclude_unset=True)
+    update_data = task_update.model_dump(exclude_unset=True)
     
-    # 处理关联ID字段
+    # 处理tags字段，转换为JSON字符串
+    if 'tags' in update_data and update_data['tags'] is not None:
+        import json
+        update_data['tags'] = json.dumps(update_data['tags'], ensure_ascii=False)
+
+    # 处理关联ID字段（保持带前缀的ID格式）
     if 'project_id' in update_data and update_data['project_id']:
-        project_id = extract_id(update_data['project_id'])
+        project_id = update_data['project_id']  # 保持原始ID格式
         # 验证项目是否存在
         project = db.query(Project).filter(Project.id == project_id).first()
         if not project:
@@ -400,7 +366,7 @@ async def update_task(
         update_data['project_id'] = project_id
     
     if 'assignee_id' in update_data and update_data['assignee_id']:
-        assignee_id = extract_id(update_data['assignee_id'])
+        assignee_id = update_data['assignee_id']  # 保持原始ID格式
         # 验证用户是否存在
         assignee = db.query(User).filter(User.id == assignee_id).first()
         if not assignee:
@@ -423,7 +389,7 @@ async def update_task(
         
         # 返回更新后的任务信息
         return standard_response(
-            data=TaskResponse.from_orm(task),
+            data=TaskResponse.model_validate(task),
             message="任务更新成功"
         )
     except Exception as e:
@@ -477,9 +443,8 @@ async def get_task_detail(
             detail="无效的任务ID格式"
         )
     
-    # 查找任务，预加载关联数据
+    # 查找任务，预加载用户关联数据（不包含项目信息）
     task = db.query(Task).options(
-        joinedload(Task.project),
         joinedload(Task.assignee),
         joinedload(Task.reporter)
     ).filter(Task.id == task_id).first()  # 修复：使用原始task_id而不是extracted_task_id
@@ -490,9 +455,11 @@ async def get_task_detail(
             detail="任务不存在"
         )
     
-    # 返回任务详情
-    print("准备返回任务详情: ", task)
+    # 返回任务详情，排除project字段
+    task_data = TaskResponse.model_validate(task)
+    task_data.project = None  # 明确设置project字段为None
+    
     return standard_response(
-        data=TaskResponse.model_validate(task),
+        data=task_data,
         message="获取任务详情成功"
     )

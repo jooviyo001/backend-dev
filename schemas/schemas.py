@@ -128,7 +128,6 @@ class RegisterResponse(BaseModel):
     data: Optional[UserResponse] = None
 
 
-
 # 组织相关模式
 class OrganizationBase(BaseModel):
     name: str = Field(..., min_length=2, max_length=50, description="组织名称")
@@ -351,13 +350,54 @@ class TaskBase(BaseModel):
     type: TaskType = TaskType.FEATURE
     project_id: str  # 改为str
     assignee_id: Optional[str] = None  # 改为str
+    start_date: Optional[datetime] = None  # 任务开始日期
     due_date: Optional[datetime] = None
     estimated_hours: Optional[float] = None
     tags: Optional[List[str]] = None
 
 # 任务创建模式
 class TaskCreate(TaskBase):
-    pass
+   # 对于ID的处理应该是以原来的字符串为准，不更改提取 
+    @field_validator('project_id', 'assignee_id', mode='before')
+    @classmethod
+    def normalize_id_format(cls, v):
+        """标准化ID格式，保留带前缀的ID格式"""
+        if not v:
+            return v
+        if isinstance(v, str):
+            # 如果已经是带前缀的格式，直接返回
+            if (v.startswith('P') and v[1:].isdigit()) or \
+               (v.startswith('U') and v[1:].isdigit()) or \
+               (v.startswith('T') and v[1:].isdigit()) or \
+               (v.startswith('O') and v[1:].isdigit()):
+                return v
+            # 如果是纯数字，需要根据字段名添加前缀
+            if v.isdigit():
+                # 这里我们保持原样，让后端处理
+                return v
+        return v
+    
+    @field_validator('start_date', 'due_date', mode='before')
+    @classmethod
+    def parse_datetime_string(cls, v):
+        """解析日期时间字符串，支持多种格式"""
+        if not v:
+            return v
+        if isinstance(v, str):
+            try:
+                # 尝试解析 "YYYY-MM-DD HH:MM:SS" 格式
+                if len(v) == 19 and ' ' in v:
+                    return datetime.strptime(v, "%Y-%m-%d %H:%M:%S")
+                # 尝试解析 "YYYY-MM-DD" 格式
+                elif len(v) == 10:
+                    return datetime.strptime(v, "%Y-%m-%d")
+                # 尝试解析 ISO 格式
+                else:
+                    return datetime.fromisoformat(v.replace('Z', '+00:00'))
+            except ValueError:
+                # 如果解析失败，返回原值让 Pydantic 处理
+                return v
+        return v
 
 # 任务更新模式
 class TaskUpdate(BaseModel):
@@ -369,6 +409,7 @@ class TaskUpdate(BaseModel):
     project_id: Optional[str] = None  # 项目ID
     assignee_id: Optional[str] = None  # 负责人ID
     reporter_id: Optional[str] = None  # 报告人ID
+    start_date: Optional[datetime] = None  # 开始日期
     due_date: Optional[datetime] = None  # 截止日期
     estimated_hours: Optional[float] = None  # 预估工时
     actual_hours: Optional[float] = None  # 实际工时
@@ -380,9 +421,10 @@ class TaskResponse(TaskBase):
     reporter_id: Optional[str] = None  # 报告人ID
     reporter_name: Optional[str] = None  # 报告人姓名
     actual_hours: Optional[float] = None  # 实际工时
+    start_date: Optional[datetime] = None  # 任务开始日期
     created_at: datetime = Field(default_factory=datetime.now)  # 创建时间
     updated_at: datetime = Field(default_factory=datetime.now)  # 更新时间
-    project: Optional[ProjectResponse] = None  # 项目信息
+    # project: Optional[ProjectResponse] = None  # 项目信息
     assignee: Optional[UserResponse] = None  # 负责人信息
     reporter: Optional[UserResponse] = None  # 报告人信息
     
