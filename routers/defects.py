@@ -1,8 +1,9 @@
 from fastapi import APIRouter, Depends, Query, HTTPException, File, UploadFile
 from sqlalchemy.orm import Session, joinedload
-from sqlalchemy import desc, or_
+from sqlalchemy import desc, or_, and_
 from typing import Optional, List
-from datetime import date
+from datetime import date, datetime
+
 import pandas as pd
 import io
 
@@ -11,6 +12,7 @@ from models.defect import Defect, DefectStatus, DefectPriority, DefectType, Defe
 from models.user import User
 from models.project import Project
 from models.associations import MemberRole
+from models.enums import UserRole
 
 from schemas import BaseResponse, DefectResponse, DefectCreate, DefectUpdate
 from utils.auth import require_permission
@@ -185,6 +187,58 @@ async def create_defect(
     return standard_response(
         data=DefectResponse.model_validate(db_defect, from_attributes=True),
         message="缺陷创建成功"
+    )
+
+
+
+# 缺陷统计接口
+@router.get("/statistics", response_model=BaseResponse)
+async def get_defect_statistics(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_permission("defect:read"))
+):
+    """获取缺陷统计数据"""
+    # 构建查询
+    query = db.query(Defect)
+    # 权限过滤：非管理员只能查看自己相关的缺陷
+    if current_user.role != UserRole.ADMIN:
+        query = query.filter(
+            or_(
+                Defect.created_by == current_user.id,
+                Defect.assignee_id == current_user.id,
+                Defect.reporter_id == current_user.id,
+                Defect.verified_by_id == current_user.id,
+                Defect.updated_by == current_user.id
+            )
+        )
+    # 统计数据
+    total_count = query.count()
+    open_count = query.filter(Defect.status.in_([DefectStatus.NEW, DefectStatus.ASSIGNED, DefectStatus.IN_PROGRESS, DefectStatus.REOPENED])).count()
+    closed_count = query.filter(Defect.status.in_([DefectStatus.RESOLVED, DefectStatus.VERIFIED, DefectStatus.CLOSED])).count()
+    # 逾期缺陷统计
+    overdue_count = query.filter(
+        and_(
+            Defect.status.in_([DefectStatus.NEW, DefectStatus.ASSIGNED, DefectStatus.IN_PROGRESS, DefectStatus.REOPENED]),
+            Defect.due_date < datetime.now()
+        )
+    ).count()
+    # 未解决缺陷统计
+    unresolved_count = query.filter(Defect.status == DefectStatus.NEW).count()
+    # 已解决缺陷统计
+    resolved_count = query.filter(Defect.status.in_([DefectStatus.RESOLVED, DefectStatus.VERIFIED, DefectStatus.CLOSED])).count()
+
+
+    return standard_response(
+        message="缺陷统计数据获取成功",
+        data={
+            "total_count": total_count,
+            "open_count": open_count,
+            "closed_count": closed_count,
+            "overdue_count": overdue_count,
+            "unresolved_count": unresolved_count,
+            "resolved_count": resolved_count
+
+        }
     )
 
 # 获取单个缺陷详情
@@ -379,7 +433,7 @@ async def export_defects(
     )
     
     # 权限过滤：非管理员只能导出自己相关的缺陷
-    if current_user.role != MemberRole.admin:
+    if current_user.role != UserRole.ADMIN:
         query = query.filter(
             or_(
                 Defect.created_by == current_user.id,
@@ -406,6 +460,9 @@ async def import_defects(
     current_user: User = Depends(require_permission("defect:write"))
 ):
     """导入缺陷数据"""
+    # 权限检查：非管理员只能导入自己相关的缺陷
+    if current_user.role != UserRole.ADMIN:
+        raise HTTPException(status_code=403, detail="权限不足，只能管理员导入缺陷")
     # 读取文件内容
     content = await file.read()
     df = pd.read_excel(io.BytesIO(content))
@@ -420,39 +477,5 @@ async def import_defects(
         message="缺陷导入成功",
         data={
             "imported_count": len(defect_data)
-        }
-    )
-
-
-# 缺陷统计/statistics
-@router.get("/statistics", response_model=BaseResponse)
-async def get_defect_statistics(
-    db: Session = Depends(get_db),
-    current_user: User = Depends(require_permission("defect:read"))
-):
-    """获取缺陷统计数据"""
-    # 构建查询
-    query = db.query(Defect)
-    # 权限过滤：非管理员只能导出自己相关的缺陷
-    if current_user.role != MemberRole.admin:
-        query = query.filter(
-            or_(
-                Defect.created_by == current_user.id,  # .created_by 是用户ID
-                Defect.assignee_id == current_user.id,  # .assignee_id 是用户ID
-                Defect.reporter_id == current_user.id,  # .reporter_id 是用户ID
-                Defect.verified_by_id == current_user.id,  # .verified_by_id 是用户ID
-                Defect.updated_by == current_user.id  # .updated_by 是用户ID
-            )
-        )
-    # 统计数据
-    total_count = query.count()
-    open_count = query.filter(Defect.status == DefectStatus.open).count()
-    closed_count = query.filter(Defect.status == DefectStatus.closed).count()
-    return standard_response(
-        message="缺陷统计数据获取成功",
-        data={
-            "total_count": total_count,  # 总缺陷数
-            "open_count": open_count,  # 打开缺陷数
-            "closed_count": closed_count  # 关闭缺陷数
         }
     )
