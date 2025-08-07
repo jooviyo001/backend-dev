@@ -65,3 +65,8 @@ __all__ = [
     "DashboardStats", "RecentTask", "ProjectProgress", "TaskStatusDistribution",
     "RecentActivity", "UserWorkload", "ProjectTrend", "TaskTrend",
 ]
+
+# 解决前向引用问题，重建模型
+ProjectResponse.model_rebuild()
+TaskResponse.model_rebuild()
+UserResponse.model_rebuild()
