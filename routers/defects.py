@@ -294,14 +294,21 @@ async def update_defect(
         raise HTTPException(status_code=404, detail="缺陷不存在")
     
     # 权限检查：非管理员只能更新自己相关的缺陷
-    if current_user.role != MemberRole.admin:
+    if current_user.role != UserRole.ADMIN:
         if not (existing_defect.created_by == current_user.id or 
                 existing_defect.assignee_id == current_user.id or 
                 existing_defect.reporter_id == current_user.id):
             raise HTTPException(status_code=403, detail="权限不足，无法更新此缺陷")
     
     # 更新缺陷字段
-    for key, value in defect.model_dump(exclude_unset=True).items():
+    update_data = defect.model_dump(exclude_unset=True)
+    
+    # 处理tags字段，转换为JSON字符串
+    if 'tags' in update_data and update_data['tags'] is not None:
+        import json
+        update_data['tags'] = json.dumps(update_data['tags'], ensure_ascii=False)
+    
+    for key, value in update_data.items():
         setattr(existing_defect, key, value)
     
     # 设置更新者
