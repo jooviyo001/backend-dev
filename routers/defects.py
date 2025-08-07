@@ -139,15 +139,17 @@ async def create_defect(
     if not project:
         raise HTTPException(status_code=404, detail="项目不存在")
     
-    # 检查执行人是否存在
-    assignee = db.query(User).filter(User.id == defect.assignee_id).first()
-    if not assignee:
-        raise HTTPException(status_code=404, detail="执行人不存在")
+    # 检查执行人是否存在（如果提供了执行人ID）
+    if defect.assignee_id:
+        assignee = db.query(User).filter(User.id == defect.assignee_id).first()
+        if not assignee:
+            raise HTTPException(status_code=404, detail="执行人不存在")
     
-    # 检查报告人是否存在
-    reporter = db.query(User).filter(User.id == defect.reporter_id).first()
-    if not reporter:
-        raise HTTPException(status_code=404, detail="报告人不存在")
+    # 检查报告人是否存在（如果提供了报告人ID）
+    if defect.reporter_id:
+        reporter = db.query(User).filter(User.id == defect.reporter_id).first()
+        if not reporter:
+            raise HTTPException(status_code=404, detail="报告人不存在")
     
     # 检查验证人是否存在
     if defect.verified_by_id:
@@ -174,7 +176,13 @@ async def create_defect(
             raise HTTPException(status_code=400, detail="子缺陷不能为缺陷")
     
     # 创建缺陷对象
-    db_defect = Defect(**defect.model_dump())
+    defect_data = defect.model_dump()
+    # 将tags列表转换为JSON字符串
+    if defect_data.get('tags'):
+        import json
+        defect_data['tags'] = json.dumps(defect_data['tags'], ensure_ascii=False)
+    
+    db_defect = Defect(**defect_data)
     # 设置创建人为当前用户
     db_defect.created_by = current_user.id
     db_defect.updated_by = current_user.id
@@ -259,7 +267,7 @@ async def get_defect_by_id(
         raise HTTPException(status_code=404, detail="缺陷不存在")
     
     # 权限检查：非管理员只能查看自己相关的缺陷
-    if current_user.role != MemberRole.admin:
+    if current_user.role != UserRole.ADMIN:
         if not (defect.created_by == current_user.id or 
                 defect.assignee_id == current_user.id or 
                 defect.reporter_id == current_user.id or 

@@ -26,6 +26,7 @@ class DefectBase(BaseModel):
     actual_result: Optional[str] = None
     resolution: Optional[str] = None
     parent_id: Optional[str] = None
+    source: Optional[str] = None
     tags: Optional[List[str]] = None
 
 # 缺陷响应模式
@@ -93,6 +94,8 @@ class DefectCreate(BaseModel):
     resolution: Optional[str] = Field(None, description="解决方案")
     parent_id: Optional[str] = Field(None, description="父缺陷ID")
     tags: Optional[List[str]] = Field(None, description="标签")
+    due_date: Optional[datetime] = Field(None, description="截止时间")
+    source: Optional[str] = Field(None, max_length=100, description="缺陷来源")
 
 # 缺陷更新模式
 class DefectUpdate(BaseModel):
@@ -114,3 +117,5 @@ class DefectUpdate(BaseModel):
     resolution: Optional[str] = Field(None, description="解决方案")
     parent_id: Optional[str] = Field(None, description="父缺陷ID")
     tags: Optional[List[str]] = Field(None, description="标签")
+    due_date: Optional[datetime] = Field(None, description="截止时间")
+    source: Optional[str] = Field(None, max_length=100, description="缺陷来源")

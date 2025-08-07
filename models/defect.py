@@ -37,6 +37,7 @@ class Defect(Base):
     resolution = Column(Text, comment='解决方法')
     tags = Column(String(500), comment='缺陷标签')  # JSON字符串存储标签
     parent_id = Column(String(25), ForeignKey("defects.id"), nullable=True, comment='父缺陷ID')
+    source = Column(String(100), nullable=True, comment='缺陷来源')
     created_by = Column(String(25), ForeignKey("users.id"), comment='创建人ID')
     updated_by = Column(String(25), ForeignKey("users.id"), nullable=True, comment='更新人ID')
     created_at = Column(DateTime, default=func.now(), comment='创建时间')
