@@ -9,7 +9,8 @@ from utils.snowflake import (
     generate_project_id, 
     generate_task_id,
     generate_task_attachment_id,
-    generate_task_comment_id
+    generate_task_comment_id,
+    generate_defect_id
 )
 
 # 枚举定义
@@ -99,6 +100,43 @@ class OrganizationStatus(str, enum.Enum):
     """组织状态枚举"""
     ACTIVE = "active"      # 活跃
     INACTIVE = "inactive"  # 非活跃
+
+# 缺陷状态枚举
+class DefectStatus(str, enum.Enum):
+    """缺陷状态枚举"""
+    NEW = "new"                    # 新建
+    ASSIGNED = "assigned"          # 已分配
+    IN_PROGRESS = "in_progress"    # 处理中
+    RESOLVED = "resolved"          # 已解决
+    VERIFIED = "verified"          # 已验证
+    CLOSED = "closed"              # 已关闭
+    REOPENED = "reopened"          # 重新打开
+
+# 缺陷优先级枚举
+class DefectPriority(str, enum.Enum):
+    """缺陷优先级枚举"""
+    LOW = "low"        # 低优先级
+    MEDIUM = "medium"  # 中等优先级
+    HIGH = "high"      # 高优先级
+    URGENT = "urgent"  # 紧急
+
+# 缺陷类型枚举
+class DefectType(str, enum.Enum):
+    """缺陷类型枚举"""
+    BUG = "bug"                    # 功能缺陷
+    UI_BUG = "ui_bug"              # 界面缺陷
+    PERFORMANCE = "performance"    # 性能问题
+    SECURITY = "security"          # 安全问题
+    COMPATIBILITY = "compatibility" # 兼容性问题
+
+# 缺陷严重程度枚举
+class DefectSeverity(str, enum.Enum):
+    """缺陷严重程度枚举"""
+    CRITICAL = "critical"  # 严重
+    MAJOR = "major"        # 重要
+    MODERATE = "moderate"  # 一般
+    MINOR = "minor"        # 轻微
+    TRIVIAL = "trivial"    # 微不足道
 
 # 用户模型
 class User(Base):
@@ -261,3 +299,46 @@ class TaskComment(Base):
     # 关系
     task = relationship("Task", back_populates="comments")
     user = relationship("User")
+    replies = relationship("TaskComment", back_populates="parent_comment", foreign_keys="[TaskComment.parent_id]")
+    parent_id = Column(String(27), ForeignKey("task_comments.id"), nullable=True, comment='父评论ID')
+    parent_comment = relationship("TaskComment", remote_side=[id], back_populates="replies")
+
+# 缺陷模型
+class Defect(Base):
+    """缺陷表模型"""
+    __tablename__ = "defects"
+    # 缺陷ID，格式：D + 雪花算法ID
+    id = Column(String(25), primary_key=True, index=True, default=generate_defect_id, comment='缺陷ID，格式：D + 雪花算法ID')
+    title = Column(String(200), nullable=False, comment='缺陷标题')
+    description = Column(Text, comment='缺陷描述')
+    status = Column(Enum(DefectStatus), default=DefectStatus.NEW, comment='缺陷状态')
+    priority = Column(Enum(DefectPriority), default=DefectPriority.MEDIUM, comment='缺陷优先级')
+    type = Column(Enum(DefectType), default=DefectType.BUG, comment='缺陷类型')
+    project_id = Column(String(25), ForeignKey("projects.id"), comment='缺陷所属项目ID')
+    project_name = Column(String(100), comment='缺陷所属项目名称')
+    assignee_id = Column(String(25), ForeignKey("users.id"), comment='缺陷负责人ID')
+    assignee_name = Column(String(100), comment='缺陷负责人姓名')
+    reporter_id = Column(String(25), ForeignKey("users.id"), comment='缺陷报告人ID')
+    reporter_name = Column(String(100), comment='缺陷报告人姓名')
+    severity = Column(Enum(DefectSeverity), default=DefectSeverity.MODERATE, comment='缺陷严重程度')
+    version = Column(String(100), comment='缺陷所属版本')
+    environment = Column(String(100), comment='缺陷所属环境')
+    steps_to_reproduce = Column(Text, comment='复现步骤')
+    expected_result = Column(Text, comment='预期结果')
+    actual_result = Column(Text, comment='实际结果')
+    resolution = Column(Text, comment='解决方法')
+    tags = Column(String(500), comment='缺陷标签')  # JSON字符串存储标签
+    created_at = Column(DateTime, default=func.now(), comment='创建时间')
+    updated_at = Column(DateTime, default=func.now(), onupdate=func.now(), comment='更新时间')
+
+    parent_id = Column(String(25), ForeignKey("defects.id"), nullable=True, comment='父缺陷ID')
+    
+    # 关系
+    project = relationship("Project")
+    assignee = relationship("User", foreign_keys=[assignee_id])
+    reporter = relationship("User", foreign_keys=[reporter_id])
+    parent_defect = relationship("Defect", remote_side=[id], back_populates="sub_defects")
+    sub_defects = relationship("Defect", back_populates="parent_defect")
+
+
+

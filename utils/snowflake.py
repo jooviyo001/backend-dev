@@ -183,6 +183,11 @@ def generate_task_comment_id() -> str:
     return generate_snowflake_id("TC")
 
 
+def generate_defect_id() -> str:
+    """生成缺陷ID，格式：D + 雪花算法ID"""
+    return generate_snowflake_id("D")
+
+
 def parse_snowflake_id(snowflake_id: int) -> dict:
     """
     解析雪花算法ID
