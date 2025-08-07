@@ -51,7 +51,7 @@ async def get_defects_page(
     
     # 根据用户角色进行数据过滤
     # 如果不是管理员，只能查看自己相关的缺陷（创建的、分配给自己的、报告的、验证的）
-    if current_user.role != MemberRole.admin:
+    if current_user.role != MemberRole.ADMIN:
         query = query.filter(
             or_(
                 Defect.created_by == current_user.id,
