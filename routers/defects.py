@@ -1,8 +1,10 @@
-from fastapi import APIRouter, Depends, Query, HTTPException
+from fastapi import APIRouter, Depends, Query, HTTPException, File, UploadFile
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import desc, or_
 from typing import Optional, List
 from datetime import date
+import pandas as pd
+import io
 
 from models.database import get_db
 from models.defect import Defect, DefectStatus, DefectPriority, DefectType, DefectSeverity
@@ -352,7 +354,8 @@ async def batch_delete_defects(
     if any(d.type == DefectType.subdefect for d in existing_defects):
         raise HTTPException(status_code=400, detail="子缺陷不能删除")
     # 删除缺陷
-    db.delete(existing_defects)
+    for defect in existing_defects:
+        db.delete(defect)
     db.commit()
     return standard_response(
         message="缺陷删除成功",
@@ -392,5 +395,64 @@ async def export_defects(
         message="缺陷导出成功",
         data={
             "defects": [DefectResponse.model_validate(d, from_attributes=True) for d in defects]
+        }
+    )
+
+# 导入缺陷
+@router.post("/import", response_model=BaseResponse)
+async def import_defects(
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_permission("defect:write"))
+):
+    """导入缺陷数据"""
+    # 读取文件内容
+    content = await file.read()
+    df = pd.read_excel(io.BytesIO(content))
+    # 转换为字典列表
+    defect_data = df.to_dict(orient='records')
+    # 导入缺陷
+    for data in defect_data:
+        defect = Defect(**data)
+        db.add(defect)
+    db.commit()
+    return standard_response(
+        message="缺陷导入成功",
+        data={
+            "imported_count": len(defect_data)
+        }
+    )
+
+
+# 缺陷统计/statistics
+@router.get("/statistics", response_model=BaseResponse)
+async def get_defect_statistics(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_permission("defect:read"))
+):
+    """获取缺陷统计数据"""
+    # 构建查询
+    query = db.query(Defect)
+    # 权限过滤：非管理员只能导出自己相关的缺陷
+    if current_user.role != MemberRole.admin:
+        query = query.filter(
+            or_(
+                Defect.created_by == current_user.id,  # .created_by 是用户ID
+                Defect.assignee_id == current_user.id,  # .assignee_id 是用户ID
+                Defect.reporter_id == current_user.id,  # .reporter_id 是用户ID
+                Defect.verified_by_id == current_user.id,  # .verified_by_id 是用户ID
+                Defect.updated_by == current_user.id  # .updated_by 是用户ID
+            )
+        )
+    # 统计数据
+    total_count = query.count()
+    open_count = query.filter(Defect.status == DefectStatus.open).count()
+    closed_count = query.filter(Defect.status == DefectStatus.closed).count()
+    return standard_response(
+        message="缺陷统计数据获取成功",
+        data={
+            "total_count": total_count,  # 总缺陷数
+            "open_count": open_count,  # 打开缺陷数
+            "closed_count": closed_count  # 关闭缺陷数
         }
     )
