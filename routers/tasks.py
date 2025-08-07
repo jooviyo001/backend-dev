@@ -6,7 +6,8 @@ from datetime import date, datetime
 
 from models.database import get_db
 from models.models import Task, User, Project, TaskStatus, TaskPriority, TaskType
-from schemas.schemas import BaseResponse, PaginationResponse, TaskResponse, TaskListResponse, TaskUpdate, TaskCreate
+from schemas import BaseResponse, PaginationResponse, TaskResponse, \
+                            TaskListResponse, TaskUpdate, TaskCreate, TaskBatchStatusUpdate, TaskBatchAssigneeUpdate
 from utils.auth import get_current_active_user, require_permission
 from utils.response_utils import list_response, paginate_query, standard_response
 
@@ -65,6 +66,16 @@ async def get_tasks_list(
         joinedload(Task.project),
         joinedload(Task.assignee)
     )
+    
+    # 根据用户角色过滤任务：非管理员只能看到自己相关的任务
+    if current_user.role != "admin":
+        query = query.filter(
+            or_(
+                Task.assignee_id == current_user.id,  # 分配给自己的任务
+                Task.reporter_id == current_user.id,  # 自己创建的任务
+                Task.project.has(Project.members.any(User.id == current_user.id))  # 参与项目的任务
+            )
+        )
     
     # 应用筛选条件
     if status:
@@ -126,6 +137,16 @@ async def get_tasks_page(
         joinedload(Task.reporter),  # 预加载报告人信息
         joinedload(Task.project)    # 预加载项目信息
     )
+
+    # 根据用户角色过滤任务：非管理员只能看到自己相关的任务
+    if current_user.role != "admin":
+        query = query.filter(
+            or_(
+                Task.assignee_id == current_user.id,  # 分配给自己的任务
+                Task.reporter_id == current_user.id,  # 自己创建的任务
+                Task.project.has(Project.members.any(User.id == current_user.id))  # 参与项目的任务
+            )
+        )
 
     if keyword:
         query = query.filter(
@@ -443,7 +464,8 @@ async def get_task_detail(
     # 查找任务，预加载用户关联数据（不包含项目信息）
     task = db.query(Task).options(
         joinedload(Task.assignee),
-        joinedload(Task.reporter)
+        joinedload(Task.reporter),
+        joinedload(Task.project)
     ).filter(Task.id == task_id).first()  # 修复：使用原始task_id而不是extracted_task_id
     
     if not task:
@@ -452,10 +474,209 @@ async def get_task_detail(
             detail="任务不存在"
         )
     
-    # 返回任务详情，排除project字段
+    # 检查权限：非管理员只能查看自己相关的任务
+    if current_user.role != "admin":
+        user_is_assignee = current_user.id == task.assignee_id
+        user_is_reporter = current_user.id == task.reporter_id
+        user_is_project_member = task.project and any(
+            member.id == current_user.id for member in task.project.members
+        )
+        
+        if not (user_is_assignee or user_is_reporter or user_is_project_member):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="没有权限查看此任务"
+            )
+    
+    # 返回任务详情
     task_data = TaskResponse.model_validate(task)
     
     return standard_response(
         data=task_data,
         message="获取任务详情成功"
     )
+
+@router.put("/batch/status", response_model=BaseResponse)
+async def batch_update_task_status(
+    batch_update: TaskBatchStatusUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_permission("task:write"))
+):
+    """批量更新任务状态
+    
+    只支持更新为以下状态：
+    - todo: 待办
+    - in_progress: 进行中  
+    - done: 完成
+    
+    Args:
+        batch_update: 批量更新请求，包含任务ID列表和目标状态
+    
+    Returns:
+        更新结果统计
+    """
+    if not batch_update.task_ids:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="任务ID列表不能为空"
+        )
+    
+    # 查询要更新的任务
+    tasks = db.query(Task).filter(Task.id.in_(batch_update.task_ids)).all()
+    
+    if not tasks:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="未找到任何指定的任务"
+        )
+    
+    # 检查找到的任务数量
+    found_task_ids = [task.id for task in tasks]
+    missing_task_ids = [task_id for task_id in batch_update.task_ids if task_id not in found_task_ids]
+    
+    # 检查权限：只有任务创建者、负责人或管理员可以更新任务
+    user_is_admin = current_user.role == "admin"
+    unauthorized_tasks = []
+    
+    if not user_is_admin:
+        for task in tasks:
+            user_is_reporter = current_user.id == task.reporter_id
+            user_is_assignee = current_user.id == task.assignee_id
+            if not (user_is_reporter or user_is_assignee):
+                unauthorized_tasks.append(task.id)
+    
+    if unauthorized_tasks:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"没有权限更新以下任务: {', '.join(unauthorized_tasks)}"
+        )
+    
+    # 执行批量更新
+    try:
+        updated_count = 0
+        for task in tasks:
+            task.status = batch_update.status
+            task.updated_at = datetime.now()
+            updated_count += 1
+        
+        db.commit()
+        
+        # 构建响应数据
+        result = {
+            "updated_count": updated_count,
+            "total_requested": len(batch_update.task_ids),
+            "updated_task_ids": found_task_ids,
+            "target_status": batch_update.status.value,
+            "missing_task_ids": missing_task_ids if missing_task_ids else None
+        }
+        
+        message = f"成功更新 {updated_count} 个任务状态为 {batch_update.status.value}"
+        if missing_task_ids:
+            message += f"，{len(missing_task_ids)} 个任务未找到"
+        
+        return standard_response(
+            data=result,
+            message=message
+        )
+        
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"批量更新任务状态失败: {str(e)}"
+        )
+
+# 批量分配任务
+@router.put("/batch-assign", response_model=BaseResponse)
+async def batch_update_task_assignee(
+    batch_update: TaskBatchAssigneeUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_permission("task:write"))
+):
+    
+    """批量分配任务"""
+    # 检查权限：只有任务创建者、负责人或管理员可以分配任务
+    user_is_admin = current_user.role == "admin"
+    unauthorized_tasks = []
+    if not user_is_admin:
+        for task_id in batch_update.task_ids:
+            task = db.query(Task).filter(Task.id == task_id).first()
+            if not task:
+                continue
+            user_is_reporter = current_user.id == task.reporter_id
+            user_is_assignee = current_user.id == task.assignee_id
+            if not (user_is_reporter or user_is_assignee):
+                unauthorized_tasks.append(task_id)
+    if unauthorized_tasks:  
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="没有权限分配以下任务: " + ", ".join(unauthorized_tasks)
+        )
+    if not batch_update.assignee_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="分配者ID不能为空"
+        )
+    # 检查分配者是否存在
+    assignee = db.query(User).filter(User.id == batch_update.assignee_id).first()
+    if not assignee:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="分配者不存在"
+        )
+    # 检查任务是否存在
+    tasks = db.query(Task).filter(Task.id.in_(batch_update.task_ids)).all()
+    if not tasks:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="未找到任何指定的任务"
+        )
+    # 检查任务是否已分配
+    assigned_task_ids = [task.id for task in tasks if task.assignee_id]
+    if assigned_task_ids:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"以下任务已分配，不能重复分配: {', '.join(assigned_task_ids)}"
+        )
+    # 检查任务是否已完成
+    completed_task_ids = [task.id for task in tasks if task.status == TaskStatus.DONE]
+    if completed_task_ids:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"以下任务已完成，不能分配: {', '.join(completed_task_ids)}"
+        )
+    # 检查任务是否已取消
+    cancelled_task_ids = [task.id for task in tasks if task.status == TaskStatus.CANCELLED]
+    if cancelled_task_ids:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"以下任务已取消，不能分配: {', '.join(cancelled_task_ids)}"
+        )
+    # 执行批量分配
+    try:
+        updated_count = 0
+        for task in tasks:
+            task.assignee_id = batch_update.assignee_id
+            task.updated_at = datetime.now()
+            updated_count += 1
+        db.commit()
+        return standard_response(
+            data={
+                "updated_count": updated_count,
+                "total_requested": len(batch_update.task_ids),
+                "updated_task_ids": [task.id for task in tasks],
+                "assignee_id": batch_update.assignee_id
+            },
+            message="批量分配任务成功"
+        )
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"批量分配任务失败: {str(e)}"
+        )
+    finally:
+        db.close()
+
+
+

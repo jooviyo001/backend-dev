@@ -5,7 +5,7 @@ from datetime import timedelta
 
 from models.database import get_db
 from models.models import User
-from schemas.schemas import (
+from schemas import (
     LoginRequest, LoginResponse, RegisterRequest, UserResponse, BaseResponse, UserProfileUpdateRequest
 )
 from utils.auth import (
@@ -157,7 +157,7 @@ async def update_user_profile(
     )
 
 from fastapi import Body
-from schemas.schemas import ChangePasswordRequest
+from schemas import ChangePasswordRequest
 
 @router.put("/change-password", response_model=BaseResponse)
 async def change_password(

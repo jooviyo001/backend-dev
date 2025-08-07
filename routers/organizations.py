@@ -5,7 +5,7 @@ from sqlalchemy import and_, or_, func, text
 from typing import List, Optional
 from models.database import get_db
 from models.models import Organization, User, Project, organization_members, OrganizationType, OrganizationStatus, MemberRole
-from schemas.schemas import (
+from schemas import (
     OrganizationCreate, OrganizationUpdate, OrganizationResponse, 
     OrganizationTreeNode, OrganizationMemberCreate, OrganizationMemberUpdate, 
     OrganizationMemberResponse, OrganizationStatistics, OrganizationMove,

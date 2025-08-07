@@ -1,18 +1,15 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import or_, and_
-from typing import Optional, List
-from math import ceil
+from typing import Optional
 import json
 
 from models.database import get_db
-from models.models import Project, User, Organization, Task
-from schemas.schemas import (
+from models.models import Project, User, Organization, Task, project_members
+from schemas import (
     ProjectCreate, ProjectUpdate, ProjectResponse, BaseResponse, UserResponse
 )
-from utils.auth import (
-    get_current_active_user, require_permission
-)
+from utils.auth import (require_permission)
 
 router = APIRouter()
 
@@ -30,6 +27,10 @@ async def get_projects(
 ):
     """获取项目列表"""
     from utils.response_utils import list_response, paginate_query    
+    # 检查权限：只有管理员或项目创建者可以查看
+    user_is_admin = current_user.role == "admin"
+    if not user_is_admin:
+        query = query.filter(Project.creator_id == current_user.id)
 
     
     query = db.query(Project).filter(Project.is_archived == False)
@@ -91,6 +92,13 @@ async def get_projects_page(
     current_user: User = Depends(require_permission("project:read"))
 ):
     """获取项目分页数据"""
+    query = db.query(Project).filter(Project.is_archived == False)
+
+    # 检查权限：只有管理员或项目创建者可以查看
+    user_is_admin = current_user.role == "admin"
+    if not user_is_admin:
+        query = query.filter(Project.creator_id == current_user.id)
+
     return await get_projects(keyword, status, organization_id, None, page, size, db, current_user)
 
 # 我的项目
@@ -117,6 +125,16 @@ async def get_my_projects(
     # 状态过滤
     if status:
         query = query.filter(Project.status == status)
+    
+    # 角色过滤
+    if role:
+        # 通过项目成员关联表过滤特定角色
+        query = query.join(project_members).filter(
+            and_(
+                project_members.c.user_id == current_user.id,
+                project_members.c.role == role
+            )
+        )
     
     # 预加载关联数据
     query = query.options(
@@ -147,8 +165,13 @@ async def get_project(
     current_user: User = Depends(require_permission("project:read"))
 ):
     """获取项目详情"""
-    print(f"Received project_id: {project_id}") # 添加这行日志
-    project = db.query(Project).filter(Project.id == project_id).first()
+    query = db.query(Project).filter(Project.id == project_id)
+
+    # 检查权限：只有管理员或项目创建者可以查看
+    user_is_admin = current_user.role == "admin"
+    if not user_is_admin:
+        query = query.filter(Project.creator_id == current_user.id)
+    project = query.first()
     if not project:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -206,8 +229,13 @@ async def get_project_members(
     current_user: User = Depends(require_permission("project:read"))
 ):
     """获取项目成员列表"""
-    print(f"Received project_id for members: {project_id}") # 添加这行日志
-    project = db.query(Project).filter(Project.id == project_id).first()
+    query = db.query(Project).filter(Project.id == project_id)
+    # 检查权限：只有管理员或项目创建者可以查看
+    user_is_admin = current_user.role == "admin"
+    if not user_is_admin:
+        query = query.filter(Project.creator_id == current_user.id)
+    # 检查项目是否存在
+    project = query.first()
     if not project:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -423,7 +451,13 @@ async def delete_project(
     current_user: User = Depends(require_permission("project:write"))
 ):
     """删除项目"""
-    project = db.query(Project).filter(Project.id == project_id).first()
+    query = db.query(Project).filter(Project.id == project_id)
+    # 检查权限：只有管理员或项目创建者可以删除
+    user_is_admin = current_user.role == "admin"
+    if not user_is_admin:
+        query = query.filter(Project.creator_id == current_user.id)
+    # 检查项目是否存在
+    project = query.first()
     if not project:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -443,7 +477,13 @@ async def archive_project(
     current_user: User = Depends(require_permission("project:write"))
 ):
     """归档项目"""
-    project = db.query(Project).filter(Project.id == project_id).first()
+    query = db.query(Project).filter(Project.id == project_id)
+    # 检查权限：只有管理员或项目创建者可以归档
+    user_is_admin = current_user.role == "admin"
+    if not user_is_admin:
+        query = query.filter(Project.creator_id == current_user.id)
+    # 检查项目是否存在
+    project = query.first()
     if not project:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -463,7 +503,13 @@ async def restore_project(
     current_user: User = Depends(require_permission("project:write"))
 ):
     """恢复已归档的项目"""
-    project = db.query(Project).filter(Project.id == project_id).first()
+    query = db.query(Project).filter(Project.id == project_id)
+    # 检查权限：只有管理员或项目创建者可以恢复
+    user_is_admin = current_user.role == "admin"
+    if not user_is_admin:
+        query = query.filter(Project.creator_id == current_user.id)
+    # 检查项目是否存在
+    project = query.first()
     if not project:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -484,7 +530,13 @@ async def add_project_member(
     current_user: User = Depends(require_permission("project:write"))
 ):
     """添加项目成员"""
-    project = db.query(Project).filter(Project.id == project_id).first()
+    query = db.query(Project).filter(Project.id == project_id)
+    # 检查权限：只有管理员或项目创建者可以添加成员
+    user_is_admin = current_user.role == "admin"
+    if not user_is_admin:
+        query = query.filter(Project.creator_id == current_user.id)
+    # 检查项目是否存在
+    project = query.first()
     if not project:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -510,24 +562,47 @@ async def add_project_member(
     
     return BaseResponse(message="添加项目成员成功")
 
-
-
-# 项目成员列表
-@router.get("/{project_id}/members", response_model=BaseResponse)
-async def get_project_members(
+# 项目移除成员
+@router.delete("/{project_id}/members/{user_id}", response_model=BaseResponse)
+async def remove_project_member(
     project_id: str,
+    user_id: str,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_permission("project:read"))
+    current_user: User = Depends(require_permission("project:write"))
 ):
-    """获取项目成员列表"""
-    project = db.query(Project).filter(Project.id == project_id).first()
+    """移除项目成员"""
+    query = db.query(Project).filter(Project.id == project_id)
+    # 检查权限：只有管理员或项目创建者可以移除成员
+    user_is_admin = current_user.role == "admin"
+    if not user_is_admin:
+        query = query.filter(Project.creator_id == current_user.id)
+    # 检查项目是否存在
+    project = query.first()
     if not project:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="项目不存在"
         )
     
-    return BaseResponse(
-        message="获取项目成员成功",
-        data=[UserResponse.from_orm(member) for member in project.members]
-    )
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="用户不存在"
+        )
+    # 检查用户是否是项目成员
+    if user not in project.members:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="用户不是项目成员"
+        )
+    # 检查用户是否是项目创建者
+    if user == project.creator:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="不能移除项目创建者"
+        )
+    # 移除用户
+    project.members.remove(user)
+    db.commit()
+    return BaseResponse(message="移除项目成员成功")

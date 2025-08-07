@@ -9,7 +9,7 @@ from models.database import get_db
 from models.models import User, Project, Task, Organization, ProjectStatus, TaskStatus, TaskPriority
 from utils.auth import get_current_active_user
 from utils.response_utils import list_response
-from schemas.schemas import BaseResponse
+from schemas import BaseResponse
 
 router = APIRouter()
 

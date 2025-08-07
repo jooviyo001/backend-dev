@@ -7,7 +7,7 @@ from math import ceil
 from models.database import get_db
 from models.models import User
 from routers import dashboard
-from schemas.schemas import (
+from schemas import (
     UserCreate, UserUpdate, UserResponse, BaseResponse, PaginationResponse
 )
 from utils.auth import (
