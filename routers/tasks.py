@@ -1,14 +1,15 @@
 from fastapi import APIRouter, Depends, Query, HTTPException, status
 from sqlalchemy.orm import Session, joinedload
-from sqlalchemy import func, and_, desc, or_
-from typing import Optional, List
+from sqlalchemy import desc, or_
+from typing import Optional
 from datetime import date, datetime
 
 from models.database import get_db
 from models import Task, User, Project, TaskStatus, TaskPriority, TaskType
-from schemas import BaseResponse, PaginationResponse, TaskResponse, \
-                            TaskListResponse, TaskUpdate, TaskCreate, TaskBatchStatusUpdate, TaskBatchAssigneeUpdate
-from utils.auth import get_current_active_user, require_permission
+from schemas.base import BaseResponse
+from schemas.task import TaskResponse, TaskListResponse, TaskUpdate, \
+    TaskCreate, TaskBatchStatusUpdate, TaskBatchAssigneeUpdate, TaskBatchDelete
+from utils.auth import require_permission
 from utils.response_utils import list_response, paginate_query, standard_response
 
 router = APIRouter()
@@ -677,6 +678,74 @@ async def batch_update_task_assignee(
         )
     finally:
         db.close()
+
+# 批量删除
+@router.delete("/batch-delete", response_model=BaseResponse)
+async def batch_delete_tasks(
+    batch_delete: TaskBatchDelete,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_permission("task:write"))
+):
+    """批量删除任务"""
+    # 检查权限：只有任务创建者、负责人或管理员可以删除任务
+    user_is_admin = current_user.role == "admin"
+    unauthorized_tasks = []
+    if not user_is_admin:
+        for task_id in batch_delete.task_ids:
+            task = db.query(Task).filter(Task.id == task_id).first()
+            if not task:
+                continue
+            user_is_reporter = current_user.id == task.reporter_id
+            user_is_assignee = current_user.id == task.assignee_id
+            if not (user_is_reporter or user_is_assignee):
+                unauthorized_tasks.append(task_id)
+    if unauthorized_tasks:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="没有权限删除以下任务: " + ", ".join(unauthorized_tasks)
+        )
+    # 检查任务是否存在
+    tasks = db.query(Task).filter(Task.id.in_(batch_delete.task_ids)).all()
+    if not tasks:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="未找到任何指定的任务"
+        )
+    # 检查任务是否已完成
+    completed_task_ids = [task.id for task in tasks if task.status == TaskStatus.DONE]
+    if completed_task_ids:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"以下任务已完成，不能删除: {', '.join(completed_task_ids)}"
+        )
+    # 检查任务是否已取消
+    cancelled_task_ids = [task.id for task in tasks if task.status == TaskStatus.CANCELLED]
+    if cancelled_task_ids:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"以下任务已取消，不能删除: {', '.join(cancelled_task_ids)}"
+        )
+    # 执行批量删除
+    try:
+        db.delete(tasks)
+        db.commit()
+        return standard_response(
+            data={
+                "deleted_count": len(tasks),
+                "total_requested": len(batch_delete.task_ids),
+                "deleted_task_ids": [task.id for task in tasks]
+            },
+            message="批量删除任务成功"
+        )
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"批量删除任务失败: {str(e)}"
+        )
+    finally:
+        db.close()
+
 
 
 

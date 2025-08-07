@@ -160,10 +160,22 @@ class TaskStatistics(BaseModel):
 # 批量操作模式
 class BatchDeleteRequest(BaseModel):
     ids: List[str] = Field(..., min_length=1, description="任务ID数组")
+    user_id: str = Field(..., description="用户ID")
+    project_id: str = Field(..., description="项目ID")
+    is_admin: bool = Field(..., description="是否管理员")
+    is_reporter: bool = Field(..., description="是否报告人")
+    is_assignee: bool = Field(..., description="是否负责人")
+    assignee_name: str = Field(..., description="负责人姓名")
 
 class BatchAssignRequest(BaseModel):
     task_ids: List[str] = Field(..., min_length=1, description="任务ID数组")
     assignee_id: str = Field(..., description="分配者ID")
+    user_id: str = Field(..., description="用户ID")
+    project_id: str = Field(..., description="项目ID")
+    is_admin: bool = Field(..., description="是否管理员")
+    is_reporter: bool = Field(..., description="是否报告人")
+    is_assignee: bool = Field(..., description="是否负责人")    
+    assignee_name: str = Field(..., description="负责人姓名")
 
 # 任务批量状态更新模式
 class TaskBatchStatusUpdate(BaseModel):
@@ -179,10 +191,28 @@ class TaskBatchStatusUpdate(BaseModel):
             raise ValueError(f"状态只能是: {', '.join([s.value for s in allowed_statuses])}")
         return v
 
+# 任务批量负责人更新模式
 class TaskBatchAssigneeUpdate(BaseModel):
     """批量分配任务的请求模式"""
     task_ids: List[str] = Field(..., description="任务ID列表")
     assignee_id: str = Field(..., description="分配给的用户ID")
+    user_id: str = Field(..., description="用户ID")
+    project_id: str = Field(..., description="项目ID")
+    is_admin: bool = Field(..., description="是否管理员")
+    is_reporter: bool = Field(..., description="是否报告人")
+    is_assignee: bool = Field(..., description="是否负责人")
+    assignee_name: str = Field(..., description="负责人姓名")
+
+# 批量删除任务模式
+class TaskBatchDelete(BaseModel):
+    task_ids: List[str] = Field(..., min_length=1, description="任务ID数组")
+    user_id: str = Field(..., description="删除人ID")
+    deleted_by: str = Field(..., description="删除人姓名")
+    project_id: str = Field(..., description="项目ID")
+    is_admin: bool = Field(..., description="是否管理员")
+    is_reporter: bool = Field(..., description="是否报告人")
+    is_assignee: bool = Field(..., description="是否负责人")
+    assignee_name: str = Field(..., description="负责人姓名")
 
 # 附件相关模式
 class AttachmentResponse(BaseModel):
@@ -218,3 +248,5 @@ class CommentResponse(CommentBase):
     
     class Config:
         from_attributes = True
+
+
