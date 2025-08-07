@@ -29,6 +29,7 @@ class User(Base):
     is_active = Column(Boolean, default=True, comment='是否激活状态')
     is_verified = Column(Boolean, default=False, comment='是否已验证邮箱')
     last_login = Column(DateTime, comment='最后登录时间')
+    last_logout = Column(DateTime, comment='最后登出时间')
     created_at = Column(DateTime, default=func.now(), comment='创建时间')
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now(), comment='更新时间')
     

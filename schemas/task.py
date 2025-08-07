@@ -1,7 +1,7 @@
 from pydantic import BaseModel, Field, field_validator
 from typing import Optional, List, TYPE_CHECKING
 from datetime import datetime
-from models.models import TaskStatus, TaskPriority, TaskType
+from models.enums import TaskStatus, TaskPriority, TaskType
 
 if TYPE_CHECKING:
     from .user import UserResponse

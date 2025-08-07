@@ -9,7 +9,7 @@ import sys
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
 # 导入模型
-from models.models import Base
+from models import Base
 from models.database import DATABASE_URL
 
 # this is the Alembic Config object, which provides

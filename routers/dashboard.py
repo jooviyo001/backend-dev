@@ -1,98 +1,25 @@
-import re
 from fastapi import APIRouter, Depends, Query
 from typing import Optional, List
 from datetime import datetime, timedelta
-from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from sqlalchemy import func, and_, or_
 from models.database import get_db
-from models.models import User, Project, Task, Organization, ProjectStatus, TaskStatus, TaskPriority
+from models.user import User
+from models.project import Project
+from models.task import Task
+# from models.organization import Organization
+from models.enums import ProjectStatus, TaskStatus, TaskPriority, TaskType
+
 from utils.auth import get_current_active_user
-from utils.response_utils import list_response
-from schemas import BaseResponse
+# from utils.response_utils import list_response
+from schemas import (
+    BaseResponse, DashboardStats, RecentTask, ProjectProgress, TaskStatusDistribution,
+    RecentActivity, UserWorkload, ProjectTrend, TaskTrend
+)
 
 router = APIRouter()
 
-# 响应模型
-class DashboardStats(BaseModel):
-    totalProjects: int
-    activeProjects: int
-    totalTasks: int
-    completedTasks: int
-    overdueTasks: int
-    totalUsers: int
-    activeUsers: int
-    projectProgress: float
-    taskCompletionRate: float
-    recentActivity: int
-    completedProjects: int
-    myTasks: int
-    teamMembers: int
-
-# 最近任务
-class RecentTask(BaseModel):
-    id: str
-    title: str
-    status: str
-    priority: str
-    dueDate: Optional[str]
-    projectName: str
-    assigneeName: str
-
-# 项目进度
-class ProjectProgress(BaseModel):
-    projectId: str
-    projectName: str
-    progress: float
-    totalTasks: int
-    completedTasks: int
-    status: str
-
-# 任务状态分布
-class TaskStatusDistribution(BaseModel):
-    status: str
-    count: int
-    percentage: float
-
-# 最近活动
-class RecentActivity(BaseModel):
-    id: str
-    type: str  # project|task|user
-    action: str  # created|updated|deleted
-    description: str
-    userId: str
-    userName: str
-    targetId: str
-    targetName: str
-    createdAt: str
-
-# 用户工作负载
-class UserWorkload(BaseModel):
-    userId: str
-    userName: str
-    totalTasks: int
-    completedTasks: int
-    inProgressTasks: int
-    overdueTasks: int
-    workloadPercentage: float
-
-# 项目趋势
-class ProjectTrend(BaseModel):
-    period: str
-    totalProjects: int
-    completedProjects: int
-    activeProjects: int
-    date: str
-
-# 任务趋势
-class TaskTrend(BaseModel):
-    period: str
-    totalTasks: int
-    completedTasks: int
-    activeTasks: int
-    date: str
-
-# 任务趋势
+# 仪表盘统计数据
 @router.get("/stats", response_model=BaseResponse)
 async def get_dashboard_stats(
     dateFrom: Optional[str] = Query(None, description="日期范围开始"),

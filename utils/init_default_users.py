@@ -5,7 +5,7 @@
 
 from sqlalchemy.orm import Session
 from models.database import get_db
-from models.models import User, UserRole, Organization
+from models import User, UserRole, Organization
 from utils.auth import get_password_hash
 from utils.snowflake import generate_snowflake_id
 import logging

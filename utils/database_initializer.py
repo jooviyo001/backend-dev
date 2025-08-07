@@ -16,7 +16,7 @@ from sqlalchemy import text
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from models.database import engine, SessionLocal
-from models.models import (
+from models import (
     Base, User, Organization, Project, Task, TaskAttachment, TaskComment,
     UserRole, ProjectStatus, TaskStatus, TaskPriority, TaskType,
     OrganizationType, OrganizationStatus

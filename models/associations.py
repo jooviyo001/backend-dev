@@ -17,7 +17,7 @@ project_members = Table(
     Column('role', String(50), default='member', comment='成员角色')
 )
 
-# 组织成员关联表
+# 组织成员关联表 
 organization_members = Table(
     'organization_members',
     Base.metadata,

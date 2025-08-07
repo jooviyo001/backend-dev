@@ -1,7 +1,7 @@
 from pydantic import BaseModel, EmailStr, Field
 from typing import Optional, List
 from datetime import datetime
-from models.models import OrganizationType, OrganizationStatus, MemberRole
+from models import OrganizationType, OrganizationStatus, MemberRole
 
 # 组织相关模式
 class OrganizationBase(BaseModel):

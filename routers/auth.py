@@ -1,12 +1,11 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordRequestForm
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, query
 from datetime import timedelta
 
 from models.database import get_db
-from models.models import User
+from models import User
 from schemas import (
-    LoginRequest, LoginResponse, RegisterRequest, UserResponse, BaseResponse, UserProfileUpdateRequest
+    LoginRequest, RegisterRequest, UserResponse, BaseResponse, UserProfileUpdateRequest
 )
 from utils.auth import (
     authenticate_user, create_access_token, get_password_hash,
@@ -86,10 +85,48 @@ async def register(register_data: RegisterRequest, db: Session = Depends(get_db)
     )
 
 @router.post("/logout", response_model=BaseResponse)
-async def logout(current_user: User = Depends(get_current_active_user)):
+async def logout(
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
     """用户登出"""
-    # 在实际应用中，可以将token加入黑名单
+    query = db.query(User).filter(User.id == current_user.id)
+    query.update({User.last_logout: datetime.now()})
+    db.commit()
     return BaseResponse(message="登出成功", data="success")
+
+@router.post("/refresh-token", response_model=BaseResponse)
+async def refresh_token(
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """刷新访问令牌"""
+    # 检查用户是否已登出
+    if current_user.last_logout:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="用户已登出",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    # 检查用户是否已登录
+    if not current_user.last_login:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="用户未登录",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = create_access_token(
+        data={"sub": current_user.username}, expires_delta=access_token_expires
+    )
+    return BaseResponse(
+        message="刷新成功",
+        data={
+            "access_token": access_token,
+            "token_type": "bearer"
+        }
+    )
 
 @router.get("/me", response_model=BaseResponse)
 async def get_current_user_info(
@@ -97,12 +134,12 @@ async def get_current_user_info(
     db: Session = Depends(get_db)
 ):
     """获取当前用户信息"""
-    from models.models import organization_members, Organization
+    from models import organization_members, Organization
     from sqlalchemy import select
     
     # 查询用户的组织信息
     position = None
-    department = None
+    org_name = None
     
     # 查询用户在组织中的职位和部门信息
     org_query = db.execute(

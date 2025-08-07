@@ -1,12 +1,8 @@
-from fastapi import FastAPI, HTTPException, Depends, status
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.security import HTTPBearer
 import uvicorn
-from datetime import datetime
-from typing import Optional, List
-import jwt
-from pydantic import BaseModel
 
 # 导入状态码常量
 from utils.status_codes import *
@@ -14,7 +10,7 @@ from utils.status_codes import *
 # 导入路由模块
 from routers import auth, users, projects, organizations, dashboard, tasks, defects
 from models.database import engine, Base
-from models import models
+from models import *
 from utils.snowflake import init_snowflake
 from utils.database_initializer import init_database
 from utils.logging_middleware import RequestResponseLoggingMiddleware
@@ -167,7 +163,7 @@ security = HTTPBearer()
 
 # 全局异常处理
 @app.exception_handler(HTTPException)
-async def http_exception_handler(request, exc):
+async def http_exception_handler(_, exc):
     from utils.response_utils import format_timestamp
     
     # 根据HTTP状态码映射到自定义状态码

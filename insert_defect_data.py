@@ -3,7 +3,7 @@
 """
 from sqlalchemy.orm import sessionmaker
 from models.database import engine, SessionLocal
-from models.models import Defect, DefectStatus, DefectPriority, DefectType, DefectSeverity
+from models import Defect, DefectStatus, DefectPriority, DefectType, DefectSeverity
 from datetime import datetime
 import json
 

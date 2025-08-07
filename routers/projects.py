@@ -5,7 +5,7 @@ from typing import Optional
 import json
 
 from models.database import get_db
-from models.models import Project, User, Organization, Task, project_members
+from models import Project, User, Organization, Task, project_members
 from schemas import (
     ProjectCreate, ProjectUpdate, ProjectResponse, BaseResponse, UserResponse
 )

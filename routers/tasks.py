@@ -5,7 +5,7 @@ from typing import Optional, List
 from datetime import date, datetime
 
 from models.database import get_db
-from models.models import Task, User, Project, TaskStatus, TaskPriority, TaskType
+from models import Task, User, Project, TaskStatus, TaskPriority, TaskType
 from schemas import BaseResponse, PaginationResponse, TaskResponse, \
                             TaskListResponse, TaskUpdate, TaskCreate, TaskBatchStatusUpdate, TaskBatchAssigneeUpdate
 from utils.auth import get_current_active_user, require_permission

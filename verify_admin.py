@@ -10,7 +10,7 @@ import os
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from models.database import get_db
-from models.models import User
+from models import User
 from utils.auth import verify_password
 
 def verify_admin_password():

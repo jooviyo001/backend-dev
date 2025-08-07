@@ -6,7 +6,7 @@ from fastapi import HTTPException, status, Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 from models.database import get_db
-from models.models import User
+from models import User
 import os
 from dotenv import load_dotenv
 
@@ -84,7 +84,7 @@ def get_current_user(credentials: Optional[HTTPAuthorizationCredentials] = Depen
         if first_user:
             return first_user
         # 如果没有任何用户，创建一个临时用户对象
-        from models.models import UserRole
+        from models import UserRole
         temp_user = User()
         temp_user.id = 1
         temp_user.username = "debug_admin"  # 调试模式下的管理员用户名

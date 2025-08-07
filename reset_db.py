@@ -13,7 +13,7 @@ from datetime import datetime
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from models.database import engine, SessionLocal
-from models.models import Base, User, Organization, Project, Task, UserRole, ProjectStatus, TaskStatus, TaskPriority, TaskType, OrganizationType
+from models import Base, User, Organization, Project, Task, UserRole, ProjectStatus, TaskStatus, TaskPriority, TaskType, OrganizationType
 from utils.auth import get_password_hash
 
 def reset_database():

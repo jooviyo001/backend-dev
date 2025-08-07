@@ -1,7 +1,7 @@
 from pydantic import BaseModel, Field, field_validator
 from typing import Optional, List
 from datetime import datetime
-from models.models import DefectStatus, DefectPriority, DefectType, DefectSeverity
+from models.defect import DefectStatus, DefectPriority, DefectType, DefectSeverity
 
 # 缺陷相关模式
 class DefectBase(BaseModel):

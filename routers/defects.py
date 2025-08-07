@@ -1,13 +1,17 @@
-from fastapi import APIRouter, Depends, Query, HTTPException, status
+from fastapi import APIRouter, Depends, Query, HTTPException
 from sqlalchemy.orm import Session, joinedload
-from sqlalchemy import func, and_, desc, or_
+from sqlalchemy import desc, or_
 from typing import Optional, List
-from datetime import date, datetime
+from datetime import date
 
 from models.database import get_db
-from models.models import Defect, User, Project, DefectStatus, DefectPriority, DefectType, DefectSeverity
-from schemas import BaseResponse, PaginationResponse, DefectResponse, DefectCreate, DefectUpdate
-from utils.auth import get_current_active_user, require_permission
+from models.defect import Defect, DefectStatus, DefectPriority, DefectType, DefectSeverity
+from models.user import User
+from models.project import Project
+from models.associations import MemberRole
+
+from schemas import BaseResponse, DefectResponse, DefectCreate, DefectUpdate
+from utils.auth import require_permission
 from utils.response_utils import list_response, paginate_query, standard_response
 
 router = APIRouter()
@@ -30,7 +34,7 @@ async def get_defects_page(
     start_date: Optional[date] = Query(None, description="开始日期 (YYYY-MM-DD)"),
     end_date: Optional[date] = Query(None, description="结束日期 (YYYY-MM-DD)"),
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_permission("task:read"))
+    current_user: User = Depends(require_permission("defect:read"))
 ):
     """获取缺陷分页数据
     
@@ -41,9 +45,21 @@ async def get_defects_page(
     - 优先级筛选
     - 类型和严重程度筛选
     - 日期范围筛选
-    """
+    """ 
     # 查询缺陷表
     query = db.query(Defect)
+    
+    # 根据用户角色进行数据过滤
+    # 如果不是管理员，只能查看自己相关的缺陷（创建的、分配给自己的、报告的、验证的）
+    if current_user.role != MemberRole.admin:
+        query = query.filter(
+            or_(
+                Defect.created_by == current_user.id,
+                Defect.assignee_id == current_user.id,
+                Defect.reporter_id == current_user.id,
+                Defect.verified_by_id == current_user.id
+            )
+        )
 
     # 关键词搜索
     if keyword:
@@ -152,8 +168,20 @@ async def create_defect(
         # 检查子缺陷是否为缺陷
         if defect.type == DefectType.defect:
             raise HTTPException(status_code=400, detail="子缺陷不能为缺陷")
+    
+    # 创建缺陷对象
+    db_defect = Defect(**defect.model_dump())
+    # 设置创建人为当前用户
+    db_defect.created_by = current_user.id
+    db_defect.updated_by = current_user.id
+    
+    # 保存到数据库
+    db.add(db_defect)
+    db.commit()
+    db.refresh(db_defect)
+    
     return standard_response(
-        data=DefectResponse.model_validate(defect, from_attributes=True),
+        data=DefectResponse.model_validate(db_defect, from_attributes=True),
         message="缺陷创建成功"
     )
 
@@ -174,6 +202,14 @@ async def get_defect_by_id(
     if not defect:
         raise HTTPException(status_code=404, detail="缺陷不存在")
     
+    # 权限检查：非管理员只能查看自己相关的缺陷
+    if current_user.role != MemberRole.admin:
+        if not (defect.created_by == current_user.id or 
+                defect.assignee_id == current_user.id or 
+                defect.reporter_id == current_user.id or 
+                defect.verified_by_id == current_user.id):
+            raise HTTPException(status_code=403, detail="权限不足，无法查看此缺陷")
+    
     return standard_response(
         data=DefectResponse.model_validate(defect, from_attributes=True),
         message="获取缺陷详情成功"
@@ -193,12 +229,20 @@ async def update_defect(
     if not existing_defect:
         raise HTTPException(status_code=404, detail="缺陷不存在")
     
+    # 权限检查：非管理员只能更新自己相关的缺陷
+    if current_user.role != MemberRole.admin:
+        if not (existing_defect.created_by == current_user.id or 
+                existing_defect.assignee_id == current_user.id or 
+                existing_defect.reporter_id == current_user.id):
+            raise HTTPException(status_code=403, detail="权限不足，无法更新此缺陷")
+    
     # 更新缺陷字段
     for key, value in defect.model_dump(exclude_unset=True).items():
         setattr(existing_defect, key, value)
     
-    # 记录更新人
+    # 设置更新者
     existing_defect.updated_by = current_user.id
+    
     db.commit()
     db.refresh(existing_defect)
     return standard_response(
@@ -219,6 +263,10 @@ async def delete_defect(
     if not existing_defect:
         raise HTTPException(status_code=404, detail="缺陷不存在")
     
+    # 权限检查：只有创建人或管理员才能删除
+    if current_user.role != MemberRole.admin and current_user.id != existing_defect.created_by:
+        raise HTTPException(status_code=403, detail="权限不足，只有创建人或管理员才能删除缺陷")
+    
     # 删除缺陷
     db.delete(existing_defect)
     db.commit()
@@ -235,9 +283,21 @@ async def batch_update_defects(
 ):
     """批量更新缺陷"""
     # 检查缺陷是否存在
-    existing_defects = db.query(Defect).filter(Defect.id.in_([d.id for d in defects])).all()
-    if len(existing_defects) != len(defects):
+    defect_ids = [d.id for d in defects if hasattr(d, 'id') and d.id]
+    if not defect_ids:
+        raise HTTPException(status_code=400, detail="缺陷ID不能为空")
+    
+    existing_defects = db.query(Defect).filter(Defect.id.in_(defect_ids)).all()
+    if len(existing_defects) != len(defect_ids):
         raise HTTPException(status_code=400, detail="有缺陷不存在")
+    
+    # 权限检查：非管理员只能更新自己相关的缺陷
+    if current_user.role != MemberRole.admin:
+        for defect in existing_defects:
+            if not (defect.created_by == current_user.id or 
+                    defect.assignee_id == current_user.id or 
+                    defect.reporter_id == current_user.id):
+                raise HTTPException(status_code=403, detail=f"权限不足，无法更新缺陷 {defect.id}")
     # 检查父缺陷是否存在
     parent_ids = [d.parent_id for d in defects if d.parent_id]
     if parent_ids:
@@ -257,10 +317,11 @@ async def batch_update_defects(
         if any(d.type == DefectType.defect for d in parent_defects):
             raise HTTPException(status_code=400, detail="子缺陷不能为缺陷")
     # 更新缺陷
-    for defect in existing_defects:
-        for key, value in defect.model_dump(exclude_unset=True).items():
-            setattr(defect, key, value)
-        defect.updated_by = current_user.id
+    for i, defect_data in enumerate(defects):
+        for key, value in defect_data.model_dump(exclude_unset=True).items():
+            setattr(existing_defects[i], key, value)
+        # 设置更新者
+        existing_defects[i].updated_by = current_user.id
     db.commit()
     return standard_response(
         message="缺陷更新成功",
@@ -281,6 +342,12 @@ async def batch_delete_defects(
     existing_defects = db.query(Defect).filter(Defect.id.in_(defect_ids)).all()
     if len(existing_defects) != len(defect_ids):
         raise HTTPException(status_code=400, detail="有缺陷不存在")
+    
+    # 权限检查：非管理员只能删除自己创建的缺陷
+    if current_user.role != MemberRole.admin:
+        for defect in existing_defects:
+            if defect.created_by != current_user.id:
+                raise HTTPException(status_code=403, detail=f"权限不足，无法删除缺陷 {defect.id}，只能删除自己创建的缺陷")
     # 检查缺陷是否为子缺陷
     if any(d.type == DefectType.subdefect for d in existing_defects):
         raise HTTPException(status_code=400, detail="子缺陷不能删除")
@@ -300,9 +367,27 @@ async def export_defects(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_permission("defect:read"))
 ):
-    """导出缺陷"""
+    """导出缺陷数据"""
+    # 构建查询
+    query = db.query(Defect).options(
+        joinedload(Defect.project),
+        joinedload(Defect.assignee),
+        joinedload(Defect.reporter)
+    )
+    
+    # 权限过滤：非管理员只能导出自己相关的缺陷
+    if current_user.role != MemberRole.admin:
+        query = query.filter(
+            or_(
+                Defect.created_by == current_user.id,
+                Defect.assignee_id == current_user.id,
+                Defect.reporter_id == current_user.id,
+                Defect.verified_by_id == current_user.id
+            )
+        )
+    
     # 导出缺陷
-    defects = db.query(Defect).all()
+    defects = query.all()
     return standard_response(
         message="缺陷导出成功",
         data={

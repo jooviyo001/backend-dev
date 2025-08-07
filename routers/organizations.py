@@ -1,24 +1,26 @@
-from this import d
-from fastapi import APIRouter, Depends, HTTPException, Query, Path
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import and_, or_, func, text
-from typing import List, Optional
+from typing import Optional
 from models.database import get_db
-from models.models import Organization, User, Project, organization_members, OrganizationType, OrganizationStatus, MemberRole
+from models.organization import Organization, OrganizationType, OrganizationStatus
+from models.associations import organization_members
+from models.project import Project
+from models.user import User
+from models.enums import OrganizationType, OrganizationStatus, MemberRole
+
 from schemas import (
     OrganizationCreate, OrganizationUpdate, OrganizationResponse, 
     OrganizationTreeNode, OrganizationMemberCreate, OrganizationMemberUpdate, 
     OrganizationMemberResponse, OrganizationStatistics, OrganizationMove,
     OrganizationBatchDelete,
-    PaginationResponse,
     BaseResponse,
-    OrganizationStatusUpdate,
     OrganizationBatchUpdate
 )
 from utils.auth import get_current_user
 from utils.response_utils import success_response, error_response
-from utils.status_codes import INTERNAL_ERROR, DATABASE_ERROR, BAD_REQUEST, NOT_FOUND, CONFLICT
-from utils.snowflake_column import SnowflakeId
+from utils.status_codes import INTERNAL_ERROR, BAD_REQUEST, NOT_FOUND
+# from utils.snowflake_column import SnowflakeId
 import logging
 
 logger = logging.getLogger(__name__)

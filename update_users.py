@@ -13,7 +13,7 @@ from datetime import datetime
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from models.database import SessionLocal
-from models.models import User, Organization, UserRole
+from models import User, Organization, UserRole
 from utils.auth import get_password_hash
 
 def update_users():
@@ -32,7 +32,7 @@ def update_users():
         organization = db.query(Organization).filter(Organization.name == "示例科技公司").first()
         if not organization:
             print("未找到示例组织，创建新组织...")
-            from models.models import OrganizationType
+            from models import OrganizationType
             organization = Organization(
                 name="示例科技公司",
                 code="DEMO001",

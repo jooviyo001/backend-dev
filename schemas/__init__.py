@@ -29,6 +29,12 @@ from .task import (
 # 缺陷相关模式
 from .defect import DefectBase, DefectResponse, DefectCreate, DefectUpdate
 
+# 仪表盘相关模式
+from .dashboard import (
+    DashboardStats, RecentTask, ProjectProgress, TaskStatusDistribution,
+    RecentActivity, UserWorkload, ProjectTrend, TaskTrend
+)
+
 __all__ = [
     # 基础模式
     "BaseResponse", "PaginationResponse", "default_timestamp",
@@ -54,4 +60,8 @@ __all__ = [
     
     # 缺陷相关模式
     "DefectBase", "DefectResponse", "DefectCreate", "DefectUpdate",
+    
+    # 仪表盘相关模式
+    "DashboardStats", "RecentTask", "ProjectProgress", "TaskStatusDistribution",
+    "RecentActivity", "UserWorkload", "ProjectTrend", "TaskTrend",
 ]
