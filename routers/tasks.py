@@ -568,7 +568,7 @@ async def batch_update_task_status(
             "total_requested": len(batch_update.task_ids),
             "updated_task_ids": found_task_ids,
             "target_status": batch_update.status.value,
-            "missing_task_ids": missing_task_ids if missing_task_ids else None
+            "missing_task_ids": missing_task_ids if missing_task_ids else '无'
         }
         
         message = f"成功更新 {updated_count} 个任务状态为 {batch_update.status.value}"

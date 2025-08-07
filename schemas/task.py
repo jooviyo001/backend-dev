@@ -168,18 +168,21 @@ class BatchDeleteRequest(BaseModel):
     assignee_name: str = Field(..., description="负责人姓名")
 
 class BatchAssignRequest(BaseModel):
-    task_ids: List[str] = Field(..., min_length=1, description="任务ID数组")
-    assignee_id: str = Field(..., description="分配者ID")
-    user_id: str = Field(..., description="用户ID")
-    project_id: str = Field(..., description="项目ID")
-    is_admin: bool = Field(..., description="是否管理员")
-    is_reporter: bool = Field(..., description="是否报告人")
-    is_assignee: bool = Field(..., description="是否负责人")    
-    assignee_name: str = Field(..., description="负责人姓名")
+    task_ids: List[str] = Field(..., min_length=1, description="任务ID数组", alias="taskIds")
+    assignee_id: str = Field(..., description="分配者ID", alias="assigneeId")
+    user_id: str = Field(..., description="用户ID", alias="userId")
+    project_id: str = Field(..., description="项目ID", alias="projectId")
+    is_admin: bool = Field(..., description="是否管理员", alias="isAdmin")
+    is_reporter: bool = Field(..., description="是否报告人", alias="isReporter")
+    is_assignee: bool = Field(..., description="是否负责人", alias="isAssignee")    
+    assignee_name: str = Field(..., description="负责人姓名", alias="assigneeName")
+    
+    class Config:
+        populate_by_name = True  # 允许使用字段名和别名
 
 # 任务批量状态更新模式
 class TaskBatchStatusUpdate(BaseModel):
-    task_ids: List[str] = Field(..., min_length=1, description="任务ID数组")
+    task_ids: List[str] = Field(..., min_length=1, description="任务ID数组", alias="taskIds")
     status: TaskStatus = Field(..., description="目标状态")
     
     @field_validator('status')
@@ -190,40 +193,39 @@ class TaskBatchStatusUpdate(BaseModel):
         if v not in allowed_statuses:
             raise ValueError(f"状态只能是: {', '.join([s.value for s in allowed_statuses])}")
         return v
+    
+    class Config:
+        populate_by_name = True  # 允许使用字段名和别名
 
 # 任务批量负责人更新模式
 class TaskBatchAssigneeUpdate(BaseModel):
     """批量分配任务的请求模式"""
-    task_ids: List[str] = Field(..., description="任务ID列表")
-    assignee_id: str = Field(..., description="分配给的用户ID")
-    user_id: str = Field(..., description="用户ID")
-    project_id: str = Field(..., description="项目ID")
-    is_admin: bool = Field(..., description="是否管理员")
-    is_reporter: bool = Field(..., description="是否报告人")
-    is_assignee: bool = Field(..., description="是否负责人")
-    assignee_name: str = Field(..., description="负责人姓名")
+    task_ids: List[str] = Field(..., description="任务ID列表", alias="taskIds")
+    assignee_id: str = Field(..., description="分配给的用户ID", alias="assigneeId")
+    assignee_name: str = Field(..., description="负责人分配给的用户姓名", alias="assigneeName")
+    
+    class Config:
+        populate_by_name = True  # 允许使用字段名和别名
 
 # 批量删除任务模式
 class TaskBatchDelete(BaseModel):
-    task_ids: List[str] = Field(..., min_length=1, description="任务ID数组")
-    user_id: str = Field(..., description="删除人ID")
-    deleted_by: str = Field(..., description="删除人姓名")
-    project_id: str = Field(..., description="项目ID")
-    is_admin: bool = Field(..., description="是否管理员")
-    is_reporter: bool = Field(..., description="是否报告人")
-    is_assignee: bool = Field(..., description="是否负责人")
-    assignee_name: str = Field(..., description="负责人姓名")
+    task_ids: List[str] = Field(..., min_length=1, description="任务ID数组", alias="taskIds")
+    user_id: str = Field(..., description="删除人ID", alias="userId")
+    deleted_by: str = Field(..., description="删除人姓名", alias="deletedBy")
+    
+    class Config:
+        populate_by_name = True  # 允许使用字段名和别名
 
 # 附件相关模式
 class AttachmentResponse(BaseModel):
-    id: str
-    task_id: str
-    filename: str
-    original_filename: str
-    file_size: int
-    content_type: str
-    uploaded_by: str
-    created_at: datetime
+    id: str = Field(..., description="附件ID")
+    task_id: str = Field(..., description="任务ID")
+    filename: str = Field(..., description="文件名")
+    original_filename: str = Field(..., description="原始文件名")
+    file_size: int = Field(..., description="文件大小")
+    content_type: str = Field(..., description="文件类型")
+    uploaded_by: str = Field(..., description="上传人")
+    created_at: datetime = Field(..., description="创建时间")
     
     class Config:
         from_attributes = True
