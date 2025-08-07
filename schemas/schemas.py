@@ -1,7 +1,7 @@
 from pydantic import BaseModel, EmailStr, Field, field_validator
 from typing import Optional, List, Any
 from datetime import datetime
-from models.models import TaskStatus, TaskPriority, TaskType, ProjectStatus, ProjectPriority, UserRole, OrganizationType, OrganizationStatus, MemberRole
+from models.models import TaskStatus, TaskPriority, TaskType, ProjectStatus, ProjectPriority, UserRole, OrganizationType, OrganizationStatus, MemberRole, DefectStatus, DefectPriority, DefectType, DefectSeverity
 
 def default_timestamp() -> str:
     """返回格式化的当前时间戳"""
@@ -14,6 +14,76 @@ class BaseResponse(BaseModel):
     data: Optional[Any] = None
     # 使用字符串类型的格式化时间戳
     timestamp: str = Field(default_factory=default_timestamp)
+    
+    class Config:
+        from_attributes = True
+
+# 缺陷相关模式
+class DefectBase(BaseModel):
+    title: str
+    description: Optional[str] = None
+    status: DefectStatus = DefectStatus.NEW
+    priority: DefectPriority = DefectPriority.MEDIUM
+    type: DefectType = DefectType.BUG
+    severity: DefectSeverity = DefectSeverity.MODERATE
+    project_id: str
+    project_name: Optional[str] = None
+    assignee_id: Optional[str] = None
+    assignee_name: Optional[str] = None
+    reporter_id: Optional[str] = None
+    reporter_name: Optional[str] = None
+    verified_by_id: Optional[str] = None
+    verified_by_name: Optional[str] = None
+    version: Optional[str] = None
+    environment: Optional[str] = None
+    steps_to_reproduce: Optional[str] = None
+    expected_result: Optional[str] = None
+    actual_result: Optional[str] = None
+    resolution: Optional[str] = None
+    parent_id: Optional[str] = None
+    tags: Optional[List[str]] = None
+
+# 缺陷响应模式
+class DefectResponse(DefectBase):
+    id: str
+    created_at: datetime
+    updated_at: datetime
+    
+    @classmethod
+    def model_validate(cls, obj, **kwargs):
+        """自定义验证方法，从关联对象中填充名称字段"""
+        # 先调用父类的验证
+        instance = super().model_validate(obj, **kwargs)
+        
+        # 从关联的reporter对象中获取名称
+        if hasattr(obj, 'reporter') and obj.reporter:
+            instance.reporter_name = obj.reporter.name
+        
+        # 从关联的assignee对象中获取名称
+        if hasattr(obj, 'assignee') and obj.assignee:
+            instance.assignee_name = obj.assignee.name
+        
+        # 从关联的project对象中获取项目名称
+        if hasattr(obj, 'project') and obj.project:
+            instance.project_name = obj.project.name
+            
+        return instance
+    
+    @field_validator('tags', mode='before')
+    @classmethod
+    def parse_tags(cls, v):
+        """解析tags字段，支持JSON字符串转换为列表"""
+        if v is None:
+            return []
+        if isinstance(v, str):
+            try:
+                import json
+                return json.loads(v) if v else []
+            except (json.JSONDecodeError, TypeError):
+                return []
+        if isinstance(v, list):
+            return v
+        return []
     
     class Config:
         from_attributes = True

@@ -320,6 +320,8 @@ class Defect(Base):
     assignee_name = Column(String(100), comment='缺陷负责人姓名')
     reporter_id = Column(String(25), ForeignKey("users.id"), comment='缺陷报告人ID')
     reporter_name = Column(String(100), comment='缺陷报告人姓名')
+    verified_by_id = Column(String(25), ForeignKey("users.id"), nullable=True, comment='缺陷验证人ID')
+    verified_by_name = Column(String(100), nullable=True, comment='缺陷验证人姓名')
     severity = Column(Enum(DefectSeverity), default=DefectSeverity.MODERATE, comment='缺陷严重程度')
     version = Column(String(100), comment='缺陷所属版本')
     environment = Column(String(100), comment='缺陷所属环境')
@@ -328,10 +330,11 @@ class Defect(Base):
     actual_result = Column(Text, comment='实际结果')
     resolution = Column(Text, comment='解决方法')
     tags = Column(String(500), comment='缺陷标签')  # JSON字符串存储标签
+    parent_id = Column(String(25), ForeignKey("defects.id"), nullable=True, comment='父缺陷ID')
     created_at = Column(DateTime, default=func.now(), comment='创建时间')
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now(), comment='更新时间')
 
-    parent_id = Column(String(25), ForeignKey("defects.id"), nullable=True, comment='父缺陷ID')
+    
     
     # 关系
     project = relationship("Project")
