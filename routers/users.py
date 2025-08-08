@@ -9,7 +9,7 @@ from schemas.user import (
     UserCreate, UserUpdate, UserResponse,
     NotificationSettings, NotificationSettingsResponse, NotificationSettingsUpdate,
     LanguageSettings, LanguageSettingsResponse, LanguageSettingsUpdate,
-    UserStatusUpdate
+    UserStatusUpdate, PositionCreate
 )
 from utils.auth import (
     get_current_active_user, require_permission, get_password_hash
@@ -85,6 +85,7 @@ async def get_users(
     search: Optional[str] = Query(None, description="搜索关键词"),
     role: Optional[str] = Query(None, description="角色过滤"),
     status: Optional[str] = Query(None, description="状态过滤"),
+    position: Optional[str] = Query(None, description="职位过滤"),
     organization_name: Optional[str] = Query(None, description="部门过滤"),
     page: int = Query(1, ge=1, description="页码"),
     limit: Optional[int] = Query(None, ge=1, le=100, description="每页数量"),
@@ -116,6 +117,9 @@ async def get_users(
                 User.email.contains(search_term)
             )
         )
+    # 职位过滤
+    if position and position.strip():
+        query = query.filter(User.position == position.strip())
     
     # 角色过滤
     if role and role.strip():
@@ -128,9 +132,17 @@ async def get_users(
         elif status.strip().lower() == "inactive":
             query = query.filter(User.is_active == False)
     
-    # 部门过滤
+    # 部门组织过滤
     if organization_name and organization_name.strip():
-        query = query.filter(User.organization_name == organization_name.strip())
+        from models.organization import Organization
+        org_name = organization_name.strip()
+        # 同时支持直接字段和关联表查询
+        query = query.filter(
+            or_(
+                User.organization_name == org_name,
+                User.organization.has(Organization.name == org_name)
+            )
+        )
     
     # 分页
     total, users = paginate_query(query, page, size)
@@ -142,7 +154,75 @@ async def get_users(
         size=size,
         message="获取用户列表成功"
     )
+# 新建职位
+@router.post("/positions", response_model=BaseResponse)
+async def create_position(
+    position_data: PositionCreate,
+    db: Session = Depends(get_db),
+    current_user = Depends(require_permission("user:write"))
+):
+    """新建职位"""
+    # 权限校验
+    if current_user.role != UserRole.ADMIN:
+        raise HTTPException(status_code=403, detail="没有权限访问")
+    # 检查职位是否已存在
+    existing_position = db.query(User).filter(User.position == position_data.position).first()
+    if existing_position:
+        raise HTTPException(status_code=400, detail="职位已存在")
+    # 创建新职位
+    new_position = User(position=position_data.position)
+    db.add(new_position)
+    db.commit()
+    return BaseResponse(message="职位创建成功")
 
+
+
+# 获取职位列表
+@router.get("/positions/all", response_model=BaseResponse)
+
+async def get_positions(
+    db: Session = Depends(get_db),
+    current_user = Depends(require_permission("user:read"))
+):
+    """获取所有职位列表"""
+    # 权限校验
+    if current_user.role != UserRole.ADMIN:
+        raise HTTPException(status_code=403, detail="没有权限访问")
+    
+    # 查询所有不为空的职位，去重
+    positions = db.query(User.position).filter(
+        User.position.isnot(None),
+        User.position != ""
+    ).distinct().all()
+    
+    # 提取职位名称并排序
+    position_list = sorted([pos[0] for pos in positions if pos[0]])
+    
+    return BaseResponse(
+        message="获取职位列表成功",
+        data=position_list
+    )
+
+# 新建职位
+@router.post("/positions/add", response_model=BaseResponse)
+async def create_position(
+    position_data: PositionCreate,
+    db: Session = Depends(get_db),
+    current_user = Depends(require_permission("user:write"))
+):
+    """新建职位"""
+    # 权限校验
+    if current_user.role != UserRole.ADMIN:
+        raise HTTPException(status_code=403, detail="没有权限访问")
+    # 检查职位是否已存在
+    existing_position = db.query(User).filter(User.position == position_data.position).first()
+    if existing_position:
+        raise HTTPException(status_code=400, detail="职位已存在")
+    # 创建新职位
+    new_position = User(position=position_data.position)
+    db.add(new_position)
+    db.commit()
+    return BaseResponse(message="职位创建成功")
 
 # 获取用户详情接口
 @router.get("/{user_id}", response_model=BaseResponse)
@@ -213,6 +293,9 @@ async def create_user(
         password_hash=hashed_password,  # type: ignore
         name=user_data.name,  # type: ignore
         phone=user_data.phone,  # type: ignore
+        position=user_data.position,  # type: ignore
+        department=user_data.department,  # type: ignore
+        organization_id=user_data.organization_id,  # type: ignore
         role=user_data.role  # type: ignore
     )
     
@@ -251,6 +334,7 @@ async def update_user(
         # 如果是纯数字，保持兼容
         actual_user_id = user_id
     
+    # 检查用户是否存在
     user = db.query(User).filter(User.id == actual_user_id).first()
     if not user:
         raise HTTPException(
@@ -259,6 +343,43 @@ async def update_user(
         )
 
     update_data = user_data.dict(exclude_unset=True)
+
+    # 手机号唯一性检查
+    if "phone" in update_data:
+        existing_user = db.query(User).filter(
+            User.phone == update_data["phone"],
+            User.id == actual_user_id
+        ).first()
+        if existing_user:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="该手机号已被使用"
+            )
+
+
+    # 检查邮箱唯一性
+    if "email" in update_data:
+        existing_user = db.query(User).filter(
+            User.email == update_data["email"],
+            User.id != actual_user_id
+        ).first()
+        if existing_user:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="该邮箱已被使用"
+            )
+
+    # 检查用户名唯一性
+    if "username" in update_data:
+        existing_user = db.query(User).filter(
+            User.username == update_data["username"],
+            User.id != actual_user_id
+        ).first()
+        if existing_user:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="该用户名已被使用"
+            )
 
     for key, value in update_data.items():
         if key == "password" and value:

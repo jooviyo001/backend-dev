@@ -17,7 +17,15 @@ class UserBase(BaseModel):
     created_at: datetime
     updated_at: datetime
 
-class UserCreate(UserBase):
+class UserCreate(BaseModel):
+    username: str
+    email: EmailStr
+    name: Optional[str] = None
+    phone: Optional[str] = None
+    position: Optional[str] = None
+    oraganizition_name: Optional[str] = None
+    organization_id: Optional[str] = None
+    role: UserRole = UserRole.MEMBER
     password: str
 
 class UserUpdate(BaseModel):
@@ -236,3 +244,18 @@ class LanguageSettingsUpdate(BaseModel):
         if v is not None and v not in ['12h', '24h']:
             raise ValueError('时间格式必须是 12h 或 24h')
         return v
+
+class PositionCreate(BaseModel):
+    """职位创建模型"""
+    position: str = Field(..., description="职位名称")
+    class Config:
+        from_attributes = True
+    @field_validator('position')
+    @classmethod    
+    def validate_position(cls, v):
+        """验证职位名称"""
+        if v is not None and len(v) > 20:
+            raise ValueError('职位名称长度不能超过20个字符')
+        if v is not None and not v.strip():
+            raise ValueError('职位名称不能为空')
+        return v.strip()
