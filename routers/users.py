@@ -4,10 +4,12 @@ from sqlalchemy import or_, and_
 from typing import Optional
 from models.database import get_db
 from models.user import UserRole, User
-from schemas import (
-    UserCreate, UserUpdate, UserResponse, BaseResponse,
+from schemas.base import BaseResponse
+from schemas.user import (
+    UserCreate, UserUpdate, UserResponse,
     NotificationSettings, NotificationSettingsResponse, NotificationSettingsUpdate,
-    LanguageSettings, LanguageSettingsResponse, LanguageSettingsUpdate
+    LanguageSettings, LanguageSettingsResponse, LanguageSettingsUpdate,
+    UserStatusUpdate
 )
 from utils.auth import (
     get_current_active_user, require_permission, get_password_hash
@@ -333,6 +335,58 @@ async def delete_user(
     db.commit()
     
     return BaseResponse(message="删除用户成功")
+
+# 更新用户状态
+@router.put("/{user_id}/status", response_model=BaseResponse)
+async def update_user_status(
+    user_id: str,
+    status_data: UserStatusUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_permission("user:write"))
+):
+    """更新用户状态"""
+    # 权限校验
+    if current_user.role != UserRole.ADMIN:
+        raise HTTPException(status_code=403, detail="没有权限访问")
+
+    # 处理用户ID格式 - 支持新的U前缀格式和旧格式兼容
+    actual_user_id = user_id
+    if user_id.startswith("USER_"):
+        # 兼容旧的 "USER_xxx" 格式
+        actual_user_id = user_id.replace("USER_", "")
+    elif not user_id.startswith("U"):
+        # 如果是纯数字，保持兼容
+        actual_user_id = user_id
+    
+    # 安全检查：不能停用自己
+    if actual_user_id == current_user.id and status_data.status == "inactive":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="不能停用自己"
+        )
+    
+    user = db.query(User).filter(User.id == actual_user_id).first()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="用户不存在"
+        )
+    
+    # 更新用户状态
+    user.is_active = (status_data.status == "active")  # type: ignore
+    
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    
+    # 预加载组织信息以获取组织名称
+    from sqlalchemy.orm import joinedload
+    user_with_org = db.query(User).options(joinedload(User.organization)).filter(User.id == user.id).first()
+    
+    return BaseResponse(
+        message=f"用户状态已更新为{'启用' if status_data.status == 'active' else '停用'}",
+        data=UserResponse.model_validate(user_with_org, from_attributes=True)
+    )
 
 # 获取用户通知设置
 @router.get("/notification-settings", response_model=BaseResponse)

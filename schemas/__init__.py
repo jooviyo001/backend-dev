@@ -6,7 +6,7 @@ from .user import (
     UserBase, UserCreate, UserUpdate, UserProfileUpdateRequest, UserResponse,
     ChangePasswordRequest, LoginRequest, LoginResponse, RegisterRequest, RegisterResponse,
     NotificationSettings, NotificationSettingsResponse, NotificationSettingsUpdate,
-    LanguageSettings, LanguageSettingsResponse, LanguageSettingsUpdate
+    LanguageSettings, LanguageSettingsResponse, LanguageSettingsUpdate, UserStatusUpdate
 )
 
 # 组织相关模式
@@ -45,7 +45,7 @@ __all__ = [
     "UserBase", "UserCreate", "UserUpdate", "UserProfileUpdateRequest", "UserResponse",
     "ChangePasswordRequest", "LoginRequest", "LoginResponse", "RegisterRequest", "RegisterResponse",
     "NotificationSettings", "NotificationSettingsResponse", "NotificationSettingsUpdate",
-    "LanguageSettings", "LanguageSettingsResponse", "LanguageSettingsUpdate",
+    "LanguageSettings", "LanguageSettingsResponse", "LanguageSettingsUpdate", "UserStatusUpdate",
     
     # 组织相关模式
     "OrganizationBase", "OrganizationCreate", "OrganizationUpdate", "OrganizationStatusUpdate",

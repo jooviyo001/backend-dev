@@ -162,6 +162,19 @@ class NotificationSettingsUpdate(BaseModel):
     defect_resolved: Optional[bool] = None
     system_announcements: Optional[bool] = None
 
+# 用户状态更新模式
+class UserStatusUpdate(BaseModel):
+    """用户状态更新模型"""
+    status: str = Field(..., description="用户状态")
+    
+    @field_validator('status')
+    @classmethod
+    def validate_status(cls, v):
+        """验证status字段"""
+        if v not in ['active', 'inactive']:
+            raise ValueError('状态必须是 active 或 inactive')
+        return v
+
 # 语言设置相关模式
 class LanguageSettings(BaseModel):
     """语言设置模型"""
