@@ -188,6 +188,11 @@ def generate_defect_id() -> str:
     return generate_snowflake_id("D")
 
 
+def generate_position_id() -> str:
+    """生成职位ID，格式：POS + 雪花算法ID"""
+    return generate_snowflake_id("POS")
+
+
 def parse_snowflake_id(snowflake_id: int) -> dict:
     """
     解析雪花算法ID

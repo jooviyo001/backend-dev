@@ -154,32 +154,9 @@ async def get_users(
         size=size,
         message="获取用户列表成功"
     )
-# 新建职位
-@router.post("/positions", response_model=BaseResponse)
-async def create_position(
-    position_data: PositionCreate,
-    db: Session = Depends(get_db),
-    current_user = Depends(require_permission("user:write"))
-):
-    """新建职位"""
-    # 权限校验
-    if current_user.role != UserRole.ADMIN:
-        raise HTTPException(status_code=403, detail="没有权限访问")
-    # 检查职位是否已存在
-    existing_position = db.query(User).filter(User.position == position_data.position).first()
-    if existing_position:
-        raise HTTPException(status_code=400, detail="职位已存在")
-    # 创建新职位
-    new_position = User(position=position_data.position)
-    db.add(new_position)
-    db.commit()
-    return BaseResponse(message="职位创建成功")
-
-
 
 # 获取职位列表
-@router.get("/positions/all", response_model=BaseResponse)
-
+@router.get("/positions", response_model=BaseResponse)
 async def get_positions(
     db: Session = Depends(get_db),
     current_user = Depends(require_permission("user:read"))
@@ -203,26 +180,32 @@ async def get_positions(
         data=position_list
     )
 
-# 新建职位
-@router.post("/positions/add", response_model=BaseResponse)
+# 新增职位
+@router.post("/positions", response_model=BaseResponse)
 async def create_position(
     position_data: PositionCreate,
     db: Session = Depends(get_db),
     current_user = Depends(require_permission("user:write"))
 ):
-    """新建职位"""
+    """新增职位"""
     # 权限校验
     if current_user.role != UserRole.ADMIN:
         raise HTTPException(status_code=403, detail="没有权限访问")
+    
     # 检查职位是否已存在
     existing_position = db.query(User).filter(User.position == position_data.position).first()
     if existing_position:
-        raise HTTPException(status_code=400, detail="职位已存在")
-    # 创建新职位
-    new_position = User(position=position_data.position)
-    db.add(new_position)
-    db.commit()
-    return BaseResponse(message="职位创建成功")
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="职位已存在"
+        )
+    
+    # 这里不需要创建新用户，只是为了验证职位名称的有效性
+    # 实际上职位是通过用户创建时添加的，这个接口主要用于验证
+    return BaseResponse(
+        message="职位验证成功，可以使用",
+        data={"position": position_data.position}
+    )
 
 # 获取用户详情接口
 @router.get("/{user_id}", response_model=BaseResponse)
