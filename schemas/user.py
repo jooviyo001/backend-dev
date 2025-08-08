@@ -26,7 +26,7 @@ class UserUpdate(BaseModel):
     name: Optional[str] = None
     phone: Optional[str] = None
     position: Optional[str] = None
-    department: Optional[str] = None
+    oraganizition_name: Optional[str] = None
     organization_id: Optional[str] = None
     role: Optional[UserRole] = None
     is_active: Optional[bool] = None  # 用户是否活跃
@@ -35,9 +35,9 @@ class UserUpdate(BaseModel):
     password: Optional[str] = Field(None, description="新密码")
     status: Optional[str] = Field(None, description="用户状态")
     
-    @field_validator('department', mode='before')
-    def convert_department(cls, v):
-        """处理department字段，如果是数组则取第一个元素"""
+    @field_validator('oraganizition_name', mode='before')
+    def convert_oraganizition_name(cls, v):
+        """处理oraganizition_name字段，如果是数组则取第一个元素"""
         if isinstance(v, list) and len(v) > 0:
             return v[0]
         return v
@@ -56,7 +56,7 @@ class UserProfileUpdateRequest(BaseModel):
     phone: Optional[str] = None
     position: Optional[str] = None
     organization_id: Optional[str] = None  # 组织ID
-    department: Optional[str] = None  # 部门
+    oraganizition_name: Optional[str] = None  # 部门
     avatar: Optional[str] = None
     is_active: Optional[bool] = None
     is_verified: Optional[bool] = None

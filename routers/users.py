@@ -53,8 +53,8 @@ async def get_users(
             elif status.strip().lower() == "inactive":
                 query = query.filter(User.is_active == False)
         # 部门过滤
-        if department and department.strip():
-            query = query.filter(User.department == department.strip())
+        if oraganizition_name and oraganizition_name.strip():
+            query = query.filter(User.oraganizition_name == oraganizition_name.strip())
         # 组织过滤
         if organization and organization.strip():
             query = query.filter(User.organization_name == organization.strip())
@@ -85,7 +85,7 @@ async def get_users(
     search: Optional[str] = Query(None, description="搜索关键词"),
     role: Optional[str] = Query(None, description="角色过滤"),
     status: Optional[str] = Query(None, description="状态过滤"),
-    department: Optional[str] = Query(None, description="部门过滤"),
+    organization_name: Optional[str] = Query(None, description="部门过滤"),
     page: int = Query(1, ge=1, description="页码"),
     limit: Optional[int] = Query(None, ge=1, le=100, description="每页数量"),
     pageSize: Optional[int] = Query(None, ge=1, le=100, description="每页数量(兼容参数)"),
@@ -129,8 +129,8 @@ async def get_users(
             query = query.filter(User.is_active == False)
     
     # 部门过滤
-    if department and department.strip():
-        query = query.filter(User.department == department.strip())
+    if organization_name and organization_name.strip():
+        query = query.filter(User.organization_name == organization_name.strip())
     
     # 分页
     total, users = paginate_query(query, page, size)
@@ -280,7 +280,7 @@ async def update_user(
                     detail="不能停用自己"
                 )
             user.is_active = value  # type: ignore
-        elif key in ["avatar", "username", "email", "name", "phone", "position", "department", "role", "is_verified", "organization_id"]: 
+        elif key in ["avatar", "username", "email", "name", "phone", "position", "oraganizition_name", "role", "is_verified", "organization_id"]: 
             # 处理其他字段
             setattr(user, key, value)
 

@@ -24,7 +24,7 @@ router = APIRouter()
 async def get_dashboard_stats(
     dateFrom: Optional[str] = Query(None, description="日期范围开始"),
     dateTo: Optional[str] = Query(None, description="日期范围结束"),
-    departmentId: Optional[str] = Query(None, description="部门ID"),
+    organization_id: Optional[str] = Query(None, description="组织ID"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
@@ -339,7 +339,7 @@ async def get_recent_activities(
 # 替换为当前用户的用户工作负载数据
 @router.get("/user-workload", response_model=BaseResponse)
 async def get_user_workload(
-    departmentId: Optional[str] = Query(None, description="部门ID"),
+    organization_id: Optional[str] = Query(None, description="部门ID"),
     limit: Optional[int] = Query(10, description="限制数量，默认10"),
     db: Session = Depends(get_db),
     current_user = Depends(get_current_active_user)
@@ -350,25 +350,11 @@ async def get_user_workload(
     query = db.query(User).filter(User.is_active == True)
     
     # 部门过滤（如果有部门字段的话）
-    if departmentId:
+    if organization_id:
         # ID格式处理函数
-        def extract_id(id_str):
-            """提取ID的数字部分，兼容多种格式"""
-            if not id_str:
-                return None
-            # 如果是纯数字，直接返回
-            if id_str.isdigit():
-                return int(id_str)
-            # 如果是以O开头的新格式，提取数字部分
-            if id_str.startswith('O') and id_str[1:].isdigit():
-                return int(id_str[1:])
-            return None
-        
-        extracted_dept_id = extract_id(departmentId)
-        if extracted_dept_id:
-            # 假设User模型有department_id字段，如果没有可以去掉这个过滤
-            # query = query.filter(User.department_id == extracted_dept_id)
-            pass
+        # 假设User模型有organization_id字段，如果没有可以去掉这个过滤
+        query = query.filter(User.organization_id == organization_id)
+            # pass
     
     if limit:
         query = query.limit(limit)
@@ -419,7 +405,7 @@ async def get_user_workload(
 @router.get("/project-trends", response_model=BaseResponse)
 async def get_project_trends(
     period: str = Query("month", description="时间周期 (week|month|quarter|year)"),
-    departmentId: Optional[str] = Query(None, description="部门ID"),
+    organization_id: Optional[str] = Query(None, description="部门ID"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
@@ -452,25 +438,11 @@ async def get_project_trends(
         # 构建项目查询
         query = db.query(Project)
         
-        # 部门过滤（如果Project模型有department_id字段）
-        if departmentId:
+        # 组织过滤（如果Project模型有organization_id字段）
+        if organization_id: 
             # ID格式处理函数
-            def extract_id(id_str):
-                """提取ID的数字部分，兼容多种格式"""
-                if not id_str:
-                    return None
-                # 如果是纯数字，直接返回
-                if id_str.isdigit():
-                    return int(id_str)
-                # 如果是以O开头的新格式，提取数字部分
-                if id_str.startswith('O') and id_str[1:].isdigit():
-                    return int(id_str[1:])
-                return None
-            
-            extracted_dept_id = extract_id(departmentId)
-            if extracted_dept_id:
-                # query = query.filter(Project.department_id == extracted_dept_id)
-                pass
+            query = query.filter(Project.organization_id == organization_id)
+
         
         # 统计该时间段内的项目
         total_projects = query.filter(

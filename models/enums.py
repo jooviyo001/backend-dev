@@ -67,6 +67,7 @@ class MemberRole(str, enum.Enum):
 class OrganizationType(str, enum.Enum):
     """组织类型枚举"""
     COMPANY = "company"        # 公司
+    ORGANIZATIN_NAME = "organization_name"  # 组织名称
     DEPARTMENT = "department"  # 部门
     TEAM = "team"              # 团队
     GROUP = "group"            # 小组

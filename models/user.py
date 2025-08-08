@@ -24,7 +24,7 @@ class User(Base):
     avatar = Column(String(255), comment='头像URL地址')
     phone = Column(String(20), comment='手机号码')
     position = Column(String(100), comment='用户岗位/职位')
-    department = Column(String(100), comment='用户所属部门')
+    organization_name = Column(String(100), comment='用户所属组织名称')
     organization_id = Column(String(25), ForeignKey("organizations.id"), comment='用户所属组织ID')
     role = Column(Enum(UserRole), default=UserRole.MEMBER, comment='用户角色')
     is_active = Column(Boolean, default=True, comment='是否激活状态')
