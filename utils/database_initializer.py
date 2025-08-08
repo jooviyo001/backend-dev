@@ -192,7 +192,7 @@ class DatabaseInitializer:
             {
                 "name": "创新实验室",
                 "code": "LAB001",
-                "type": OrganizationType.ORAGANIZITION_NAME,
+                "type": OrganizationType.organizition_name,
                 "description": "专注于前沿技术研究的实验室",
                 "website": "https://innovation-lab.com"
             }

@@ -57,8 +57,8 @@ async def get_users(
             elif status.strip().lower() == "inactive":
                 query = query.filter(User.is_active == False)
         # 部门过滤
-        if oraganizition_name and oraganizition_name.strip():
-            query = query.filter(User.oraganizition_name == oraganizition_name.strip())
+        if organizition_name and organizition_name.strip():
+            query = query.filter(User.organizition_name == organizition_name.strip())
         # 组织过滤
         if organization and organization.strip():
             query = query.filter(User.organization_name == organization.strip())
@@ -521,7 +521,7 @@ async def update_user(
                     detail="不能停用自己"
                 )
             user.is_active = value  # type: ignore
-        elif key in ["avatar", "username", "email", "name", "phone", "position", "oraganizition_name", "role", "is_verified", "organization_id"]: 
+        elif key in ["avatar", "username", "email", "name", "phone", "position", "organizition_name", "role", "is_verified", "organization_id"]: 
             # 处理其他字段
             setattr(user, key, value)
 

@@ -43,7 +43,7 @@ def create_initial_data():
             password_hash=get_password_hash(admin_password),
             name="系统管理员",
             role=UserRole.ADMIN,
-            oraganizition_name="信息技术部",
+            organization_name="信息技术部",
             position="系统管理员",
             phone="13800138001",
             is_active=True,
@@ -58,7 +58,7 @@ def create_initial_data():
             password_hash=get_password_hash("super123"),
             name="超级管理员",
             role=UserRole.ADMIN,
-            oraganizition_name="信息技术部",
+            organization_name="信息技术部",
             position="超级管理员",
             phone="13800138002",
             is_active=True,
@@ -74,7 +74,7 @@ def create_initial_data():
                 "password": "manager123",
                 "name": "项目经理",
                 "role": UserRole.MANAGER,
-                "oraganizition_name": "项目管理部",
+                "organization_name": "项目管理部",
                 "position": "项目经理",
                 "phone": "13800138011"
             },
@@ -84,7 +84,7 @@ def create_initial_data():
                 "password": "manager123",
                 "name": "部门经理",
                 "role": UserRole.MANAGER,
-                "oraganizition_name": "技术部",
+                "organization_name": "技术部",
                 "position": "部门经理",
                 "phone": "13800138012"
             },
@@ -94,7 +94,7 @@ def create_initial_data():
                 "password": "dev123",
                 "name": "高级开发工程师",
                 "role": UserRole.MEMBER,
-                "oraganizition_name": "开发部",
+                "organization_name": "开发部",
                 "position": "高级开发工程师",
                 "phone": "13800138021"
             },
@@ -104,7 +104,7 @@ def create_initial_data():
                 "password": "dev123",
                 "name": "前端开发工程师",
                 "role": UserRole.MEMBER,
-                "oraganizition_name": "开发部",
+                "organization_name": "开发部",
                 "position": "前端开发工程师",
                 "phone": "13800138022"
             },
@@ -114,7 +114,7 @@ def create_initial_data():
                 "password": "test123",
                 "name": "测试工程师",
                 "role": UserRole.MEMBER,
-                "oraganizition_name": "质量保证部",
+                "organization_name": "质量保证部",
                 "position": "测试工程师",
                 "phone": "13800138023"
             },
@@ -124,7 +124,7 @@ def create_initial_data():
                 "password": "user123",
                 "name": "实习生",
                 "role": UserRole.USER,
-                "oraganizition_name": "开发部",
+                "organization_name": "开发部",
                 "position": "实习生",
                 "phone": "13800138031"
             }
@@ -138,7 +138,7 @@ def create_initial_data():
                 password_hash=get_password_hash(user_data["password"]),
                 name=user_data["name"],
                 role=user_data["role"],
-                oraganizition_name=user_data["oraganizition_name"],
+                organization_name=user_data["organization_name"],
                 position=user_data["position"],
                 phone=user_data["phone"],
                 is_active=True,
@@ -165,7 +165,7 @@ def create_initial_data():
             {
                 "name": "创新实验室",
                 "code": "LAB001",
-                "type": OrganizationType.ORAGANIZITION_NAME,
+                "type": OrganizationType.ORGANIZATIN_NAME,
                 "description": "专注于技术创新的实验室",
                 "website": "https://lab.example.com"
             }

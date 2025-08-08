@@ -76,7 +76,7 @@ def update_users():
                 "password": "manager123",
                 "name": "项目经理",
                 "role": UserRole.MANAGER,
-                "oraganizition_name": "项目管理部",
+                "organizition_name": "项目管理部",
                 "position": "项目经理",
                 "phone": "13800138011"
             },
@@ -86,7 +86,7 @@ def update_users():
                 "password": "manager123",
                 "name": "部门经理",
                 "role": UserRole.MANAGER,
-                "oraganizition_name": "技术部",
+                "organizition_name": "技术部",
                 "position": "部门经理",
                 "phone": "13800138012"
             },
@@ -96,7 +96,7 @@ def update_users():
                 "password": "lead123",
                 "name": "团队负责人",
                 "role": UserRole.MANAGER,
-                "oraganizition_name": "开发部",
+                "organizition_name": "开发部",
                 "position": "团队负责人",
                 "phone": "13800138013"
             },
@@ -108,7 +108,7 @@ def update_users():
                 "password": "dev123",
                 "name": "高级开发工程师",
                 "role": UserRole.MEMBER,
-                "oraganizition_name": "开发部",
+                "organizition_name": "开发部",
                 "position": "高级开发工程师",
                 "phone": "13800138021"
             },
@@ -118,7 +118,7 @@ def update_users():
                 "password": "dev123",
                 "name": "前端开发工程师",
                 "role": UserRole.MEMBER,
-                "oraganizition_name": "开发部",
+                "organizition_name": "开发部",
                 "position": "前端开发工程师",
                 "phone": "13800138022"
             },
@@ -128,7 +128,7 @@ def update_users():
                 "password": "design123",
                 "name": "UI设计师",
                 "role": UserRole.MEMBER,
-                "oraganizition_name": "设计部",
+                "organizition_name": "设计部",
                 "position": "UI设计师",
                 "phone": "13800138023"
             },
@@ -138,7 +138,7 @@ def update_users():
                 "password": "test123",
                 "name": "测试工程师",
                 "role": UserRole.MEMBER,
-                "oraganizition_name": "质量保证部",
+                "organizition_name": "质量保证部",
                 "position": "测试工程师",
                 "phone": "13800138024"
             },
@@ -150,7 +150,7 @@ def update_users():
                 "password": "user123",
                 "name": "实习生",
                 "role": UserRole.USER,
-                "oraganizition_name": "开发部",
+                "organizition_name": "开发部",
                 "position": "实习生",
                 "phone": "13800138031"
             },
@@ -160,7 +160,7 @@ def update_users():
                 "password": "user123",
                 "name": "助理",
                 "role": UserRole.USER,
-                "oraganizition_name": "行政部",
+                "organizition_name": "行政部",
                 "position": "行政助理",
                 "phone": "13800138032"
             },
@@ -170,7 +170,7 @@ def update_users():
                 "password": "guest123",
                 "name": "访客用户",
                 "role": UserRole.USER,
-                "oraganizition_name": "访客",
+                "organizition_name": "访客",
                 "position": "访客",
                 "phone": "13800138033"
             }
@@ -186,7 +186,7 @@ def update_users():
                 password_hash=get_password_hash(user_data["password"]),
                 name=user_data["name"],
                 role=user_data["role"],
-                oraganizition_name=user_data["oraganizition_name"],
+                organizition_name=user_data["organizition_name"],
                 position=user_data["position"],
                 phone=user_data["phone"],
                 organization_id=organization.id,
@@ -224,7 +224,7 @@ def update_users():
             print(f"\n【{role_name}】:")
             role_users = [u for u in created_users if u.role == role]
             for user in role_users:
-                print(f"  - {user.username} / {user_data['password'] if any(ud['username'] == user.username for ud in users_data) else '***'} | {user.name} | {user.oraganizition_name} - {user.position}")
+                print(f"  - {user.username} / {user_data['password'] if any(ud['username'] == user.username for ud in users_data) else '***'} | {user.name} | {user.organizition_name} - {user.position}")
         
         print(f"\n总计创建用户: {len(created_users)} 个")
         print("所有用户已添加到组织: 示例科技公司")
