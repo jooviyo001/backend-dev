@@ -122,3 +122,104 @@ class RegisterRequest(UserCreate):
 # 注册响应模式
 class RegisterResponse(BaseModel):
     data: Optional[UserResponse] = None
+
+# 通知设置相关模式
+class NotificationSettings(BaseModel):
+    """通知设置模型"""
+    email_notifications: bool = Field(True, description="是否启用邮件通知")
+    push_notifications: bool = Field(True, description="是否启用推送通知")
+    sms_notifications: bool = Field(False, description="是否启用短信通知")
+    task_assigned: bool = Field(True, description="任务分配通知")
+    task_completed: bool = Field(True, description="任务完成通知")
+    task_overdue: bool = Field(True, description="任务逾期通知")
+    project_updates: bool = Field(True, description="项目更新通知")
+    defect_assigned: bool = Field(True, description="缺陷分配通知")
+    defect_resolved: bool = Field(True, description="缺陷解决通知")
+    system_announcements: bool = Field(True, description="系统公告通知")
+    
+    class Config:
+        from_attributes = True
+
+class NotificationSettingsResponse(BaseModel):
+    """通知设置响应模型"""
+    user_id: str
+    settings: NotificationSettings
+    updated_at: datetime
+    
+    class Config:
+        from_attributes = True
+
+class NotificationSettingsUpdate(BaseModel):
+    """通知设置更新模型"""
+    email_notifications: Optional[bool] = None
+    push_notifications: Optional[bool] = None
+    sms_notifications: Optional[bool] = None
+    task_assigned: Optional[bool] = None
+    task_completed: Optional[bool] = None
+    task_overdue: Optional[bool] = None
+    project_updates: Optional[bool] = None
+    defect_assigned: Optional[bool] = None
+    defect_resolved: Optional[bool] = None
+    system_announcements: Optional[bool] = None
+
+# 语言设置相关模式
+class LanguageSettings(BaseModel):
+    """语言设置模型"""
+    language: str = Field("zh-CN", description="界面语言")
+    timezone: str = Field("Asia/Shanghai", description="时区设置")
+    date_format: str = Field("YYYY-MM-DD", description="日期格式")
+    time_format: str = Field("24h", description="时间格式")
+    
+    @field_validator('language')
+    @classmethod
+    def validate_language(cls, v):
+        """验证语言代码"""
+        allowed_languages = ['zh-CN', 'zh-TW', 'en-US', 'ja-JP', 'ko-KR']
+        if v not in allowed_languages:
+            raise ValueError(f'语言代码必须是以下之一: {", ".join(allowed_languages)}')
+        return v
+    
+    @field_validator('time_format')
+    @classmethod
+    def validate_time_format(cls, v):
+        """验证时间格式"""
+        if v not in ['12h', '24h']:
+            raise ValueError('时间格式必须是 12h 或 24h')
+        return v
+    
+    class Config:
+        from_attributes = True
+
+class LanguageSettingsResponse(BaseModel):
+    """语言设置响应模型"""
+    user_id: str
+    settings: LanguageSettings
+    updated_at: datetime
+    
+    class Config:
+        from_attributes = True
+
+class LanguageSettingsUpdate(BaseModel):
+    """语言设置更新模型"""
+    language: Optional[str] = None
+    timezone: Optional[str] = None
+    date_format: Optional[str] = None
+    time_format: Optional[str] = None
+    
+    @field_validator('language')
+    @classmethod
+    def validate_language(cls, v):
+        """验证语言代码"""
+        if v is not None:
+            allowed_languages = ['zh-CN', 'zh-TW', 'en-US', 'ja-JP', 'ko-KR']
+            if v not in allowed_languages:
+                raise ValueError(f'语言代码必须是以下之一: {", ".join(allowed_languages)}')
+        return v
+    
+    @field_validator('time_format')
+    @classmethod
+    def validate_time_format(cls, v):
+        """验证时间格式"""
+        if v is not None and v not in ['12h', '24h']:
+            raise ValueError('时间格式必须是 12h 或 24h')
+        return v

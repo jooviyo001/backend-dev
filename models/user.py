@@ -2,13 +2,14 @@
 用户模型模块
 包含用户相关的数据模型定义
 """
-from sqlalchemy import Column, String, DateTime, Boolean, ForeignKey, Enum
+from sqlalchemy import Column, String, DateTime, Boolean, ForeignKey, Enum, Text
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from .database import Base
 from .enums import UserRole
 from .associations import project_members, organization_members
 from utils.snowflake import generate_user_id
+import json
 
 
 class User(Base):
@@ -30,6 +31,8 @@ class User(Base):
     is_verified = Column(Boolean, default=False, comment='是否已验证邮箱')
     last_login = Column(DateTime, comment='最后登录时间')
     last_logout = Column(DateTime, comment='最后登出时间')
+    notification_settings = Column(Text, comment='通知设置JSON字符串')
+    language_settings = Column(Text, comment='语言设置JSON字符串')
     created_at = Column(DateTime, default=func.now(), comment='创建时间')
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now(), comment='更新时间')
     
@@ -40,3 +43,47 @@ class User(Base):
     reported_tasks = relationship("Task", back_populates="reporter", foreign_keys="Task.reporter_id")
     projects = relationship("Project", secondary=project_members, back_populates="members")
     organizations = relationship("Organization", secondary=organization_members, back_populates="members")
+    
+    def get_notification_settings(self):
+        """获取通知设置"""
+        if self.notification_settings:
+            try:
+                return json.loads(self.notification_settings)
+            except json.JSONDecodeError:
+                pass
+        # 返回默认设置
+        return {
+            "email_notifications": True,
+            "push_notifications": True,
+            "sms_notifications": False,
+            "task_assigned": True,
+            "task_completed": True,
+            "task_overdue": True,
+            "project_updates": True,
+            "defect_assigned": True,
+            "defect_resolved": True,
+            "system_announcements": True
+        }
+    
+    def set_notification_settings(self, settings_dict):
+        """设置通知设置"""
+        self.notification_settings = json.dumps(settings_dict, ensure_ascii=False)
+    
+    def get_language_settings(self):
+        """获取语言设置"""
+        if self.language_settings:
+            try:
+                return json.loads(self.language_settings)
+            except json.JSONDecodeError:
+                pass
+        # 返回默认设置
+        return {
+            "language": "zh-CN",
+            "timezone": "Asia/Shanghai",
+            "date_format": "YYYY-MM-DD",
+            "time_format": "24h"
+        }
+    
+    def set_language_settings(self, settings_dict):
+        """设置语言设置"""
+        self.language_settings = json.dumps(settings_dict, ensure_ascii=False)

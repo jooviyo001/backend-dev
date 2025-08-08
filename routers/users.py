@@ -1,14 +1,13 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import or_, and_
-from typing import Optional, List
-from math import ceil
-
+from typing import Optional
 from models.database import get_db
-from models import User
-from routers import dashboard
+from models.user import UserRole, User
 from schemas import (
-    UserCreate, UserUpdate, UserResponse, BaseResponse, PaginationResponse
+    UserCreate, UserUpdate, UserResponse, BaseResponse,
+    NotificationSettings, NotificationSettingsResponse, NotificationSettingsUpdate,
+    LanguageSettings, LanguageSettingsResponse, LanguageSettingsUpdate
 )
 from utils.auth import (
     get_current_active_user, require_permission, get_password_hash
@@ -24,6 +23,11 @@ async def get_users(
 
 ):
     """获取用户列表（简化版，用于列表展示）"""
+    # 权限校验
+    if current_user.role != UserRole.ADMIN:
+        raise HTTPException(status_code=403, detail="没有权限访问")
+
+
     from utils.response_utils import list_response
     from sqlalchemy.orm import joinedload
     
@@ -87,6 +91,10 @@ async def get_users(
     current_user = Depends(require_permission("user:read"))
 ):
     """获取用户列表"""
+    # 权限校验
+    if current_user.role != UserRole.ADMIN:
+        raise HTTPException(status_code=403, detail="没有权限访问")
+
     from utils.response_utils import list_response, paginate_query
     
     # 处理分页参数，优先使用 limit，如果没有则使用 pageSize，默认为 10
@@ -142,6 +150,10 @@ async def get_user(
     current_user = Depends(require_permission("user:read"))
 ):
     """获取用户详情"""
+    # 权限校验
+    if current_user.role != UserRole.ADMIN:
+        raise HTTPException(status_code=403, detail="没有权限访问")
+
     # 处理用户ID格式 - 如果是 "U" 开头的新格式，直接使用；如果是旧格式，保持兼容
     actual_user_id = user_id
     if user_id.startswith("USER_"):
@@ -173,6 +185,10 @@ async def create_user(
     current_user: User = Depends(require_permission("user:write"))
 ):
     """创建用户"""
+    # 权限校验
+    if current_user.role != UserRole.ADMIN:
+        raise HTTPException(status_code=403, detail="没有权限访问")
+
     # 检查用户名是否已存在
     if db.query(User).filter(User.username == user_data.username).first():
         raise HTTPException(
@@ -220,6 +236,10 @@ async def update_user(
     current_user: User = Depends(require_permission("user:write"))
 ):
     """更新用户信息"""
+    # 权限校验，只能更新自己的或者只有管理员可以更新其他用户
+    if current_user.role != UserRole.ADMIN and user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="没有权限访问")
+
     # 处理用户ID格式 - 支持新的U前缀格式和旧格式兼容
     actual_user_id = user_id
     if user_id.startswith("USER_"):
@@ -283,6 +303,10 @@ async def delete_user(
     current_user: User = Depends(require_permission("user:write"))
 ):
     """删除用户"""
+    # 权限校验
+    if current_user.role != UserRole.ADMIN:
+        raise HTTPException(status_code=403, detail="没有权限访问")
+
     # 处理用户ID格式 - 支持新的U前缀格式和旧格式兼容
     actual_user_id = user_id
     if user_id.startswith("USER_"):
@@ -309,3 +333,124 @@ async def delete_user(
     db.commit()
     
     return BaseResponse(message="删除用户成功")
+
+# 获取用户通知设置
+@router.get("/notification-settings", response_model=BaseResponse)
+async def get_notification_settings(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """获取当前用户的通知设置"""
+    from utils.response_utils import standard_response
+    
+    # 获取用户的通知设置
+    settings_dict = current_user.get_notification_settings()
+    settings = NotificationSettings(**settings_dict)
+    
+    response_data = NotificationSettingsResponse(
+        user_id=current_user.id,
+        settings=settings,
+        updated_at=current_user.updated_at
+    )
+    
+    return standard_response(
+        data=response_data,
+        message="获取通知设置成功"
+    )
+
+# 更新用户通知设置
+@router.put("/notification-settings", response_model=BaseResponse)
+async def update_notification_settings(
+    settings_update: NotificationSettingsUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """更新当前用户的通知设置"""
+    from utils.response_utils import standard_response
+    
+    # 获取当前设置
+    current_settings = current_user.get_notification_settings()
+    
+    # 更新设置
+    update_data = settings_update.model_dump(exclude_unset=True)
+    current_settings.update(update_data)
+    
+    # 保存设置
+    current_user.set_notification_settings(current_settings)
+    db.add(current_user)
+    db.commit()
+    db.refresh(current_user)
+    
+    # 构造响应数据
+    settings = NotificationSettings(**current_settings)
+    response_data = NotificationSettingsResponse(
+        user_id=current_user.id,
+        settings=settings,
+        updated_at=current_user.updated_at
+    )
+    
+    return standard_response(
+        data=response_data,
+        message="通知设置更新成功"
+    )
+
+# /language-settings
+@router.get("/language-settings", response_model=BaseResponse)
+async def get_language_settings(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """获取当前用户的语言设置"""
+    from utils.response_utils import standard_response
+    
+    # 获取用户的语言设置
+    settings_dict = current_user.get_language_settings()
+    settings = LanguageSettings(**settings_dict)
+    
+    response_data = LanguageSettingsResponse(
+        user_id=current_user.id,
+        settings=settings,
+        updated_at=current_user.updated_at
+    )
+    
+    return standard_response(
+        data=response_data,
+        message="获取语言设置成功"
+    )
+
+# 更新用户语言设置
+@router.put("/language-settings", response_model=BaseResponse)
+async def update_language_settings(
+    settings_update: LanguageSettingsUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """更新当前用户的语言设置"""
+    from utils.response_utils import standard_response
+    
+    # 获取当前设置
+    current_settings = current_user.get_language_settings()
+    
+    # 更新设置
+    update_data = settings_update.model_dump(exclude_unset=True)
+    current_settings.update(update_data)
+
+    # 保存设置
+    current_user.set_language_settings(current_settings)
+    db.add(current_user)
+    db.commit()
+    db.refresh(current_user)
+    
+    # 构造响应数据
+    settings = LanguageSettings(**current_settings)
+    response_data = LanguageSettingsResponse(
+        user_id=current_user.id,
+        settings=settings,
+        updated_at=current_user.updated_at
+    )
+    return standard_response(
+        data=response_data,
+        message="语言设置更新成功"
+    )
+
+

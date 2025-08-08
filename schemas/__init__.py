@@ -4,7 +4,9 @@ from .base import BaseResponse, PaginationResponse, default_timestamp
 # 用户相关模式
 from .user import (
     UserBase, UserCreate, UserUpdate, UserProfileUpdateRequest, UserResponse,
-    ChangePasswordRequest, LoginRequest, LoginResponse, RegisterRequest, RegisterResponse
+    ChangePasswordRequest, LoginRequest, LoginResponse, RegisterRequest, RegisterResponse,
+    NotificationSettings, NotificationSettingsResponse, NotificationSettingsUpdate,
+    LanguageSettings, LanguageSettingsResponse, LanguageSettingsUpdate
 )
 
 # 组织相关模式
@@ -42,6 +44,8 @@ __all__ = [
     # 用户相关模式
     "UserBase", "UserCreate", "UserUpdate", "UserProfileUpdateRequest", "UserResponse",
     "ChangePasswordRequest", "LoginRequest", "LoginResponse", "RegisterRequest", "RegisterResponse",
+    "NotificationSettings", "NotificationSettingsResponse", "NotificationSettingsUpdate",
+    "LanguageSettings", "LanguageSettingsResponse", "LanguageSettingsUpdate",
     
     # 组织相关模式
     "OrganizationBase", "OrganizationCreate", "OrganizationUpdate", "OrganizationStatusUpdate",
