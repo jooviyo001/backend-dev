@@ -24,6 +24,7 @@ from .organization import Organization
 from .project import Project
 from .task import Task, TaskAttachment, TaskComment
 from .defect import Defect
+from .position import Position
 
 # 为了向后兼容，将所有模型导出到models命名空间
 __all__ = [
@@ -43,5 +44,5 @@ __all__ = [
     # 模型类
     'User', 'Organization', 'Project',
     'Task', 'TaskAttachment', 'TaskComment',
-    'Defect'
+    'Defect', 'Position'
 ]

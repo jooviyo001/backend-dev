@@ -31,6 +31,11 @@ from .task import (
 # 缺陷相关模式
 from .defect import DefectBase, DefectResponse, DefectCreate, DefectUpdate
 
+# 职位相关模式
+from .position import (
+    PositionBase, PositionCreate, PositionUpdate, PositionResponse, PositionListResponse
+)
+
 # 仪表盘相关模式
 from .dashboard import (
     DashboardStats, RecentTask, ProjectProgress, TaskStatusDistribution,
@@ -64,6 +69,9 @@ __all__ = [
     
     # 缺陷相关模式
     "DefectBase", "DefectResponse", "DefectCreate", "DefectUpdate",
+    
+    # 职位相关模式
+    "PositionBase", "PositionCreate", "PositionUpdate", "PositionResponse", "PositionListResponse",
     
     # 仪表盘相关模式
     "DashboardStats", "RecentTask", "ProjectProgress", "TaskStatusDistribution",

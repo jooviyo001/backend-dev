@@ -4,12 +4,16 @@ from sqlalchemy import or_, and_
 from typing import Optional
 from models.database import get_db
 from models.user import UserRole, User
+from models.position import Position
 from schemas.base import BaseResponse
 from schemas.user import (
     UserCreate, UserUpdate, UserResponse,
     NotificationSettings, NotificationSettingsResponse, NotificationSettingsUpdate,
     LanguageSettings, LanguageSettingsResponse, LanguageSettingsUpdate,
-    UserStatusUpdate, PositionCreate
+    UserStatusUpdate
+)
+from schemas.position import (
+    PositionCreate, PositionUpdate, PositionResponse, PositionListResponse
 )
 from utils.auth import (
     get_current_active_user, require_permission, get_password_hash
@@ -158,6 +162,7 @@ async def get_users(
 # 获取职位列表
 @router.get("/positions", response_model=BaseResponse)
 async def get_positions(
+    include_inactive: bool = Query(False, description="是否包含已停用的职位"),
     db: Session = Depends(get_db),
     current_user = Depends(require_permission("user:read"))
 ):
@@ -166,14 +171,24 @@ async def get_positions(
     if current_user.role != UserRole.ADMIN:
         raise HTTPException(status_code=403, detail="没有权限访问")
     
-    # 查询所有不为空的职位，去重
-    positions = db.query(User.position).filter(
-        User.position.isnot(None),
-        User.position != ""
-    ).distinct().all()
+    # 查询职位，可选择是否包含已停用的职位
+    query = db.query(Position)
+    if not include_inactive:
+        query = query.filter(Position.is_active == True)
     
-    # 提取职位名称并排序
-    position_list = sorted([pos[0] for pos in positions if pos[0]])
+    positions = query.order_by(Position.name).all()
+    
+    # 统计每个职位的用户数量
+    position_list = []
+    for position in positions:
+        user_count = db.query(User).filter(User.position == position.name).count()
+        position_data = PositionListResponse(
+            id=position.id,
+            name=position.name,
+            is_active=position.is_active,
+            user_count=user_count
+        )
+        position_list.append(position_data.dict())
     
     return BaseResponse(
         message="获取职位列表成功",
@@ -192,19 +207,141 @@ async def create_position(
     if current_user.role != UserRole.ADMIN:
         raise HTTPException(status_code=403, detail="没有权限访问")
     
-    # 检查职位是否已存在
-    existing_position = db.query(User).filter(User.position == position_data.position).first()
+    # 检查职位名称是否已存在
+    existing_position = db.query(Position).filter(Position.name == position_data.name).first()
     if existing_position:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="职位已存在"
+            detail="职位名称已存在"
         )
     
-    # 这里不需要创建新用户，只是为了验证职位名称的有效性
-    # 实际上职位是通过用户创建时添加的，这个接口主要用于验证
+    # 创建新职位
+    new_position = Position(
+        name=position_data.name,
+        description=position_data.description,
+        is_active=position_data.is_active
+    )
+    
+    db.add(new_position)
+    db.commit()
+    db.refresh(new_position)
+    
     return BaseResponse(
-        message="职位验证成功，可以使用",
-        data={"position": position_data.position}
+        message="职位创建成功",
+        data=PositionResponse.model_validate(new_position, from_attributes=True).dict()
+    )
+
+# 获取职位详情
+@router.get("/positions/{position_id}", response_model=BaseResponse)
+async def get_position(
+    position_id: str,
+    db: Session = Depends(get_db),
+    current_user = Depends(require_permission("user:read"))
+):
+    """获取职位详情"""
+    # 权限校验
+    if current_user.role != UserRole.ADMIN:
+        raise HTTPException(status_code=403, detail="没有权限访问")
+    
+    # 查询职位
+    position = db.query(Position).filter(Position.id == position_id).first()
+    if not position:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="职位不存在"
+        )
+    
+    return BaseResponse(
+        message="获取职位详情成功",
+        data=PositionResponse.model_validate(position, from_attributes=True).dict()
+    )
+
+# 更新职位
+@router.put("/positions/{position_id}", response_model=BaseResponse)
+async def update_position(
+    position_id: str,
+    position_data: PositionUpdate,
+    db: Session = Depends(get_db),
+    current_user = Depends(require_permission("user:write"))
+):
+    """更新职位信息"""
+    # 权限校验
+    if current_user.role != UserRole.ADMIN:
+        raise HTTPException(status_code=403, detail="没有权限访问")
+    
+    # 查询职位
+    position = db.query(Position).filter(Position.id == position_id).first()
+    if not position:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="职位不存在"
+        )
+    
+    # 检查职位名称是否已被其他职位使用
+    if position_data.name and position_data.name != position.name:
+        existing_position = db.query(Position).filter(
+            Position.name == position_data.name,
+            Position.id != position_id
+        ).first()
+        if existing_position:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="职位名称已存在"
+            )
+    
+    # 更新职位信息
+    update_data = position_data.dict(exclude_unset=True)
+    for key, value in update_data.items():
+        setattr(position, key, value)
+    
+    db.commit()
+    db.refresh(position)
+    
+    return BaseResponse(
+        message="职位更新成功",
+        data=PositionResponse.model_validate(position, from_attributes=True).dict()
+    )
+
+# 删除职位
+@router.delete("/positions/{position_id}", response_model=BaseResponse)
+async def delete_position(
+    position_id: str,
+    force: bool = Query(False, description="是否强制删除（即使有用户使用该职位）"),
+    db: Session = Depends(get_db),
+    current_user = Depends(require_permission("user:write"))
+):
+    """删除职位"""
+    # 权限校验
+    if current_user.role != UserRole.ADMIN:
+        raise HTTPException(status_code=403, detail="没有权限访问")
+    
+    # 查询职位
+    position = db.query(Position).filter(Position.id == position_id).first()
+    if not position:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="职位不存在"
+        )
+    
+    # 检查是否有用户使用该职位
+    user_count = db.query(User).filter(User.position == position.name).count()
+    if user_count > 0 and not force:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"该职位正在被 {user_count} 个用户使用，无法删除。如需强制删除，请设置 force=true"
+        )
+    
+    # 如果强制删除，将使用该职位的用户的职位字段设为空
+    if force and user_count > 0:
+        db.query(User).filter(User.position == position.name).update({"position": None})
+    
+    # 删除职位
+    db.delete(position)
+    db.commit()
+    
+    return BaseResponse(
+        message="职位删除成功",
+        data={"deleted_position_id": position_id, "affected_users": user_count if force else 0}
     )
 
 # 获取用户详情接口
