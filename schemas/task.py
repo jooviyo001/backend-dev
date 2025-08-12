@@ -180,6 +180,31 @@ class BatchAssignRequest(BaseModel):
     class Config:
         populate_by_name = True  # 允许使用字段名和别名
 
+# 任务状态更新模式
+class TaskStatusUpdate(BaseModel):
+    status: TaskStatus = Field(..., description="新的任务状态")
+    
+    @field_validator('status')
+    @classmethod
+    def validate_status(cls, v):
+        """验证状态值是否有效"""
+        if v not in TaskStatus:
+            raise ValueError(f"无效的任务状态: {v}")
+        return v
+
+# 任务状态更新响应模式
+class TaskStatusUpdateResponse(BaseModel):
+    id: str = Field(..., description="任务ID")
+    title: str = Field(..., description="任务标题")
+    status: TaskStatus = Field(..., description="更新后的状态")
+    previous_status: Optional[TaskStatus] = Field(None, description="更新前的状态")
+    updated_at: datetime = Field(..., description="更新时间")
+    updated_by: str = Field(..., description="更新人ID")
+    updated_by_name: Optional[str] = Field(None, description="更新人姓名")
+    
+    class Config:
+        from_attributes = True
+
 # 任务批量状态更新模式
 class TaskBatchStatusUpdate(BaseModel):
     task_ids: List[str] = Field(..., min_length=1, description="任务ID数组", alias="taskIds")

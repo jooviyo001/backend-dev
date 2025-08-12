@@ -8,7 +8,9 @@ from models.database import get_db
 from models import Task, User, Project, TaskStatus, TaskPriority, TaskType
 from schemas.base import BaseResponse
 from schemas.task import TaskResponse, TaskListResponse, TaskUpdate, \
-    TaskCreate, TaskBatchStatusUpdate, TaskBatchAssigneeUpdate, TaskBatchDelete
+    TaskCreate, TaskBatchStatusUpdate, TaskBatchAssigneeUpdate, TaskBatchDelete, \
+    TaskStatusUpdate, TaskStatusUpdateResponse
+
 from utils.auth import require_permission
 from utils.response_utils import list_response, paginate_query, standard_response
 
@@ -497,6 +499,73 @@ async def get_task_detail(
         message="获取任务详情成功"
     )
 
+# 更新任务状态
+@router.put("/{task_id}/status", response_model=BaseResponse)
+async def update_task_status(
+    task_id: str,
+    status_update: TaskStatusUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_permission("task:write"))
+):
+    """更新任务状态
+    
+    Args:
+        task_id: 任务ID（支持T前缀格式或纯数字）
+        status_update: 包含新状态的请求体
+    
+    Returns:
+        更新后的任务信息
+    """
+    
+    # 查找任务
+    task = db.query(Task).filter(Task.id == task_id).first()
+    if not task:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="任务不存在"
+        )
+    
+    # 检查权限：非管理员只能更新自己相关的任务
+    if current_user.role != "admin":
+        user_is_assignee = current_user.id == task.assignee_id
+        user_is_reporter = current_user.id == task.reporter_id
+        user_is_project_member = task.project and any(
+            member.id == current_user.id for member in task.project.members
+        )
+        
+        if not (user_is_assignee or user_is_reporter or user_is_project_member):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="没有权限更新此任务"
+            )
+    
+    # 检查状态是否合法
+    if status_update.status not in TaskStatus:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="无效的任务状态"
+        )
+    
+    # 检查状态是否改变
+    if status_update.status == task.status:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="任务状态未改变"
+        )
+    
+    # 更新任务状态
+    task.status = status_update.status
+    task.updated_at = datetime.now()  # type: ignore
+    db.commit()
+    db.refresh(task)
+    
+    # 返回更新后的任务信息
+    return standard_response(
+        data=TaskResponse.model_validate(task),
+        message="任务状态更新成功"
+    ) 
+
+# 批量更新任务状态
 @router.put("/batch/status", response_model=BaseResponse)
 async def batch_update_task_status(
     batch_update: TaskBatchStatusUpdate,
@@ -727,13 +796,15 @@ async def batch_delete_tasks(
         )
     # 执行批量删除
     try:
-        db.delete(tasks)
+        deleted_task_ids = [task.id for task in tasks]
+        for task in tasks:
+            db.delete(task)
         db.commit()
         return standard_response(
             data={
                 "deleted_count": len(tasks),
                 "total_requested": len(batch_delete.task_ids),
-                "deleted_task_ids": [task.id for task in tasks]
+                "deleted_task_ids": deleted_task_ids
             },
             message="批量删除任务成功"
         )

@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import or_, and_
 from typing import Optional
+from models.associations import organization_members
 from models.database import get_db
 from models.user import UserRole, User
 from models.position import Position
@@ -414,7 +415,7 @@ async def create_user(
         name=user_data.name,  # type: ignore
         phone=user_data.phone,  # type: ignore
         position=user_data.position,  # type: ignore
-        department=user_data.department,  # type: ignore
+        organization_name=user_data.organization_name,  # type: ignore
         organization_id=user_data.organization_id,  # type: ignore
         role=user_data.role  # type: ignore
     )

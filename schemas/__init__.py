@@ -25,7 +25,8 @@ from .project import ProjectBase, ProjectCreate, ProjectUpdate, ProjectResponse
 from .task import (
     TaskBase, TaskCreate, TaskUpdate, TaskResponse, TaskListResponse,
     TaskStatistics, BatchDeleteRequest, BatchAssignRequest, TaskBatchStatusUpdate,
-    TaskBatchAssigneeUpdate, AttachmentResponse, CommentBase, CommentCreate, CommentResponse
+    TaskBatchAssigneeUpdate, TaskStatusUpdate, TaskStatusUpdateResponse,
+    AttachmentResponse, CommentBase, CommentCreate, CommentResponse
 )
 
 # 缺陷相关模式
@@ -65,7 +66,8 @@ __all__ = [
     # 任务相关模式
     "TaskBase", "TaskCreate", "TaskUpdate", "TaskResponse", "TaskListResponse",
     "TaskStatistics", "BatchDeleteRequest", "BatchAssignRequest", "TaskBatchStatusUpdate",
-    "TaskBatchAssigneeUpdate", "AttachmentResponse", "CommentBase", "CommentCreate", "CommentResponse",
+    "TaskBatchAssigneeUpdate", "TaskStatusUpdate", "TaskStatusUpdateResponse",
+    "AttachmentResponse", "CommentBase", "CommentCreate", "CommentResponse",
     
     # 缺陷相关模式
     "DefectBase", "DefectResponse", "DefectCreate", "DefectUpdate",

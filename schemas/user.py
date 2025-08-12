@@ -23,7 +23,7 @@ class UserCreate(BaseModel):
     name: Optional[str] = None
     phone: Optional[str] = None
     position: Optional[str] = None
-    organizition_name: Optional[str] = None
+    organization_name: Optional[str] = None  # 组织名称
     organization_id: Optional[str] = None
     role: UserRole = UserRole.MEMBER
     password: str

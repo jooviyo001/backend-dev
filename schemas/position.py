@@ -57,11 +57,37 @@ class PositionResponse(PositionBase):
 
 
 class PositionListResponse(BaseModel):
-    """职位列表响应模式"""
-    id: str = Field(..., description="职位ID")
-    name: str = Field(..., description="职位名称")
-    is_active: bool = Field(..., description="是否启用")
-    user_count: int = Field(0, description="使用该职位的用户数量")
+    """职位列表响应模式
+    包含职位的基本信息、创建时间、更新时间、使用该职位的用户数量和项目数量
+    字段说明：
+    id：职位ID
+    name：职位名称
+    code：职位编码
+    department_id：所属部门ID
+    department_name：所属部门名称
+    type：职位类型
+    description：职位描述
+    is_active：是否启用
+    created_at：创建时间
+    updated_at：更新时间
+    user_count：使用该职位的用户数量
+    project_count：使用该职位的项目数量
+    """
     
+    id: str = Field(..., description="职位ID")
+    code: str = Field(..., description="职位编码")
+    name: str = Field(..., description="职位名称")
+    department_id: str = Field(..., description="所属部门ID")
+    department_name: str = Field(..., description="所属部门名称")
+    type: str = Field(..., description="职位类型")
+    code: str = Field(..., description="职位编码")
+    description: Optional[str] = Field(None, description="职位描述")
+    is_active: bool = Field(True, description="是否启用")
+    created_at: datetime = Field(..., description="创建时间")
+    updated_at: datetime = Field(..., description="更新时间")
+    user_count: int = Field(0, description="使用该职位的用户数量")
+    project_count: int = Field(0, description="使用该职位的项目数量")
+
     class Config:
         from_attributes = True
+        orm_mode = True
