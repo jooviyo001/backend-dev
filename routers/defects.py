@@ -13,13 +13,25 @@ from models.user import User
 from models.project import Project
 from models.associations import MemberRole
 from models.enums import UserRole
+from schemas.base import BaseResponse
+from schemas.defect import DefectResponse, DefectCreate, DefectUpdate, DefectAssign
 
-from schemas import BaseResponse, DefectResponse, DefectCreate, DefectUpdate
 from utils.auth import require_permission
 from utils.response_utils import list_response, paginate_query, standard_response
 
 router = APIRouter()
 
+# 新增根据用户ID查看个人缺陷列表，不分页
+@router.get("/list", response_model=BaseResponse)
+async def get_defects_by_user_id(
+    user_id: str,
+    limit: int = Query(5, ge=1, le=100, description="返回数量限制"),
+    db: Session = Depends(get_db)):
+    """获取缺陷列表限制100个"""
+    defects = Query(db).filter(Defect.user_id == user_id).limit(limit).all()
+    return BaseResponse(data=defects)
+
+# 新增看板
 @router.get("/page", response_model=BaseResponse)
 async def get_defects_page(
     page: int = Query(1, ge=1, description="页码"),
@@ -55,7 +67,7 @@ async def get_defects_page(
     
     # 根据用户角色进行数据过滤
     # 如果不是管理员，只能查看自己相关的缺陷（创建的、分配给自己的、报告的、验证的）
-    if current_user.role != MemberRole.ADMIN:
+    if current_user.role != MemberRole.ADMIN: # type: ignore
         query = query.filter(
             or_(
                 Defect.created_by == current_user.id,
@@ -163,16 +175,16 @@ async def create_defect(
         if not parent_defect:
             raise HTTPException(status_code=404, detail="父缺陷不存在")
         # 检查父缺陷是否为子缺陷
-        if parent_defect.type == DefectType.subdefect:
+        if parent_defect.type == DefectType.BUG:
             raise HTTPException(status_code=400, detail="父缺陷不能为子缺陷")
         # 检查子缺陷是否为父缺陷
-        if defect.type == DefectType.subdefect:
+        if defect.type == DefectType.BUG:
             raise HTTPException(status_code=400, detail="子缺陷不能为父缺陷")
         # 检查子缺陷是否为子缺陷
-        if parent_defect.type == DefectType.subdefect:
+        if parent_defect.type == DefectType.BUG:
             raise HTTPException(status_code=400, detail="子缺陷不能为子缺陷")
         # 检查子缺陷是否为缺陷
-        if defect.type == DefectType.defect:
+        if defect.type == DefectType.BUG:
             raise HTTPException(status_code=400, detail="子缺陷不能为缺陷")
     
     # 创建缺陷对象
@@ -215,8 +227,7 @@ async def get_defect_statistics(
                 Defect.created_by == current_user.id,
                 Defect.assignee_id == current_user.id,
                 Defect.reporter_id == current_user.id,
-                Defect.verified_by_id == current_user.id,
-                Defect.updated_by == current_user.id
+                Defect.verified_by_id == current_user.id
             )
         )
     # 统计数据
@@ -268,10 +279,12 @@ async def get_defect_by_id(
     
     # 权限检查：非管理员只能查看自己相关的缺陷
     if current_user.role != UserRole.ADMIN:
-        if not (defect.created_by == current_user.id or 
-                defect.assignee_id == current_user.id or 
-                defect.reporter_id == current_user.id or 
-                defect.verified_by_id == current_user.id):
+        if not (
+            defect.created_by == current_user.id or
+            defect.assignee_id == current_user.id or
+            defect.reporter_id == current_user.id or
+            defect.verified_by_id == current_user.id
+        ):
             raise HTTPException(status_code=403, detail="权限不足，无法查看此缺陷")
     
     return standard_response(
@@ -295,9 +308,11 @@ async def update_defect(
     
     # 权限检查：非管理员只能更新自己相关的缺陷
     if current_user.role != UserRole.ADMIN:
-        if not (existing_defect.created_by == current_user.id or 
-                existing_defect.assignee_id == current_user.id or 
-                existing_defect.reporter_id == current_user.id):
+        if not (
+            existing_defect.created_by == current_user.id or
+            existing_defect.assignee_id == current_user.id or
+            existing_defect.reporter_id == current_user.id
+        ):
             raise HTTPException(status_code=403, detail="权限不足，无法更新此缺陷")
     
     # 更新缺陷字段
@@ -335,7 +350,7 @@ async def delete_defect(
         raise HTTPException(status_code=404, detail="缺陷不存在")
     
     # 权限检查：只有创建人或管理员才能删除
-    if current_user.role != MemberRole.admin and current_user.id != existing_defect.created_by:
+    if current_user.role != MemberRole.ADMIN and current_user.id != existing_defect.created_by:
         raise HTTPException(status_code=403, detail="权限不足，只有创建人或管理员才能删除缺陷")
     
     # 删除缺陷
@@ -344,6 +359,7 @@ async def delete_defect(
     return standard_response(
         message="缺陷删除成功"
     )
+
 
 # 批量更新缺陷
 @router.put("/update/batch", response_model=BaseResponse)
@@ -354,7 +370,10 @@ async def batch_update_defects(
 ):
     """批量更新缺陷"""
     # 检查缺陷是否存在
-    defect_ids = [d.id for d in defects if hasattr(d, 'id') and d.id]
+    defect_ids = []
+    for d in defects:
+        if hasattr(d, 'id') and getattr(d, 'id'):
+            defect_ids.append(getattr(d, 'id'))
     if not defect_ids:
         raise HTTPException(status_code=400, detail="缺陷ID不能为空")
     
@@ -376,16 +395,16 @@ async def batch_update_defects(
         if len(parent_defects) != len(parent_ids):
             raise HTTPException(status_code=400, detail="有父缺陷不存在")
         # 检查父缺陷是否为子缺陷
-        if any(d.type == DefectType.subdefect for d in parent_defects):
+        if any(d.type == DefectType.BUG for d in parent_defects):
             raise HTTPException(status_code=400, detail="父缺陷不能为子缺陷")
         # 检查子缺陷是否为父缺陷
-        if any(d.type == DefectType.defect for d in parent_defects):
+        if any(d.type == DefectType.BUG for d in parent_defects):
             raise HTTPException(status_code=400, detail="子缺陷不能为父缺陷")
         # 检查子缺陷是否为子缺陷
-        if any(d.type == DefectType.subdefect for d in parent_defects):
+        if any(d.type == DefectType.BUG for d in parent_defects):
             raise HTTPException(status_code=400, detail="子缺陷不能为子缺陷")
         # 检查子缺陷是否为缺陷
-        if any(d.type == DefectType.defect for d in parent_defects):
+        if any(d.type == DefectType.BUG for d in parent_defects):
             raise HTTPException(status_code=400, detail="子缺陷不能为缺陷")
     # 更新缺陷
     for i, defect_data in enumerate(defects):
@@ -415,12 +434,12 @@ async def batch_delete_defects(
         raise HTTPException(status_code=400, detail="有缺陷不存在")
     
     # 权限检查：非管理员只能删除自己创建的缺陷
-    if current_user.role != MemberRole.admin:
+    if current_user.role != MemberRole.ADMIN:  # type: ignore
         for defect in existing_defects:
             if defect.created_by != current_user.id:
                 raise HTTPException(status_code=403, detail=f"权限不足，无法删除缺陷 {defect.id}，只能删除自己创建的缺陷")
     # 检查缺陷是否为子缺陷
-    if any(d.type == DefectType.subdefect for d in existing_defects):
+    if any(d.type == DefectType.BUG for d in existing_defects):
         raise HTTPException(status_code=400, detail="子缺陷不能删除")
     # 删除缺陷
     for defect in existing_defects:
@@ -430,6 +449,37 @@ async def batch_delete_defects(
         message="缺陷删除成功",
         data={
             "deleted_count": len(existing_defects)
+        }
+    )
+
+# 单个缺陷分配负责人
+@router.put("/{defect_id}/assign", response_model=BaseResponse) 
+async def update_defect_assignee(
+    defect_id: str,
+    assign_data: DefectAssign,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_permission("defect:write"))
+):
+    """分配缺陷负责人"""
+    if not defect_id:
+        raise HTTPException(status_code=404, detail="缺陷不存在")
+    # 检查缺陷是否存在
+    existing_defect = db.query(Defect).filter(Defect.id == defect_id).first()
+    if not existing_defect:
+        raise HTTPException(status_code=404, detail="缺陷不存在")
+    # 检查负责人是否存在
+    assignee = db.query(User).filter(User.id == assign_data.assignee_id).first()
+    if not assignee:
+        raise HTTPException(status_code=404, detail="负责人不存在")
+    # 分配负责人
+    existing_defect.assignee_id = assign_data.assignee_id
+    
+    db.commit()
+    return BaseResponse(
+        message="缺陷分配成功",
+        data={
+            "defect_id": defect_id,
+            "assignee_id": assign_data.assignee_id
         }
     )
 

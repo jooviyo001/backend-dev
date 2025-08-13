@@ -97,6 +97,10 @@ class DefectCreate(BaseModel):
     due_date: Optional[datetime] = Field(None, description="截止时间")
     source: Optional[str] = Field(None, max_length=100, description="缺陷来源")
 
+# 缺陷分配模式
+class DefectAssign(BaseModel):
+    assignee_id: str = Field(..., description="执行人ID")
+
 # 缺陷更新模式
 class DefectUpdate(BaseModel):
     title: Optional[str] = Field(None, min_length=1, max_length=200, description="缺陷标题")
