@@ -16,7 +16,7 @@ import math
 router = APIRouter(prefix="/comments")
 
 
-@router.post("/", response_model=CommentResponse, summary="创建评论")
+@router.post("/add", response_model=CommentResponse, summary="创建评论")
 async def create_comment(
     comment_data: CommentCreate,
     db: Session = Depends(get_db),
@@ -56,7 +56,7 @@ async def create_comment(
     return comment
 
 
-@router.get("/", response_model=CommentListResponse, summary="获取评论列表")
+@router.get("/commentlist", response_model=CommentListResponse, summary="获取评论列表")
 async def get_comments(
     target_type: Optional[CommentTargetType] = Query(None, description="目标类型"),
     target_id: Optional[str] = Query(None, description="目标ID"),

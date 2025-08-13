@@ -1,20 +1,20 @@
 from fastapi import APIRouter, Depends, Query, HTTPException, File, UploadFile
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import desc, or_, and_
-from typing import Optional, List
-from datetime import date, datetime
+from typing import  List
+from datetime import datetime
 
 import pandas as pd
 import io
 
 from models.database import get_db
-from models.defect import Defect, DefectStatusHistory, DefectStatus, DefectPriority, DefectType, DefectSeverity
+from models.defect import Defect, DefectStatusHistory, DefectStatus, DefectType
 from models.user import User
 from models.project import Project
 from models.associations import MemberRole
 from models.enums import UserRole
 from schemas.base import BaseResponse
-from schemas.defect import DefectResponse, DefectCreate, DefectUpdate, DefectAssign, DefectStatusHistory as DefectStatusHistorySchema
+from schemas.defect import DefectResponse, DefectCreate, DefectUpdate, DefectAssign, DefectStatusHistory as DefectStatusHistorySchema, DefectPageQuery
 
 from utils.auth import require_permission
 from utils.response_utils import list_response, paginate_query, standard_response
@@ -34,21 +34,7 @@ async def get_defects_by_user_id(
 # 新增看板
 @router.get("/page", response_model=BaseResponse)
 async def get_defects_page(
-    page: int = Query(1, ge=1, description="页码"),
-    size: int = Query(10, ge=1, le=100, description="每页数量"),
-    keyword: Optional[str] = Query(None, description="关键词搜索"),
-    status: Optional[DefectStatus] = Query(None, description="缺陷状态"),
-    organization_id: Optional[str] = Query(None, description="组织ID"),
-    project_id: Optional[str] = Query(None, description="项目ID"),
-    assignee_id: Optional[str] = Query(None, description="执行人ID"),
-    reporter_id: Optional[str] = Query(None, description="报告人ID"),
-    verified_by_id: Optional[str] = Query(None, description="验证人ID"),
-    priority: Optional[DefectPriority] = Query(None, description="缺陷优先级"),
-    type: Optional[DefectType] = Query(None, description="缺陷类型"),
-    severity: Optional[DefectSeverity] = Query(None, description="缺陷严重程度"),
-    parent_id: Optional[str] = Query(None, description="父缺陷ID"),
-    start_date: Optional[date] = Query(None, description="开始日期 (YYYY-MM-DD)"),
-    end_date: Optional[date] = Query(None, description="结束日期 (YYYY-MM-DD)"),
+    query: DefectPageQuery = Depends(),
     db: Session = Depends(get_db),
     current_user: User = Depends(require_permission("defect:read"))
 ):
@@ -63,12 +49,12 @@ async def get_defects_page(
     - 日期范围筛选
     """ 
     # 查询缺陷表
-    query = db.query(Defect)
+    db_query = db.query(Defect)
     
     # 根据用户角色进行数据过滤
     # 如果不是管理员，只能查看自己相关的缺陷（创建的、分配给自己的、报告的、验证的）
     if current_user.role != MemberRole.ADMIN: # type: ignore
-        query = query.filter(
+        db_query = db_query.filter(
             or_(
                 Defect.created_by == current_user.id,
                 Defect.assignee_id == current_user.id,
@@ -78,63 +64,67 @@ async def get_defects_page(
         )
 
     # 关键词搜索
-    if keyword:
-        query = query.filter(
+    if query.keyword:
+        db_query = db_query.filter(
             or_(
-                Defect.title.contains(keyword),
-                Defect.description.contains(keyword)
+                Defect.title.contains(query.keyword),
+                Defect.description.contains(query.keyword)
             )
         )
     
     # 状态筛选
-    if status:
-        query = query.filter(Defect.status == status)
+    if query.status:
+        db_query = db_query.filter(Defect.status == query.status)
     
     # 项目筛选
-    if project_id:
-        query = query.filter(Defect.project_id == project_id)
+    if query.project_id:
+        db_query = db_query.filter(Defect.project_id == query.project_id)
     
     # 执行人筛选
-    if assignee_id:
-        query = query.filter(Defect.assignee_id == assignee_id)
+    if query.assignee_id:
+        db_query = db_query.filter(Defect.assignee_id == query.assignee_id)
     
     # 报告人筛选
-    if reporter_id:
-        query = query.filter(Defect.reporter_id == reporter_id)
+    if query.reporter_id:
+        db_query = db_query.filter(Defect.reporter_id == query.reporter_id)
     
     # 验证人筛选
-    if verified_by_id:
-        query = query.filter(Defect.verified_by_id == verified_by_id)
+    if query.verified_by_id:
+        db_query = db_query.filter(Defect.verified_by_id == query.verified_by_id)
     
     # 优先级筛选
-    if priority:
-        query = query.filter(Defect.priority == priority)
+    if query.priority:
+        db_query = db_query.filter(Defect.priority == query.priority)
     
     # 类型筛选
-    if type:
-        query = query.filter(Defect.type == type)
+    if query.type:
+        db_query = db_query.filter(Defect.type == query.type)
     
     # 严重程度筛选
-    if severity:
-        query = query.filter(Defect.severity == severity)
+    if query.severity:
+        db_query = db_query.filter(Defect.severity == query.severity)
+    
+    # 父缺陷筛选
+    if query.parent_id:
+        db_query = db_query.filter(Defect.parent_id == query.parent_id)
     
     # 日期范围筛选
-    if start_date:
-        query = query.filter(Defect.created_at >= start_date)
-    if end_date:
-        query = query.filter(Defect.created_at <= end_date)
+    if query.start_date:
+        db_query = db_query.filter(Defect.created_at >= query.start_date)
+    if query.end_date:
+        db_query = db_query.filter(Defect.created_at <= query.end_date)
 
     # 按创建时间倒序排列
-    query = query.order_by(desc(Defect.created_at))
+    db_query = db_query.order_by(desc(Defect.created_at))
 
     # 分页查询
-    total, defects = paginate_query(query, page, size)
+    total, defects = paginate_query(db_query, query.page, query.size)
 
     return list_response(
         records=[DefectResponse.model_validate(defect, from_attributes=True) for defect in defects],
         total=total,
-        page=page,
-        size=size,
+        page=query.page,
+        size=query.size,
         message="获取缺陷列表成功"
     )
 

@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Field, field_validator
 from typing import Optional, List
-from datetime import datetime
+from datetime import datetime, date
 from models.defect import DefectStatus, DefectPriority, DefectType, DefectSeverity
 
 # 缺陷相关模式
@@ -96,6 +96,25 @@ class DefectCreate(BaseModel):
     tags: Optional[List[str]] = Field(None, description="标签")
     due_date: Optional[datetime] = Field(None, description="截止时间")
     source: Optional[str] = Field(None, max_length=100, description="缺陷来源")
+
+
+class DefectPageQuery(BaseModel):
+    """缺陷分页查询请求模型"""
+    page: int = Field(1, ge=1, description="页码")
+    size: int = Field(10, ge=1, le=100, description="每页数量")
+    keyword: Optional[str] = Field(None, description="关键词搜索")
+    status: Optional[DefectStatus] = Field(None, description="缺陷状态")
+    organization_id: Optional[str] = Field(None, description="组织ID")
+    project_id: Optional[str] = Field(None, description="项目ID")
+    assignee_id: Optional[str] = Field(None, description="执行人ID")
+    reporter_id: Optional[str] = Field(None, description="报告人ID")
+    verified_by_id: Optional[str] = Field(None, description="验证人ID")
+    priority: Optional[DefectPriority] = Field(None, description="缺陷优先级")
+    type: Optional[DefectType] = Field(None, description="缺陷类型")
+    severity: Optional[DefectSeverity] = Field(None, description="缺陷严重程度")
+    parent_id: Optional[str] = Field(None, description="父缺陷ID")
+    start_date: Optional[date] = Field(None, description="开始日期 (YYYY-MM-DD)")
+    end_date: Optional[date] = Field(None, description="结束日期 (YYYY-MM-DD)")
 
 # 缺陷分配模式
 class DefectAssign(BaseModel):

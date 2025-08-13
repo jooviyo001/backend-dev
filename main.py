@@ -297,6 +297,9 @@ app.include_router(dashboard.router, prefix="/api/v1/dashboard", tags=["仪表�
 app.include_router(tasks.router, prefix="/api/v1/tasks", tags=["任务管理"])
 app.include_router(defects.router, prefix="/api/v1/defects", tags=["缺陷管理"])
 app.include_router(uploads.router, prefix="/api/v1/uploads", tags=["文件上传"])
+
+# 添加单数形式的路径
+app.include_router(uploads.router, prefix="/api/v1/upload", tags=["文件上传(单数)"])
 app.include_router(comments.router, prefix="/api/v1", tags=["评论管理"])
 
 if __name__ == "__main__":
