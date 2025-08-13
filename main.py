@@ -13,6 +13,7 @@ from models.database import engine, Base
 from models import *
 from utils.snowflake import init_snowflake
 from utils.database_initializer import init_database
+from utils.database_schema_manager import ensure_database_schema
 from utils.logging_middleware import RequestResponseLoggingMiddleware
 
 # 初始化雪花算法（机器ID可以通过环境变量配置）
@@ -20,8 +21,19 @@ import os
 machine_id = int(os.getenv("MACHINE_ID", "1"))  # 默认机器ID为1
 init_snowflake(machine_id)
 
-# 创建数据库表
-Base.metadata.create_all(bind=engine)
+# 检查和更新数据库表结构
+print("🔍 正在检查数据库表结构...")
+try:
+    schema_success = ensure_database_schema()
+    if schema_success:
+        print("✅ 数据库表结构检查完成")
+    else:
+        print("❌ 数据库表结构检查失败，但继续启动")
+except Exception as e:
+    print(f"❌ 数据库表结构检查出错: {e}")
+    print("⚠️  使用基础表创建方式...")
+    # 如果新的检查方式失败，回退到原有方式
+    Base.metadata.create_all(bind=engine)
 
 # 初始化数据库数据（仅在开发环境）
 try:
