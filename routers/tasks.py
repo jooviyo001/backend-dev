@@ -141,7 +141,7 @@ async def get_tasks_page(
     )
 
     # 根据用户角色过滤任务：非管理员只能看到自己相关的任务
-    if current_user.role != UserRole.ADMIN:
+    if current_user.role != UserRole.ADMIN: # type: ignore
         query = query.filter(
             or_(
                 Task.assignee_id == current_user.id,  # 分配给自己的任务
@@ -614,11 +614,11 @@ async def batch_update_task_status(
     user_is_admin = current_user.role == UserRole.ADMIN
     unauthorized_tasks = []
     
-    if not user_is_admin:
+    if not user_is_admin:  # type: ignore
         for task in tasks:
             user_is_reporter = current_user.id == task.reporter_id
             user_is_assignee = current_user.id == task.assignee_id
-            if not (user_is_reporter or user_is_assignee):
+            if not (user_is_reporter or user_is_assignee): # type: ignore
                 unauthorized_tasks.append(task.id)
     
     if unauthorized_tasks:
