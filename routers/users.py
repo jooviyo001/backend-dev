@@ -13,7 +13,7 @@ from schemas.user import (
     LanguageSettings, LanguageSettingsResponse, LanguageSettingsUpdate,
     UserStatusUpdate
 )
-from schemas.position import (
+from schemas.positions import (
     PositionCreate, PositionUpdate, PositionResponse, PositionListResponse
 )
 from utils.auth import (

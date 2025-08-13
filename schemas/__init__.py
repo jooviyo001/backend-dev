@@ -33,7 +33,7 @@ from .task import (
 from .defect import DefectBase, DefectResponse, DefectCreate, DefectUpdate
 
 # 职位相关模式
-from .position import (
+from .positions import (
     PositionBase, PositionCreate, PositionUpdate, PositionResponse, PositionListResponse
 )
 

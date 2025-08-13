@@ -8,7 +8,7 @@ import uvicorn
 from utils.status_codes import *
 
 # 导入路由模块
-from routers import auth, users, projects, organizations, dashboard, tasks, defects, uploads, comments
+from routers import auth, users, projects, organizations, dashboard, tasks, defects, uploads, comments, positons
 from models.database import engine, Base
 from models import *
 from utils.snowflake import init_snowflake
@@ -300,6 +300,7 @@ app.include_router(uploads.router, prefix="/api/v1/uploads", tags=["文件上传
 
 # 添加单数形式的路径
 app.include_router(uploads.router, prefix="/api/v1/upload", tags=["文件上传(单数)"])
+app.include_router(positons.router, prefix="/api/v1/positions", tags=["职位管理"])
 app.include_router(comments.router, prefix="/api/v1", tags=["评论管理"])
 
 if __name__ == "__main__":
