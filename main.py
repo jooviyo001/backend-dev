@@ -8,7 +8,7 @@ import uvicorn
 from utils.status_codes import *
 
 # 导入路由模块
-from routers import auth, users, projects, organizations, dashboard, tasks, defects
+from routers import auth, users, projects, organizations, dashboard, tasks, defects, uploads
 from models.database import engine, Base
 from models import *
 from utils.snowflake import init_snowflake
@@ -32,7 +32,9 @@ except Exception as e:
 app = FastAPI(
     title="项目管理系统API",
     description="基于FastAPI的项目管理系统后端接口",
-    version="1.0.0"
+    version="1.0.0",
+    docs_url=None,  # 禁用默认docs
+    redoc_url="/redoc"
 )
 
 # CORS中间件配置
@@ -236,6 +238,56 @@ async def vite_client():
     content = "// Vite client placeholder\n// This is an empty implementation to prevent 404 errors\n"
     return Response(content=content, media_type="application/javascript")
 
+# 自定义Swagger UI路由
+@app.get("/docs", include_in_schema=False)
+async def custom_swagger_ui_html():
+    from fastapi.responses import HTMLResponse
+    return HTMLResponse("""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>API Documentation</title>
+        <link rel="stylesheet" type="text/css" href="https://unpkg.com/swagger-ui-dist@5.9.0/swagger-ui.css" />
+        <style>
+            html {
+                box-sizing: border-box;
+                overflow: -moz-scrollbars-vertical;
+                overflow-y: scroll;
+            }
+            *, *:before, *:after {
+                box-sizing: inherit;
+            }
+            body {
+                margin:0;
+                background: #fafafa;
+            }
+        </style>
+    </head>
+    <body>
+        <div id="swagger-ui"></div>
+        <script src="https://unpkg.com/swagger-ui-dist@5.9.0/swagger-ui-bundle.js"></script>
+        <script src="https://unpkg.com/swagger-ui-dist@5.9.0/swagger-ui-standalone-preset.js"></script>
+        <script>
+            window.onload = function() {
+                const ui = SwaggerUIBundle({
+                    url: '/openapi.json',
+                    dom_id: '#swagger-ui',
+                    deepLinking: true,
+                    presets: [
+                        SwaggerUIBundle.presets.apis,
+                        SwaggerUIStandalonePreset
+                    ],
+                    plugins: [
+                        SwaggerUIBundle.plugins.DownloadUrl
+                    ],
+                    layout: "StandaloneLayout"
+                });
+            };
+        </script>
+    </body>
+    </html>
+    """)
+
 # 注册路由
 app.include_router(auth.router, prefix="/api/v1/auth", tags=["认证"])
 app.include_router(users.router, prefix="/api/v1/users", tags=["用户管理"])
@@ -244,6 +296,7 @@ app.include_router(organizations.router, prefix="/api/v1/organizations", tags=["
 app.include_router(dashboard.router, prefix="/api/v1/dashboard", tags=["仪表盘"])
 app.include_router(tasks.router, prefix="/api/v1/tasks", tags=["任务管理"])
 app.include_router(defects.router, prefix="/api/v1/defects", tags=["缺陷管理"])
+app.include_router(uploads.router, prefix="/api/v1/uploads", tags=["文件上传"])
 
 if __name__ == "__main__":
     # 从环境变量获取配置，如果没有则使用默认值

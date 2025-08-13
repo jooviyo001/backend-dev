@@ -5,7 +5,7 @@ from typing import Optional
 from datetime import date, datetime
 
 from models.database import get_db
-from models import Task, User, Project, TaskStatus, TaskPriority, TaskType
+from models import Task, User, Project, TaskStatus, TaskPriority, TaskType, UserRole
 from schemas.base import BaseResponse
 from schemas.task import TaskResponse, TaskListResponse, TaskUpdate, \
     TaskCreate, TaskBatchStatusUpdate, TaskBatchAssigneeUpdate, TaskBatchDelete, \
@@ -70,7 +70,7 @@ async def get_tasks_list(
     )
     
     # 根据用户角色过滤任务：非管理员只能看到自己相关的任务
-    if current_user.role != "admin":
+    if current_user.role != UserRole.ADMIN:  # type: ignore
         query = query.filter(
             or_(
                 Task.assignee_id == current_user.id,  # 分配给自己的任务
@@ -141,7 +141,7 @@ async def get_tasks_page(
     )
 
     # 根据用户角色过滤任务：非管理员只能看到自己相关的任务
-    if current_user.role != "admin":
+    if current_user.role != UserRole.ADMIN:
         query = query.filter(
             or_(
                 Task.assignee_id == current_user.id,  # 分配给自己的任务
@@ -298,7 +298,7 @@ async def delete_task(
         )
     
     # 检查权限：只有任务创建者、负责人或管理员可以删除任务
-    user_is_admin: bool = current_user.role == "admin"  # type: ignore
+    user_is_admin: bool = current_user.role == UserRole.ADMIN  # type: ignore
     user_is_reporter: bool = current_user.id == task.reporter_id  # type: ignore
     user_is_assignee: bool = current_user.id == task.assignee_id  # type: ignore
     if not (user_is_admin or user_is_reporter or user_is_assignee):
@@ -355,15 +355,19 @@ async def update_task(
             detail="任务不存在"
         )
     
-    # 检查权限：只有任务创建者、负责人或管理员可以更新任务
-    user_is_admin: bool = current_user.role == "admin"  # type: ignore
-    user_is_reporter: bool = current_user.id == task.reporter_id  # type: ignore
-    user_is_assignee: bool = current_user.id == task.assignee_id  # type: ignore
-    if not (user_is_admin or user_is_reporter or user_is_assignee):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="没有权限更新此任务"
+    # 检查权限：非管理员只能更新自己相关的任务
+    if current_user.role != UserRole.ADMIN:  # type: ignore
+        user_is_assignee = current_user.id == task.assignee_id
+        user_is_reporter = current_user.id == task.reporter_id
+        user_is_project_member = task.project and any(
+            member.id == current_user.id for member in task.project.members
         )
+        
+        if not (user_is_assignee or user_is_reporter or user_is_project_member):  # type: ignore
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="没有权限更新此任务"
+            )
     
     # 更新任务字段
     update_data = task_update.model_dump(exclude_unset=True)
@@ -477,14 +481,14 @@ async def get_task_detail(
         )
     
     # 检查权限：非管理员只能查看自己相关的任务
-    if current_user.role != "admin":
+    if current_user.role != UserRole.ADMIN:  # type: ignore
         user_is_assignee = current_user.id == task.assignee_id
         user_is_reporter = current_user.id == task.reporter_id
         user_is_project_member = task.project and any(
             member.id == current_user.id for member in task.project.members
         )
         
-        if not (user_is_assignee or user_is_reporter or user_is_project_member):
+        if not (user_is_assignee or user_is_reporter or user_is_project_member):  # type: ignore
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="没有权限查看此任务"
@@ -524,19 +528,22 @@ async def update_task_status(
             detail="任务不存在"
         )
     
-    # 检查权限：非管理员只能更新自己相关的任务
-    if current_user.role != "admin":
-        user_is_assignee = current_user.id == task.assignee_id
-        user_is_reporter = current_user.id == task.reporter_id
-        user_is_project_member = task.project and any(
-            member.id == current_user.id for member in task.project.members
+    # 检查权限：只有任务创建者、负责人或管理员可以更新任务
+    user_is_admin = current_user.role == UserRole.ADMIN  # type: ignore
+    unauthorized_tasks = []
+    
+    if not user_is_admin:  # type: ignore
+        for task in tasks:  # type: ignore
+            user_is_reporter = current_user.id == task.reporter_id
+            user_is_assignee = current_user.id == task.assignee_id
+            if not (user_is_reporter or user_is_assignee):  # type: ignore
+                unauthorized_tasks.append(task.id)
+    
+    if unauthorized_tasks:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="没有权限更新以下任务: " + ", ".join(unauthorized_tasks)
         )
-        
-        if not (user_is_assignee or user_is_reporter or user_is_project_member):
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="没有权限更新此任务"
-            )
     
     # 检查状态是否合法
     if status_update.status not in TaskStatus:
@@ -553,7 +560,7 @@ async def update_task_status(
         )
     
     # 更新任务状态
-    task.status = status_update.status
+    task.status = status_update.status  # type: ignore
     task.updated_at = datetime.now()  # type: ignore
     db.commit()
     db.refresh(task)
@@ -604,7 +611,7 @@ async def batch_update_task_status(
     missing_task_ids = [task_id for task_id in batch_update.task_ids if task_id not in found_task_ids]
     
     # 检查权限：只有任务创建者、负责人或管理员可以更新任务
-    user_is_admin = current_user.role == "admin"
+    user_is_admin = current_user.role == UserRole.ADMIN
     unauthorized_tasks = []
     
     if not user_is_admin:
@@ -624,8 +631,8 @@ async def batch_update_task_status(
     try:
         updated_count = 0
         for task in tasks:
-            task.status = batch_update.status
-            task.updated_at = datetime.now()
+            task.status = batch_update.status  # type: ignore
+            task.updated_at = datetime.now()  # type: ignore
             updated_count += 1
         
         db.commit()
@@ -665,16 +672,16 @@ async def batch_update_task_assignee(
     
     """批量分配任务"""
     # 检查权限：只有任务创建者、负责人或管理员可以分配任务
-    user_is_admin = current_user.role == "admin"
+    user_is_admin = current_user.role == UserRole.ADMIN  # type: ignore
     unauthorized_tasks = []
-    if not user_is_admin:
+    if not user_is_admin:  # type: ignore
         for task_id in batch_update.task_ids:
             task = db.query(Task).filter(Task.id == task_id).first()
             if not task:
                 continue
             user_is_reporter = current_user.id == task.reporter_id
             user_is_assignee = current_user.id == task.assignee_id
-            if not (user_is_reporter or user_is_assignee):
+            if not (user_is_reporter or user_is_assignee):  # type: ignore
                 unauthorized_tasks.append(task_id)
     if unauthorized_tasks:  
         raise HTTPException(
@@ -701,21 +708,21 @@ async def batch_update_task_assignee(
             detail="未找到任何指定的任务"
         )
     # 检查任务是否已分配
-    assigned_task_ids = [task.id for task in tasks if task.assignee_id]
+    assigned_task_ids = [str(task.id) for task in tasks if task.assignee_id]  # type: ignore
     if assigned_task_ids:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"以下任务已分配，不能重复分配: {', '.join(assigned_task_ids)}"
         )
     # 检查任务是否已完成
-    completed_task_ids = [task.id for task in tasks if task.status == TaskStatus.DONE]
+    completed_task_ids = [str(task.id) for task in tasks if task.status == TaskStatus.DONE]  # type: ignore
     if completed_task_ids:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"以下任务已完成，不能分配: {', '.join(completed_task_ids)}"
         )
     # 检查任务是否已取消
-    cancelled_task_ids = [task.id for task in tasks if task.status == TaskStatus.CANCELLED]
+    cancelled_task_ids = [str(task.id) for task in tasks if task.status == TaskStatus.CANCELLED]  # type: ignore
     if cancelled_task_ids:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -725,8 +732,8 @@ async def batch_update_task_assignee(
     try:
         updated_count = 0
         for task in tasks:
-            task.assignee_id = batch_update.assignee_id
-            task.updated_at = datetime.now()
+            task.assignee_id = batch_update.assignee_id  # type: ignore
+            task.updated_at = datetime.now()  # type: ignore
             updated_count += 1
         db.commit()
         return standard_response(
@@ -756,16 +763,16 @@ async def batch_delete_tasks(
 ):
     """批量删除任务"""
     # 检查权限：只有任务创建者、负责人或管理员可以删除任务
-    user_is_admin = current_user.role == "admin"
+    user_is_admin = current_user.role == UserRole.ADMIN  # type: ignore
     unauthorized_tasks = []
-    if not user_is_admin:
+    if not user_is_admin:  # type: ignore
         for task_id in batch_delete.task_ids:
             task = db.query(Task).filter(Task.id == task_id).first()
             if not task:
                 continue
             user_is_reporter = current_user.id == task.reporter_id
             user_is_assignee = current_user.id == task.assignee_id
-            if not (user_is_reporter or user_is_assignee):
+            if not (user_is_reporter or user_is_assignee):  # type: ignore
                 unauthorized_tasks.append(task_id)
     if unauthorized_tasks:
         raise HTTPException(
@@ -780,14 +787,14 @@ async def batch_delete_tasks(
             detail="未找到任何指定的任务"
         )
     # 检查任务是否已完成
-    completed_task_ids = [task.id for task in tasks if task.status == TaskStatus.DONE]
+    completed_task_ids = [str(task.id) for task in tasks if task.status == TaskStatus.DONE]  # type: ignore
     if completed_task_ids:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"以下任务已完成，不能删除: {', '.join(completed_task_ids)}"
         )
     # 检查任务是否已取消
-    cancelled_task_ids = [task.id for task in tasks if task.status == TaskStatus.CANCELLED]
+    cancelled_task_ids = [str(task.id) for task in tasks if task.status == TaskStatus.CANCELLED]  # type: ignore
     if cancelled_task_ids:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -815,6 +822,108 @@ async def batch_delete_tasks(
         )
     finally:
         db.close()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
