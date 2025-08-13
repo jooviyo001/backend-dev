@@ -23,6 +23,7 @@ async def get_tasks_list(
     priority: Optional[TaskPriority] = Query(None, description="优先级筛选"),
     project_id: Optional[str] = Query(None, description="项目ID筛选"),
     assignee_id: Optional[str] = Query(None, description="负责人ID筛选"),
+    params: Optional[str] = Query(None, description="JSON格式的参数（用于前端兼容）"),
     db: Session = Depends(get_db),
     current_user: User = Depends(require_permission("task:read"))
 ):
@@ -39,30 +40,28 @@ async def get_tasks_list(
     - 创建日期
     - 更新时间
     """
-    # ID格式处理函数
-    def extract_id(id_str):
-        """提取ID的数字部分，兼容多种格式"""
-        if not id_str:
-            return None
-        # 如果是纯数字，直接返回
-        if id_str.isdigit():
-            return id_str
-        # 如果以O开头（组织ID）
-        if id_str.startswith('O') and id_str[1:].isdigit():
-            return id_str[1:]
-        # 如果以P开头（项目ID）
-        if id_str.startswith('P') and id_str[1:].isdigit():
-            return id_str[1:]
-        # 如果以U开头（用户ID）
-        if id_str.startswith('U') and id_str[1:].isdigit():
-            return id_str[1:]
-        # 如果以T开头（任务ID）
-        if id_str.startswith('T') and id_str[1:].isdigit():
-            return id_str[1:]
-        # 如果以USER_开头（旧格式）
-        if id_str.startswith('USER_'):
-            return id_str[5:]
-        return id_str
+    
+    # 如果提供了params参数，解析JSON并覆盖其他参数
+    if params:
+        try:
+            import json
+            params_data = json.loads(params)
+            
+            # 从params中提取参数，如果存在则覆盖默认值
+            if "limit" in params_data:
+                limit = min(max(int(params_data["limit"]), 1), 100)  # 确保在有效范围内
+            if "status" in params_data and params_data["status"]:
+                status = TaskStatus(params_data["status"])
+            if "priority" in params_data and params_data["priority"]:
+                priority = TaskPriority(params_data["priority"])
+            if "project_id" in params_data and params_data["project_id"]:
+                project_id = params_data["project_id"]
+            if "assignee_id" in params_data and params_data["assignee_id"]:
+                assignee_id = params_data["assignee_id"]
+                
+        except (json.JSONDecodeError, ValueError, TypeError) as e:
+            # 如果JSON解析失败，记录错误但继续使用默认参数
+            print(f"解析params参数失败: {e}")
     
     # 构建查询，使用joinedload预加载关联数据
     query = db.query(Task).options(
@@ -86,11 +85,9 @@ async def get_tasks_list(
     if priority:
         query = query.filter(Task.priority == priority)
     if project_id:
-        proj_id = extract_id(project_id)
-        query = query.filter(Task.project_id == proj_id)
+        query = query.filter(Task.project_id == project_id)
     if assignee_id:
-        assignee_id_num = extract_id(assignee_id)
-        query = query.filter(Task.assignee_id == assignee_id_num)
+        query = query.filter(Task.assignee_id == assignee_id)
     
     # 按创建时间倒序排列，获取最新的任务
     tasks = query.order_by(desc(Task.created_at)).limit(limit).all()
@@ -102,7 +99,9 @@ async def get_tasks_list(
             "id": task.id,
             "title": task.title,
             "project_name": task.project.name if task.project else None,
+            "project_id": task.project_id,
             "assignee_name": task.assignee.username if task.assignee else None,
+            "assignee_id": task.assignee_id,
             "priority": task.priority,
             "status": task.status,
             "due_date": task.due_date,
