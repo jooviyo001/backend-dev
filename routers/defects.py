@@ -8,13 +8,13 @@ import pandas as pd
 import io
 
 from models.database import get_db
-from models.defect import Defect, DefectStatus, DefectPriority, DefectType, DefectSeverity
+from models.defect import Defect, DefectStatusHistory, DefectStatus, DefectPriority, DefectType, DefectSeverity
 from models.user import User
 from models.project import Project
 from models.associations import MemberRole
 from models.enums import UserRole
 from schemas.base import BaseResponse
-from schemas.defect import DefectResponse, DefectCreate, DefectUpdate, DefectAssign
+from schemas.defect import DefectResponse, DefectCreate, DefectUpdate, DefectAssign, DefectStatusHistory as DefectStatusHistorySchema
 
 from utils.auth import require_permission
 from utils.response_utils import list_response, paginate_query, standard_response
@@ -290,6 +290,52 @@ async def get_defect_by_id(
     return standard_response(
         data=DefectResponse.model_validate(defect, from_attributes=True),
         message="获取缺陷详情成功"
+    )
+
+# 获取缺陷状态历史
+@router.get("/{defect_id}/status-history", response_model=BaseResponse)
+async def get_defect_status_history(
+    defect_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_permission("defect:read"))
+):
+    """获取缺陷状态历史记录"""
+    # 检查缺陷是否存在
+    defect = db.query(Defect).filter(Defect.id == defect_id).first()
+    if not defect:
+        raise HTTPException(status_code=404, detail="缺陷不存在")
+    
+    # 权限检查：非管理员只能查看自己相关的缺陷
+    if current_user.role != UserRole.ADMIN:
+        if not (
+            defect.created_by == current_user.id or
+            defect.assignee_id == current_user.id or
+            defect.reporter_id == current_user.id or
+            defect.verified_by_id == current_user.id
+        ):
+            raise HTTPException(status_code=403, detail="权限不足，无法查看此缺陷的状态历史")
+    
+    # 从状态历史表中查询真实的状态变更记录
+    history_records = db.query(DefectStatusHistory).options(
+        joinedload(DefectStatusHistory.changed_by_user)
+    ).filter(
+        DefectStatusHistory.defect_id == defect_id
+    ).order_by(DefectStatusHistory.changed_at.asc()).all()
+    
+    # 转换为响应格式
+    history_data = []
+    for record in history_records:
+        history_data.append(DefectStatusHistorySchema(
+            status=record.new_status,
+            changed_at=record.changed_at,
+            changed_by=record.changed_by,
+            changed_by_name=record.changed_by_user.name if record.changed_by_user else None,
+            comment=record.comment
+        ))
+    
+    return standard_response(
+        data=history_data,
+        message="获取缺陷状态历史成功"
     )
 
 # 更新缺陷

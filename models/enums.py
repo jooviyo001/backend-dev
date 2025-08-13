@@ -114,3 +114,10 @@ class DefectSeverity(str, enum.Enum):
     MODERATE = "moderate"  # 一般
     MINOR = "minor"        # 轻微
     TRIVIAL = "trivial"    # 微不足道
+
+
+class CommentTargetType(str, enum.Enum):
+    """评论目标类型枚举"""
+    DEFECT = "defect"      # 缺陷
+    TASK = "task"          # 任务
+    PROJECT = "project"    # 项目

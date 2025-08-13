@@ -10,6 +10,23 @@ from .enums import DefectStatus, DefectPriority, DefectType, DefectSeverity
 from utils.snowflake import generate_defect_id
 
 
+class DefectStatusHistory(Base):
+    """缺陷状态历史表模型"""
+    __tablename__ = "defect_status_history"
+    
+    id = Column(String(25), primary_key=True, index=True, default=lambda: generate_defect_id().replace('D', 'H'), comment='历史记录ID，格式：H + 雪花算法ID')
+    defect_id = Column(String(25), ForeignKey("defects.id"), nullable=False, comment='缺陷ID')
+    old_status = Column(Enum(DefectStatus), nullable=True, comment='变更前状态')
+    new_status = Column(Enum(DefectStatus), nullable=False, comment='变更后状态')
+    changed_by = Column(String(25), ForeignKey("users.id"), nullable=False, comment='变更人ID')
+    changed_at = Column(DateTime, default=func.now(), comment='变更时间')
+    comment = Column(Text, nullable=True, comment='变更备注')
+    
+    # 关系
+    defect = relationship("Defect", back_populates="status_history")
+    changed_by_user = relationship("User")
+
+
 class Defect(Base):
     """缺陷表模型"""
     __tablename__ = "defects"
@@ -50,3 +67,4 @@ class Defect(Base):
     reporter = relationship("User", foreign_keys=[reporter_id])
     parent_defect = relationship("Defect", remote_side=[id], back_populates="sub_defects")
     sub_defects = relationship("Defect", back_populates="parent_defect")
+    status_history = relationship("DefectStatusHistory", back_populates="defect", cascade="all, delete-orphan")

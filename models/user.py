@@ -43,6 +43,7 @@ class User(Base):
     reported_tasks = relationship("Task", back_populates="reporter", foreign_keys="Task.reporter_id")
     projects = relationship("Project", secondary=project_members, back_populates="members")
     organizations = relationship("Organization", secondary=organization_members, back_populates="members")
+    comments = relationship("Comment", back_populates="author")
     
     def get_notification_settings(self):
         """获取通知设置"""

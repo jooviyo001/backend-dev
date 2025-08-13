@@ -101,6 +101,17 @@ class DefectCreate(BaseModel):
 class DefectAssign(BaseModel):
     assignee_id: str = Field(..., description="执行人ID")
 
+# 缺陷状态历史模式
+class DefectStatusHistory(BaseModel):
+    status: DefectStatus = Field(..., description="状态")
+    changed_at: datetime = Field(..., description="变更时间")
+    changed_by: Optional[str] = Field(None, description="变更人ID")
+    changed_by_name: Optional[str] = Field(None, description="变更人姓名")
+    comment: Optional[str] = Field(None, description="变更备注")
+    
+    class Config:
+        from_attributes = True
+
 # 缺陷更新模式
 class DefectUpdate(BaseModel):
     title: Optional[str] = Field(None, min_length=1, max_length=200, description="缺陷标题")

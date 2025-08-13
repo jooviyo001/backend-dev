@@ -8,7 +8,7 @@ import uvicorn
 from utils.status_codes import *
 
 # 导入路由模块
-from routers import auth, users, projects, organizations, dashboard, tasks, defects, uploads
+from routers import auth, users, projects, organizations, dashboard, tasks, defects, uploads, comments
 from models.database import engine, Base
 from models import *
 from utils.snowflake import init_snowflake
@@ -297,6 +297,7 @@ app.include_router(dashboard.router, prefix="/api/v1/dashboard", tags=["仪表�
 app.include_router(tasks.router, prefix="/api/v1/tasks", tags=["任务管理"])
 app.include_router(defects.router, prefix="/api/v1/defects", tags=["缺陷管理"])
 app.include_router(uploads.router, prefix="/api/v1/uploads", tags=["文件上传"])
+app.include_router(comments.router, prefix="/api/v1", tags=["评论管理"])
 
 if __name__ == "__main__":
     # 从环境变量获取配置，如果没有则使用默认值
