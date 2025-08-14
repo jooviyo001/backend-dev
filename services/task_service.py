@@ -151,7 +151,7 @@ class TaskService:
         )
         
         # 权限过滤
-        if current_user.role != UserRole.ADMIN:
+        if current_user and current_user.role != UserRole.ADMIN:
             query = query.filter(
                 or_(
                     Task.assignee_id == current_user.id,
@@ -214,7 +214,7 @@ class TaskService:
         )
         
         # 权限过滤
-        if current_user.role != UserRole.ADMIN:
+        if current_user and current_user.role != UserRole.ADMIN:
             query = query.filter(
                 or_(
                     Task.assignee_id == current_user.id,

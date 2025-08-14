@@ -51,7 +51,14 @@ async def get_tasks_list(
         "params": params
     }
     
-    task_list = task_service.get_latest_tasks(current_user, limit, filters)
+    task_list = task_service.get_tasks_list(
+        limit=limit,
+        status=status,
+        priority=priority,
+        project_id=project_id,
+        assignee_id=assignee_id,
+        current_user=current_user
+    )
     
     return standard_response(
         data=task_list,
@@ -92,11 +99,25 @@ async def get_tasks_page(
         "end_date": end_date
     }
     
-    result = task_service.get_tasks_paginated(current_user, page, size, filters)
+    total, tasks = task_service.get_tasks_page(
+        current_user=current_user,
+        page=page,
+        size=size,
+        keyword=filters["keyword"],
+        status=filters["status"],
+        organization_id=filters["organization_id"],
+        project_id=filters["project_id"],
+        assignee_id=filters["assignee_id"],
+        reporter_id=filters["reporter_id"],
+        priority=filters["priority"],
+        type=filters["type"],
+        start_date=filters["start_date"],
+        end_date=filters["end_date"]
+    )
 
     return list_response(
-        records=[TaskResponse.model_validate(task, from_attributes=True) for task in result["tasks"]],
-        total=result["total"],
+        records=[TaskResponse.model_validate(task, from_attributes=True) for task in tasks],
+        total=total,
         page=page,
         size=size,
         message="获取任务列表成功"
