@@ -2,7 +2,6 @@
 
 提供文档和文件夹管理的API接口
 """
-from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
@@ -10,8 +9,7 @@ from sqlalchemy.orm import Session
 from models.database import get_db
 from models.user import User
 from schemas.document import (
-    DocumentListResponse, DocumentResponse, FolderCreate,
-    DocumentUploadResponse, DocumentRename
+    DocumentResponse, FolderCreate, DocumentRename
 )
 from services.document_service import get_document_service
 from utils.auth import get_current_user
@@ -62,6 +60,7 @@ async def get_documents(
         
     except Exception as e:
         return error_response(
+            code=500,
             message=f"获取文档列表失败: {str(e)}",
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
