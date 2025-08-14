@@ -30,16 +30,16 @@ def create_app() -> FastAPI:
 def configure_routes(app: FastAPI) -> None:
     """配置应用路由"""
     # API路由
-    app.include_router(auth.router, prefix="/api/auth", tags=["认证"])
-    app.include_router(users.router, prefix="/api/users", tags=["用户管理"])
-    app.include_router(projects.router, prefix="/api/projects", tags=["项目管理"])
-    app.include_router(tasks.router, prefix="/api/tasks", tags=["任务管理"])
-    app.include_router(defects.router, prefix="/api/defects", tags=["缺陷管理"])
-    app.include_router(organizations.router, prefix="/api/organizations", tags=["组织管理"])
-    app.include_router(positons.router, prefix="/api/positions", tags=["岗位管理"])
-    app.include_router(comments.router, prefix="/api/comments", tags=["评论管理"])
-    app.include_router(dashboard.router, prefix="/api/dashboard", tags=["仪表板"])
-    app.include_router(uploads.router, prefix="/api/uploads", tags=["文件上传"])
+    app.include_router(auth.router, prefix="/api/v1/auth", tags=["认证"])
+    app.include_router(users.router, prefix="/api/v1/users", tags=["用户管理"])
+    app.include_router(projects.router, prefix="/api/v1/projects", tags=["项目管理"])
+    app.include_router(tasks.router, prefix="/api/v1/tasks", tags=["任务管理"])
+    app.include_router(defects.router, prefix="/api/v1/defects", tags=["缺陷管理"])
+    app.include_router(organizations.router, prefix="/api/v1/organizations", tags=["组织管理"])
+    app.include_router(positons.router, prefix="/api/v1/positions", tags=["岗位管理"])
+    app.include_router(comments.router, prefix="/api/v1/comments", tags=["评论管理"])
+    app.include_router(dashboard.router, prefix="/api/v1/dashboard", tags=["仪表板"])
+    app.include_router(uploads.router, prefix="/api/v1/uploads", tags=["文件上传"])
     
     # 根路径
     @app.get("/")
