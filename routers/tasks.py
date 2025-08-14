@@ -1,26 +1,26 @@
 from fastapi import APIRouter, Depends, Query, HTTPException, status
-from sqlalchemy.orm import Session, joinedload
-from sqlalchemy import desc, or_
+from sqlalchemy.orm import Session
 from typing import Optional
-from datetime import date, datetime
+from datetime import date
 
 from models.database import get_db
-from models import Task, User, Project, TaskStatus, TaskPriority, TaskType, UserRole
+from models import User, UserRole
 from schemas.base import BaseResponse
 from schemas.task import TaskResponse, TaskListResponse, TaskUpdate, \
     TaskCreate, TaskBatchStatusUpdate, TaskBatchAssigneeUpdate, TaskBatchDelete, \
-    TaskStatusUpdate, TaskStatusUpdateResponse
+    TaskStatusUpdate
 
 from utils.auth import require_permission
-from utils.response_utils import list_response, paginate_query, standard_response
+from utils.response_utils import list_response, standard_response
+from services.task_service import TaskService
 
 router = APIRouter()
 
 @router.get("/list", response_model=BaseResponse)
 async def get_tasks_list(
     limit: int = Query(5, ge=1, le=100, description="返回数量限制"),
-    status: Optional[TaskStatus] = Query(None, description="任务状态筛选"),
-    priority: Optional[TaskPriority] = Query(None, description="优先级筛选"),
+    status: Optional[str] = Query(None, description="任务状态筛选"),
+    priority: Optional[str] = Query(None, description="优先级筛选"),
     project_id: Optional[str] = Query(None, description="项目ID筛选"),
     assignee_id: Optional[str] = Query(None, description="负责人ID筛选"),
     params: Optional[str] = Query(None, description="JSON格式的参数（用于前端兼容）"),
@@ -40,75 +40,18 @@ async def get_tasks_list(
     - 创建日期
     - 更新时间
     """
+    task_service = TaskService(db)
     
-    # 如果提供了params参数，解析JSON并覆盖其他参数
-    if params:
-        try:
-            import json
-            params_data = json.loads(params)
-            
-            # 从params中提取参数，如果存在则覆盖默认值
-            if "limit" in params_data:
-                limit = min(max(int(params_data["limit"]), 1), 100)  # 确保在有效范围内
-            if "status" in params_data and params_data["status"]:
-                status = TaskStatus(params_data["status"])
-            if "priority" in params_data and params_data["priority"]:
-                priority = TaskPriority(params_data["priority"])
-            if "project_id" in params_data and params_data["project_id"]:
-                project_id = params_data["project_id"]
-            if "assignee_id" in params_data and params_data["assignee_id"]:
-                assignee_id = params_data["assignee_id"]
-                
-        except (json.JSONDecodeError, ValueError, TypeError) as e:
-            # 如果JSON解析失败，记录错误但继续使用默认参数
-            print(f"解析params参数失败: {e}")
+    # 构建过滤参数
+    filters = {
+        "status": status,
+        "priority": priority,
+        "project_id": project_id,
+        "assignee_id": assignee_id,
+        "params": params
+    }
     
-    # 构建查询，使用joinedload预加载关联数据
-    query = db.query(Task).options(
-        joinedload(Task.project),
-        joinedload(Task.assignee)
-    )
-    
-    # 根据用户角色过滤任务：非管理员只能看到自己相关的任务
-    if current_user.role != UserRole.ADMIN:  # type: ignore
-        query = query.filter(
-            or_(
-                Task.assignee_id == current_user.id,  # 分配给自己的任务
-                Task.reporter_id == current_user.id,  # 自己创建的任务
-                Task.project.has(Project.members.any(User.id == current_user.id))  # 参与项目的任务
-            )
-        )
-    
-    # 应用筛选条件
-    if status:
-        query = query.filter(Task.status == status)
-    if priority:
-        query = query.filter(Task.priority == priority)
-    if project_id:
-        query = query.filter(Task.project_id == project_id)
-    if assignee_id:
-        query = query.filter(Task.assignee_id == assignee_id)
-    
-    # 按创建时间倒序排列，获取最新的任务
-    tasks = query.order_by(desc(Task.created_at)).limit(limit).all()
-    
-    # 构建响应数据
-    task_list = []
-    for task in tasks:
-        task_data = {
-            "id": task.id,
-            "title": task.title,
-            "project_name": task.project.name if task.project else None,
-            "project_id": task.project_id,
-            "assignee_name": task.assignee.username if task.assignee else None,
-            "assignee_id": task.assignee_id,
-            "priority": task.priority,
-            "status": task.status,
-            "due_date": task.due_date,
-            "created_at": task.created_at,
-            "updated_at": task.updated_at
-        }
-        task_list.append(TaskListResponse(**task_data))
+    task_list = task_service.get_latest_tasks(current_user, limit, filters)
     
     return standard_response(
         data=task_list,
@@ -120,67 +63,40 @@ async def get_tasks_page(
     page: int = Query(1, ge=1, description="页码"),
     size: int = Query(10, ge=1, le=100, description="每页数量"),
     keyword: Optional[str] = Query(None, description="关键词搜索"),
-    status: Optional[TaskStatus] = Query(None, description="任务状态"),
+    status: Optional[str] = Query(None, description="任务状态"),
     organization_id: Optional[str] = Query(None, description="组织ID"),
     project_id: Optional[str] = Query(None, description="项目ID"),
     assignee_id: Optional[str] = Query(None, description="执行人ID"),
     reporter_id: Optional[str] = Query(None, description="报告人ID"),
-    priority: Optional[TaskPriority] = Query(None, description="任务优先级"),
-    type: Optional[TaskType] = Query(None, description="任务类型"),
+    priority: Optional[str] = Query(None, description="任务优先级"),
+    type: Optional[str] = Query(None, description="任务类型"),
     start_date: Optional[date] = Query(None, description="开始日期 (YYYY-MM-DD)"),
     end_date: Optional[date] = Query(None, description="结束日期 (YYYY-MM-DD)"),
     db: Session = Depends(get_db),
     current_user: User = Depends(require_permission("task:read"))
 ):
     """获取任务分页数据"""
-    # 使用joinedload预加载用户数据和项目数据，但只获取ID和名称
-    query = db.query(Task).options(
-        joinedload(Task.assignee),  # 预加载负责人信息
-        joinedload(Task.reporter),  # 预加载报告人信息
-        joinedload(Task.project)    # 预加载项目信息
-    )
-
-    # 根据用户角色过滤任务：非管理员只能看到自己相关的任务
-    if current_user.role != UserRole.ADMIN: # type: ignore
-        query = query.filter(
-            or_(
-                Task.assignee_id == current_user.id,  # 分配给自己的任务
-                Task.reporter_id == current_user.id,  # 自己创建的任务
-                Task.project.has(Project.members.any(User.id == current_user.id))  # 参与项目的任务
-            )
-        )
-
-    if keyword:
-        query = query.filter(
-            or_(
-                Task.title.contains(keyword),
-                Task.description.contains(keyword)
-            )
-        )
-    if status:
-        query = query.filter(Task.status == status)
-    if organization_id:
-        query = query.join(Project).filter(Project.organization_id == organization_id)
-    if project_id:
-        query = query.filter(Task.project_id == project_id)
-    if assignee_id:
-        query = query.filter(Task.assignee_id == assignee_id)
-    if reporter_id:
-        query = query.filter(Task.reporter_id == reporter_id)
-    if priority:
-        query = query.filter(Task.priority == priority)
-    if type:
-        query = query.filter(Task.type == type)
-    if start_date:
-        query = query.filter(Task.created_at >= start_date)
-    if end_date:
-        query = query.filter(Task.created_at <= end_date)
-
-    total, tasks = paginate_query(query, page, size)
+    task_service = TaskService(db)
+    
+    # 构建过滤参数
+    filters = {
+        "keyword": keyword,
+        "status": status,
+        "organization_id": organization_id,
+        "project_id": project_id,
+        "assignee_id": assignee_id,
+        "reporter_id": reporter_id,
+        "priority": priority,
+        "type": type,
+        "start_date": start_date,
+        "end_date": end_date
+    }
+    
+    result = task_service.get_tasks_paginated(current_user, page, size, filters)
 
     return list_response(
-        records=[TaskResponse.model_validate(task, from_attributes=True) for task in tasks],
-        total=total,
+        records=[TaskResponse.model_validate(task, from_attributes=True) for task in result["tasks"]],
+        total=result["total"],
         page=page,
         size=size,
         message="获取任务列表成功"
@@ -193,49 +109,10 @@ async def create_task(
     current_user: User = Depends(require_permission("task:write"))
 ):
     """创建新任务"""
+    task_service = TaskService(db)
+    
     try:
-        # 检查项目是否存在
-        project = db.query(Project).filter(Project.id == task_data.project_id).first()
-        if not project:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="项目不存在"
-            )
-        
-        # 检查负责人是否存在（如果指定了负责人）
-        if task_data.assignee_id:
-            assignee = db.query(User).filter(User.id == task_data.assignee_id).first()
-            if not assignee:
-                raise HTTPException(
-                    status_code=status.HTTP_404_NOT_FOUND,
-                    detail="指定的负责人不存在"
-                )
-        
-        # 创建任务对象
-        task = Task(
-            title=task_data.title,
-            description=task_data.description,
-            status=task_data.status,
-            priority=task_data.priority,
-            type=task_data.type,
-            project_id=task_data.project_id,
-            assignee_id=task_data.assignee_id,
-            reporter_id=current_user.id,  # 报告人是当前用户
-            start_date=task_data.start_date,
-            due_date=task_data.due_date,
-            estimated_hours=task_data.estimated_hours,
-            tags=None  # 先设置为None，后续处理tags
-        )
-        
-        # 处理标签，转换为JSON字符串
-        if task_data.tags is not None:
-            import json
-            task.tags = json.dumps(task_data.tags, ensure_ascii=False)  # type: ignore
-        
-        # 添加到数据库
-        db.add(task)
-        db.commit()
-        db.refresh(task)
+        task = task_service.create_task(task_data, current_user)
         
         # 转换为响应模型
         task_response = TaskResponse.model_validate(task)

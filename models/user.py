@@ -9,10 +9,11 @@ from .database import Base
 from .enums import UserRole
 from .associations import project_members, organization_members
 from utils.snowflake import generate_user_id
+from models.base import BaseModelMixin
 import json
 
 
-class User(Base):
+class User(Base, BaseModelMixin):
     """用户表模型"""
     __tablename__ = "users"
     

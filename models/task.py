@@ -2,7 +2,7 @@
 任务模型模块
 包含任务相关的数据模型定义
 """
-from sqlalchemy import Column, Integer, String, DateTime, Text, ForeignKey, Enum, Numeric
+from sqlalchemy import Column, Integer, String, DateTime, Text, ForeignKey, Enum, Numeric, Boolean
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from .database import Base
@@ -35,6 +35,8 @@ class Task(Base):
     actual_hours = Column(Numeric(5, 2), comment='任务实际工时')
     parent_task_id = Column(String(25), ForeignKey('tasks.id'), nullable=True, comment='父任务ID')
     tags = Column(String(500), comment='任务标签')  # JSON字符串存储标签
+    is_deleted = Column(Boolean, default=False, comment='是否已删除')
+    deleted_at = Column(DateTime, nullable=True, comment='删除时间')
     created_at = Column(DateTime, default=func.now(), comment='创建时间')
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now(), comment='更新时间')
 
@@ -60,6 +62,8 @@ class TaskAttachment(Base):
     file_size = Column(Integer, comment='附件文件大小')
     content_type = Column(String(100), comment='附件文件类型')
     uploaded_by = Column(String(25), ForeignKey("users.id"), comment='附件上传人ID')
+    is_deleted = Column(Boolean, default=False, comment='是否已删除')
+    deleted_at = Column(DateTime, nullable=True, comment='删除时间')
     created_at = Column(DateTime, default=func.now(), comment='创建时间')
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now(), comment='更新时间')
     
@@ -77,6 +81,8 @@ class TaskComment(Base):
     user_id = Column(String(25), ForeignKey("users.id"), comment='评论用户ID')
     content = Column(Text, nullable=False, comment='评论内容')
     parent_id = Column(String(27), ForeignKey("task_comments.id"), nullable=True, comment='父评论ID')
+    is_deleted = Column(Boolean, default=False, comment='是否已删除')
+    deleted_at = Column(DateTime, nullable=True, comment='删除时间')
     created_at = Column(DateTime, default=func.now(), comment='创建时间')
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now(), comment='更新时间')
     
