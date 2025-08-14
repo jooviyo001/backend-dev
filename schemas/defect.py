@@ -10,7 +10,7 @@ class DefectBase(BaseModel):
     status: DefectStatus = DefectStatus.NEW
     priority: DefectPriority = DefectPriority.MEDIUM
     type: DefectType = DefectType.BUG
-    severity: DefectSeverity = DefectSeverity.MODERATE
+    severity: DefectSeverity = DefectSeverity.MAJOR
     project_id: str
     project_name: Optional[str] = None
     assignee_id: Optional[str] = None
@@ -81,7 +81,7 @@ class DefectCreate(BaseModel):
     status: DefectStatus = Field(DefectStatus.NEW, description="缺陷状态")
     priority: DefectPriority = Field(DefectPriority.MEDIUM, description="优先级")
     type: DefectType = Field(DefectType.BUG, description="缺陷类型")
-    severity: DefectSeverity = Field(DefectSeverity.MODERATE, description="严重程度")
+    severity: DefectSeverity = Field(DefectSeverity.MAJOR, description="严重程度")
     project_id: str = Field(..., description="项目ID")
     assignee_id: Optional[str] = Field(None, description="执行人ID")
     reporter_id: Optional[str] = Field(None, description="报告人ID")

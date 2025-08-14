@@ -45,7 +45,7 @@ class Defect(Base):
     reporter_name = Column(String(100), comment='缺陷报告人姓名')
     verified_by_id = Column(String(25), ForeignKey("users.id"), nullable=True, comment='缺陷验证人ID')
     verified_by_name = Column(String(100), nullable=True, comment='缺陷验证人姓名')
-    severity = Column(Enum(DefectSeverity), default=DefectSeverity.MODERATE, comment='缺陷严重程度')
+    severity = Column(Enum(DefectSeverity), default=DefectSeverity.MAJOR, comment='缺陷严重程度')
     version = Column(String(100), comment='缺陷所属版本')
     environment = Column(String(100), comment='缺陷所属环境')
     steps_to_reproduce = Column(Text, comment='复现步骤')

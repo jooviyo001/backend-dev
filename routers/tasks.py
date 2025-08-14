@@ -1,10 +1,10 @@
 from fastapi import APIRouter, Depends, Query, HTTPException, status
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from typing import Optional
 from datetime import date
 
 from models.database import get_db
-from models import User, UserRole
+from models import User, UserRole, Task
 from schemas.base import BaseResponse
 from schemas.task import TaskResponse, TaskListResponse, TaskUpdate, \
     TaskCreate, TaskBatchStatusUpdate, TaskBatchAssigneeUpdate, TaskBatchDelete, \

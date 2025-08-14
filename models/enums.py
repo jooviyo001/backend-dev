@@ -109,11 +109,13 @@ class DefectType(str, enum.Enum):
 
 class DefectSeverity(str, enum.Enum):
     """缺陷严重程度枚举"""
-    CRITICAL = "critical"  # 严重
-    MAJOR = "major"        # 重要
-    MODERATE = "moderate"  # 一般
-    MINOR = "minor"        # 轻微
-    TRIVIAL = "trivial"    # 微不足道
+    TRIVIAL = "trivial"      # 轻微
+    MINOR = "minor"          # 次要
+    MAJOR = "major"          # 主要
+    IMPORTANT = "important"  # 重要
+    CRITICAL = "critical"    # 严重
+    URGENT = "urgent"        # 紧急
+    BLOCKER = "blocker"      # 阻塞
 
 
 class CommentTargetType(str, enum.Enum):

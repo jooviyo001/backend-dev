@@ -93,7 +93,7 @@ async def get_users(
     position: Optional[str] = Query(None, description="职位过滤"),
     organization_name: Optional[str] = Query(None, description="部门过滤"),
     page: int = Query(1, ge=1, description="页码"),
-    limit: Optional[int] = Query(None, ge=1, le=100, description="每页数量"),
+    limit: Optional[int] = Query(None, ge=1, le=1000, description="每页数量"),
     pageSize: Optional[int] = Query(None, ge=1, le=100, description="每页数量(兼容参数)"),
     db: Session = Depends(get_db),
     current_user = Depends(require_permission("user:read"))

@@ -39,7 +39,7 @@ def insert_defect_data():
                 "status": DefectStatus.ASSIGNED,
                 "priority": DefectPriority.MEDIUM,
                 "type": DefectType.PERFORMANCE,
-                "severity": DefectSeverity.MODERATE,
+                "severity": DefectSeverity.MAJOR,
                 "project_id": "P209141526675066880",
                 "project_name": "项目管理系统",
                 "assignee_id": "U209141526675066881",
