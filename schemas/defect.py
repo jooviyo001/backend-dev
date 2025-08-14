@@ -5,29 +5,32 @@ from models.defect import DefectStatus, DefectPriority, DefectType, DefectSeveri
 
 # 缺陷相关模式
 class DefectBase(BaseModel):
-    title: str
-    description: Optional[str] = None
-    status: DefectStatus = DefectStatus.NEW
-    priority: DefectPriority = DefectPriority.MEDIUM
-    type: DefectType = DefectType.BUG
-    severity: DefectSeverity = DefectSeverity.MAJOR
-    project_id: str
-    project_name: Optional[str] = None
-    assignee_id: Optional[str] = None
-    assignee_name: Optional[str] = None
-    reporter_id: Optional[str] = None
-    reporter_name: Optional[str] = None
-    verified_by_id: Optional[str] = None
-    verified_by_name: Optional[str] = None
-    version: Optional[str] = None
-    environment: Optional[str] = None
-    steps_to_reproduce: Optional[str] = None
-    expected_result: Optional[str] = None
-    actual_result: Optional[str] = None
-    resolution: Optional[str] = None
-    parent_id: Optional[str] = None
-    source: Optional[str] = None
-    tags: Optional[List[str]] = None
+    # 字段解释：责任人是当前环节处理的人，处理人为开发人员，开发人员可以是多个
+    title: str  # 标题
+    description: Optional[str] = None  # 描述
+    status: DefectStatus = DefectStatus.NEW  # 状态
+    priority: DefectPriority = DefectPriority.MEDIUM  # 优先级
+    type: DefectType = DefectType.BUG  # 类型
+    severity: DefectSeverity = DefectSeverity.MAJOR  # 严重程度
+    project_id: str = Field(..., description="项目ID")
+    project_name: Optional[str] = Field(None, description="项目名称")
+    assignee_id: Optional[str] = Field(None, description="负责人ID")
+    assignee_name: Optional[str] = Field(None, description="负责人名称")
+    handler_id: Optional[str] = Field(None, description="问题处理人ID")
+    handler_name: Optional[str] = Field(None, description="问题处理人名称")
+    reporter_id: Optional[str] = Field(None, description="报告人ID")
+    reporter_name: Optional[str] = Field(None, description="报告人名称")
+    verified_by_id: Optional[str] = Field(None, description="验证人ID")
+    verified_by_name: Optional[str] = Field(None, description="验证人名称")
+    version: Optional[str] = Field(None, description="版本")
+    environment: Optional[str] = Field(None, description="环境")
+    steps_to_reproduce: Optional[str] = Field(None, description="复现步骤")
+    expected_result: Optional[str] = Field(None, description="预期结果")
+    actual_result: Optional[str] = Field(None, description="实际结果")
+    resolution: Optional[str] = Field(None, description="解决方法")
+    parent_id: Optional[str] = Field(None, description="父缺陷ID")
+    source: Optional[str] = Field(None, description="缺陷来源")
+    tags: Optional[List[str]] = Field(None, description="标签")
 
 # 缺陷响应模式
 class DefectResponse(DefectBase):
@@ -48,6 +51,10 @@ class DefectResponse(DefectBase):
         # 从关联的assignee对象中获取名称
         if hasattr(obj, 'assignee') and obj.assignee:
             instance.assignee_name = obj.assignee.name
+        
+        # 从关联的handler对象中获取名称
+        if hasattr(obj, 'handler') and obj.handler:
+            instance.handler_name = obj.handler.name
         
         # 从关联的project对象中获取项目名称
         if hasattr(obj, 'project') and obj.project:
@@ -115,6 +122,10 @@ class DefectPageQuery(BaseModel):
     parent_id: Optional[str] = Field(None, description="父缺陷ID")
     start_date: Optional[date] = Field(None, description="开始日期 (YYYY-MM-DD)")
     end_date: Optional[date] = Field(None, description="结束日期 (YYYY-MM-DD)")
+    only_my_defects: Optional[bool] = Field(None, description="只显示我的缺陷")
+    only_overdue: Optional[bool] = Field(None, description="只显示逾期缺陷")
+    only_unassigned: Optional[bool] = Field(None, description="只显示未分配缺陷")
+
 
 # 缺陷分配模式
 class DefectAssign(BaseModel):
@@ -141,6 +152,8 @@ class DefectUpdate(BaseModel):
     severity: Optional[DefectSeverity] = Field(None, description="严重程度")
     project_id: Optional[str] = Field(None, description="项目ID")
     assignee_id: Optional[str] = Field(None, description="执行人ID")
+    handler_id: Optional[str] = Field(None, description="处理人ID")
+    handler_name: Optional[str] = Field(None, description="处理人姓名")
     reporter_id: Optional[str] = Field(None, description="报告人ID")
     verified_by_id: Optional[str] = Field(None, description="验证人ID")
     version: Optional[str] = Field(None, max_length=100, description="版本")

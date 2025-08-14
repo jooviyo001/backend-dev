@@ -80,7 +80,7 @@ async def get_defects_page(
     if query.project_id:
         db_query = db_query.filter(Defect.project_id == query.project_id)
     
-    # 执行人筛选
+    # 当前责任人筛选
     if query.assignee_id:
         db_query = db_query.filter(Defect.assignee_id == query.assignee_id)
     
@@ -113,6 +113,33 @@ async def get_defects_page(
         db_query = db_query.filter(Defect.created_at >= query.start_date)
     if query.end_date:
         db_query = db_query.filter(Defect.created_at <= query.end_date)
+    
+    # 只显示我的缺陷
+    if query.only_my_defects:
+        db_query = db_query.filter(
+            or_(
+                Defect.created_by == current_user.id,
+                Defect.assignee_id == current_user.id,
+                Defect.reporter_id == current_user.id,
+                Defect.verified_by_id == current_user.id
+            )
+        )
+    
+    # 只显示逾期缺陷
+    if query.only_overdue:
+        from datetime import datetime
+        current_time = datetime.now()
+        db_query = db_query.filter(
+            and_(
+                Defect.due_date.isnot(None),
+                Defect.due_date < current_time,
+                Defect.status.notin_([DefectStatus.CLOSED, DefectStatus.RESOLVED])
+            )
+        )
+    
+    # 只显示未分配缺陷
+    if query.only_unassigned:
+        db_query = db_query.filter(Defect.assignee_id.is_(None))
 
     # 按创建时间倒序排列
     db_query = db_query.order_by(desc(Defect.created_at))
@@ -361,6 +388,14 @@ async def update_defect(
     
     for key, value in update_data.items():
         setattr(existing_defect, key, value)
+    
+    # 如果更新了handler_id，需要同时更新handler_name
+    if 'handler_id' in update_data and update_data['handler_id'] is not None:
+        handler = db.query(User).filter(User.id == update_data['handler_id']).first()
+        if handler:
+            existing_defect.handler_name = handler.name
+        else:
+            raise HTTPException(status_code=404, detail="处理人不存在")
     
     # 设置更新者
     existing_defect.updated_by = current_user.id

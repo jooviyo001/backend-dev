@@ -41,6 +41,8 @@ class Defect(Base):
     project_name = Column(String(100), comment='缺陷所属项目名称')
     assignee_id = Column(String(25), ForeignKey("users.id"), comment='缺陷负责人ID')
     assignee_name = Column(String(100), comment='缺陷负责人姓名')
+    handler_id = Column(String(25), ForeignKey("users.id"), nullable=True, comment='缺陷处理人ID')
+    handler_name = Column(String(100), nullable=True, comment='缺陷处理人姓名')
     reporter_id = Column(String(25), ForeignKey("users.id"), comment='缺陷报告人ID')
     reporter_name = Column(String(100), comment='缺陷报告人姓名')
     verified_by_id = Column(String(25), ForeignKey("users.id"), nullable=True, comment='缺陷验证人ID')
@@ -64,6 +66,7 @@ class Defect(Base):
     # 关系
     project = relationship("Project")
     assignee = relationship("User", foreign_keys=[assignee_id])
+    handler = relationship("User", foreign_keys=[handler_id])
     reporter = relationship("User", foreign_keys=[reporter_id])
     parent_defect = relationship("Defect", remote_side=[id], back_populates="sub_defects")
     sub_defects = relationship("Defect", back_populates="parent_defect")
