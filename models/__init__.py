@@ -13,7 +13,7 @@ from .enums import (
     UserRole, MemberRole,
     OrganizationType, OrganizationStatus,
     DefectStatus, DefectPriority, DefectType, DefectSeverity,
-    CommentTargetType
+    CommentTargetType, DocumentType
 )
 
 # 导入关联表
@@ -27,6 +27,7 @@ from .task import Task, TaskAttachment, TaskComment
 from .defect import Defect, DefectStatusHistory
 from .position import Position
 from .comment import Comment
+from .document import Document
 
 # 为了向后兼容，将所有模型导出到models命名空间
 __all__ = [
@@ -39,7 +40,7 @@ __all__ = [
     'UserRole', 'MemberRole',
     'OrganizationType', 'OrganizationStatus',
     'DefectStatus', 'DefectPriority', 'DefectType', 'DefectSeverity',
-    'CommentTargetType',
+    'CommentTargetType', 'DocumentType',
     
     # 关联表
     'project_members', 'organization_members',
@@ -47,5 +48,5 @@ __all__ = [
     # 模型类
     'User', 'Organization', 'Project',
     'Task', 'TaskAttachment', 'TaskComment',
-    'Defect', 'DefectStatusHistory', 'Position', 'Comment'
+    'Defect', 'DefectStatusHistory', 'Position', 'Comment', 'Document'
 ]

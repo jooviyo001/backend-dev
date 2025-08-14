@@ -121,3 +121,9 @@ class CommentTargetType(str, enum.Enum):
     DEFECT = "defect"      # 缺陷
     TASK = "task"          # 任务
     PROJECT = "project"    # 项目
+
+
+class DocumentType(str, enum.Enum):
+    """文档类型枚举"""
+    FOLDER = "folder"      # 文件夹
+    DOCUMENT = "document"  # 文档

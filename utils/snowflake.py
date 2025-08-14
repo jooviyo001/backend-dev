@@ -198,6 +198,11 @@ def generate_comment_id() -> str:
     return generate_snowflake_id("C")
 
 
+def generate_document_id() -> str:
+    """生成文档ID，格式：DOC + 雪花算法ID"""
+    return generate_snowflake_id("DOC")
+
+
 def parse_snowflake_id(snowflake_id: int) -> dict:
     """
     解析雪花算法ID
