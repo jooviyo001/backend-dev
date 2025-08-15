@@ -15,12 +15,12 @@ from utils.response_utils import success_response, error_response
 router = APIRouter()
 
 
-@router.get("/", response_model=BaseResponse)
+@router.get("/positionPage", response_model=BaseResponse)
 async def get_positions(
     include_inactive: bool = Query(False, description="是否包含已停用的职位"),
     search: Optional[str] = Query(None, description="搜索关键词"),
-    page: int = Query(1, ge=1, description="页码"),
-    size: int = Query(10, ge=1, le=100, description="每页数量"),
+    pageNum: int = Query(1, ge=1, description="页码"),
+    pageSize: int = Query(10, ge=1, le=100, description="每页数量"),
     db: Session = Depends(get_db),
     current_user = Depends(require_permission("user:read"))
 ):
@@ -47,8 +47,8 @@ async def get_positions(
         total = query.count()
         
         # 分页
-        offset = (page - 1) * size
-        positions = query.offset(offset).limit(size).all()
+        offset = (pageNum - 1) * pageSize
+        positions = query.offset(offset).limit(pageSize).all()
         
         # 转换为响应格式
         position_list = []
@@ -58,6 +58,7 @@ async def get_positions(
             
             position_data = {
                 "id": position.id,
+                "code": position.code,
                 "name": position.name,
                 "description": position.description,
                 "is_active": position.is_active,
@@ -71,9 +72,9 @@ async def get_positions(
             data={
                 "items": position_list,
                 "total": total,
-                "page": page,
-                "size": size,
-                "pages": (total + size - 1) // size
+                "pageNum": pageNum,
+                "pageSize": pageSize,
+                "pages": (total + pageSize - 1) // pageSize
             },
             message="获取职位列表成功"
         )
@@ -82,7 +83,7 @@ async def get_positions(
         return error_response(message=f"获取职位列表失败: {str(e)}")
 
 
-@router.post("/", response_model=BaseResponse)
+@router.post("/add", response_model=BaseResponse)
 async def create_position(
     position_data: PositionCreate,
     db: Session = Depends(get_db),
@@ -107,13 +108,18 @@ async def create_position(
         db.refresh(new_position)
         
         return success_response(
-            data=PositionResponse.model_validate(new_position),
+            code=status.HTTP_200_OK,
+            data=PositionResponse.model_validate(new_position).model_dump(),
             message="职位创建成功"
         )
     
     except Exception as e:
         db.rollback()
-        return error_response(message=f"创建职位失败: {str(e)}")
+        return error_response(
+            code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            message=f"创建职位失败: {str(e)}",
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
 
 
 @router.get("/{position_id}", response_model=BaseResponse)
@@ -126,7 +132,11 @@ async def get_position(
     try:
         position = db.query(Position).filter(Position.id == position_id).first()
         if not position:
-            return error_response(message="职位不存在", status_code=404)
+            return error_response(
+                code=status.HTTP_404_NOT_FOUND,
+                message="职位不存在",
+                status_code=status.HTTP_404_NOT_FOUND
+            )
         
         # 统计使用该职位的用户数量
         user_count = db.query(User).filter(User.position_id == position.id).count()
@@ -140,7 +150,11 @@ async def get_position(
         )
     
     except Exception as e:
-        return error_response(message=f"获取职位详情失败: {str(e)}")
+        return error_response(
+            code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            message=f"获取职位详情失败: {str(e)}",
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
 
 
 @router.put("/{position_id}", response_model=BaseResponse)
@@ -154,7 +168,11 @@ async def update_position(
     try:
         position = db.query(Position).filter(Position.id == position_id).first()
         if not position:
-            return error_response(message="职位不存在", status_code=404)
+            return error_response(
+                code=status.HTTP_404_NOT_FOUND,
+                message="职位不存在",
+                status_code=status.HTTP_404_NOT_FOUND
+            )
         
         # 检查职位名称是否已被其他职位使用
         if position_data.name and position_data.name != position.name:
@@ -163,7 +181,11 @@ async def update_position(
                 Position.id != position_id
             ).first()
             if existing_position:
-                return error_response(message="职位名称已存在")
+                return error_response(
+                    code=status.HTTP_400_BAD_REQUEST,
+                    message="职位名称已存在",
+                    status_code=status.HTTP_400_BAD_REQUEST
+                )
         
         # 更新职位信息
         update_data = position_data.model_dump(exclude_unset=True)
@@ -180,7 +202,11 @@ async def update_position(
     
     except Exception as e:
         db.rollback()
-        return error_response(message=f"更新职位失败: {str(e)}")
+        return error_response(
+            code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            message=f"更新职位失败: {str(e)}",
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
 
 
 @router.delete("/{position_id}", response_model=BaseResponse)
@@ -194,13 +220,19 @@ async def delete_position(
     try:
         position = db.query(Position).filter(Position.id == position_id).first()
         if not position:
-            return error_response(message="职位不存在", status_code=404)
+            return error_response(
+                code=status.HTTP_404_NOT_FOUND,
+                message="职位不存在",
+                status_code=status.HTTP_404_NOT_FOUND
+            )
         
         # 检查是否有用户使用该职位
         user_count = db.query(User).filter(User.position_id == position.id).count()
         if user_count > 0 and not force:
             return error_response(
-                message=f"该职位正在被 {user_count} 个用户使用，无法删除。如需强制删除，请使用 force=true 参数"
+                code=status.HTTP_400_BAD_REQUEST,
+                message=f"该职位正在被 {user_count} 个用户使用，无法删除。如需强制删除，请使用 force=true 参数",
+                status_code=status.HTTP_400_BAD_REQUEST
             )
         
         # 如果强制删除，先将使用该职位的用户的职位设为空
@@ -217,7 +249,11 @@ async def delete_position(
     
     except Exception as e:
         db.rollback()
-        return error_response(message=f"删除职位失败: {str(e)}")
+        return error_response(
+            code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            message=f"删除职位失败: {str(e)}",
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
 
 
 @router.patch("/{position_id}/status", response_model=BaseResponse)
@@ -230,7 +266,20 @@ async def toggle_position_status(
     try:
         position = db.query(Position).filter(Position.id == position_id).first()
         if not position:
-            return error_response(message="职位不存在", status_code=404)
+            return error_response(
+                code=status.HTTP_404_NOT_FOUND,
+                message="职位不存在",
+                status_code=status.HTTP_404_NOT_FOUND
+            )
+        
+        # 检查是否有用户使用该职位
+        user_count = db.query(User).filter(User.position_id == position.id).count()
+        if user_count > 0:
+            return error_response(
+                code=status.HTTP_400_BAD_REQUEST,
+                message=f"该职位正在被 {user_count} 个用户使用，无法停用。如需停用，请先删除关联用户",
+                status_code=status.HTTP_400_BAD_REQUEST
+            )
         
         # 切换状态
         position.is_active = not position.is_active
@@ -245,7 +294,11 @@ async def toggle_position_status(
     
     except Exception as e:
         db.rollback()
-        return error_response(message=f"切换职位状态失败: {str(e)}")
+        return error_response(
+            code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            message=f"切换职位状态失败: {str(e)}",
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
 
 
 @router.get("/statistics/summary", response_model=BaseResponse)
@@ -282,4 +335,8 @@ async def get_position_statistics(
         )
     
     except Exception as e:
-        return error_response(message=f"获取职位统计信息失败: {str(e)}")
+        return error_response(
+            code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            message=f"获取职位统计信息失败: {str(e)}",
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )

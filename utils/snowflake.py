@@ -193,6 +193,10 @@ def generate_position_id() -> str:
     return generate_snowflake_id("POS")
 
 
+def generate_role_id() -> str:
+    """生成角色ID，格式：R + 雪花算法ID"""
+    return generate_snowflake_id("R")
+
 def generate_comment_id() -> str:
     """生成评论ID，格式：C + 雪花算法ID"""
     return generate_snowflake_id("C")

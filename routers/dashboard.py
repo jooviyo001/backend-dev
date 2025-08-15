@@ -160,10 +160,10 @@ async def get_recent_tasks(
     for task in tasks:
         recent_task = RecentTask(
             id=str(task.id),
-            title=task.title,
+            title=str(task.title),
             status=task.status.value,
             priority=task.priority.value,
-            dueDate=task.due_date.isoformat() if task.due_date else None,
+            dueDate=task.due_date.isoformat() if task.due_date else None,  # type: ignore
             projectName=task.project.name if task.project else "未分配项目",
             assigneeName=task.assignee.name if task.assignee else "未分配"
         )
@@ -205,7 +205,7 @@ async def get_project_progress(
         
         project_progress_item = ProjectProgress(
             projectId=str(project.id),
-            projectName=project.name,
+            projectName=str(project.name),
             progress=round(progress, 1),
             totalTasks=total_tasks,
             completedTasks=completed_tasks,
@@ -215,7 +215,7 @@ async def get_project_progress(
     
     return BaseResponse(
         message="获取项目进度数据成功",
-        items=project_progress_list
+        data=project_progress_list
     )
 
 # 替换为当前用户的任务状态分布数据
@@ -315,18 +315,19 @@ async def get_recent_activities(
     for task in recent_tasks:
         # 判断活动类型
         action = "updated"
-        if task.created_at == task.updated_at:
+        if (task.created_at is not None and task.updated_at is not None and  # type: ignore
+            task.created_at == task.updated_at): 
             action = "created"
         
         activity = RecentActivity(
             id=str(task.id),
             type="task",
             action=action,
-            description=f"{'创建' if action == 'created' else '更新'}了任务: {task.title}",
-            userId=str(task.assignee_id) if task.assignee_id else str(current_user.id),
-            userName=task.assignee.name if task.assignee else current_user.name,
+            description=f"{'创建' if action == 'created' else '更新'}了任务: {task.title or '无标题任务'}",
+            userId=str(task.assignee_id) if task.assignee_id else str(current_user.id), # type: ignore
+            userName=str(task.assignee.name) if task.assignee else str(current_user.name),
             targetId=str(task.id),
-            targetName=task.title,
+            targetName=str(task.title),
             createdAt=task.updated_at.isoformat()
         )
         activities.append(activity)
@@ -388,7 +389,7 @@ async def get_user_workload(
         
         user_workload = UserWorkload(
             userId=str(user.id),
-            userName=user.name,
+            userName=str(user.name),
             totalTasks=total_tasks,
             completedTasks=completed_tasks,
             inProgressTasks=in_progress_tasks,

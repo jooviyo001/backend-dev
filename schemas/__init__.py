@@ -37,6 +37,11 @@ from .positions import (
     PositionBase, PositionCreate, PositionUpdate, PositionResponse, PositionListResponse
 )
 
+# 角色相关模式
+from .role import (
+    RoleBase, RoleCreate, RoleUpdate, RoleResponse, RoleListResponse
+)
+
 # 仪表盘相关模式
 from .dashboard import (
     DashboardStats, RecentTask, ProjectProgress, TaskStatusDistribution,
@@ -74,6 +79,9 @@ __all__ = [
     
     # 职位相关模式
     "PositionBase", "PositionCreate", "PositionUpdate", "PositionResponse", "PositionListResponse",
+    
+    # 角色相关模式
+    "RoleBase", "RoleCreate", "RoleUpdate", "RoleResponse", "RoleListResponse",
     
     # 仪表盘相关模式
     "DashboardStats", "RecentTask", "ProjectProgress", "TaskStatusDistribution",

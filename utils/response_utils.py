@@ -3,6 +3,7 @@ from typing import Any, Optional, List, Dict, Union
 from fastapi.responses import JSONResponse
 from math import ceil
 from .status_codes import SUCCESS, get_message
+from fastapi import status
 
 def format_timestamp(dt: Optional[datetime] = None) -> str:
     """
@@ -69,7 +70,8 @@ def standard_response(data: Any = None, code: str = SUCCESS, message: Optional[s
         "timestamp": format_timestamp()
     }
 
-def success_response(data: Any = None, message: Optional[str] = None, code: str = SUCCESS):
+
+def success_response(data: Any = None, message: Optional[str] = None, code: str = SUCCESS, status_code: int = status.HTTP_200_OK):
     """
     生成成功响应
     
@@ -77,13 +79,14 @@ def success_response(data: Any = None, message: Optional[str] = None, code: str 
         data: 响应数据
         message: 响应消息
         code: 业务状态码
-    
+        status_code: HTTP状态码
+
     返回:
         标准格式的成功响应
     """
-    return standard_response(data=data, code=code, message=message)
+    return standard_response(data=data, code=code, message=message, status_code=status_code)
 
-def error_response(code: str, message: Optional[str] = None, data: Any = None, status_code: int = 400):
+def error_response(code: str=status.HTTP_400_BAD_REQUEST, message: Optional[str] = None, data: Any = None, status_code: int = status.HTTP_400_BAD_REQUEST):
     """
     生成错误响应
     

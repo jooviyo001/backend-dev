@@ -9,8 +9,15 @@ from datetime import datetime
 class PositionBase(BaseModel):
     """职位基础模式"""
     name: str = Field(..., max_length=100, description="职位名称")
-    description: Optional[str] = Field(None, description="职位描述")
+    code: str = Field(..., max_length=100, description="职位编码")
+    department: str = Field(..., description="组织名称")
+    level: str = Field(..., max_length=100, description="职位级别")
     is_active: bool = Field(True, description="是否启用")
+    description: Optional[str] = Field(None, description="职位描述")
+    # 职位要求
+    requirements: Optional[str] = Field(None, description="职位要求")
+    # 职位职责
+    responsibilities: Optional[str] = Field(None, description="职位职责")
 
 
 class PositionCreate(PositionBase):
@@ -20,6 +27,11 @@ class PositionCreate(PositionBase):
     @classmethod
     def validate_name(cls, v):
         """验证职位名称"""
+        # 检查非法字符
+        invalid_chars = ['/', '\\', ':', '*', '?', '"', '<', '>', '|']
+        for char in invalid_chars:
+            if char in v:
+                raise ValueError(f'职位名称不能包含字符: {char}')
         if not v or not v.strip():
             raise ValueError('职位名称不能为空')
         if len(v.strip()) > 100:

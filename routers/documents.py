@@ -50,7 +50,7 @@ async def get_documents(
             parent_id=parent_id,
             page=page,
             page_size=page_size,
-            user_id=current_user.id
+            user_id=str(current_user.id)
         )
         
         return success_response(
@@ -60,7 +60,7 @@ async def get_documents(
         
     except Exception as e:
         return error_response(
-            code=500,
+            code="500",
             message=f"获取文档列表失败: {str(e)}",
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
@@ -86,7 +86,7 @@ async def create_folder(
         document_service = get_document_service(db)
         result = document_service.create_folder(
             folder_data=folder_data,
-            user_id=current_user.id
+            user_id=str(current_user.id)
         )
         
         return success_response(
@@ -132,7 +132,7 @@ async def upload_document(
             file=file,
             name=name,
             parent_id=parent_id,
-            user_id=current_user.id
+            user_id=str(current_user.id)
         )
         
         return success_response(
@@ -172,7 +172,7 @@ async def delete_document(
         document_service = get_document_service(db)
         success = document_service.delete_document(
             document_id=document_id,
-            user_id=current_user.id
+            user_id=str(current_user.id)
         )
         
         if success:
@@ -218,7 +218,7 @@ async def rename_document(
         result = document_service.rename_document(
             document_id=document_id,
             new_name=rename_data.name,
-            user_id=current_user.id
+            user_id=str(current_user.id)
         )
         
         return success_response(
@@ -258,7 +258,7 @@ async def download_document(
         document_service = get_document_service(db)
         file_stream, filename, content_type = document_service.download_document(
             document_id=document_id,
-            user_id=current_user.id
+            user_id=str(current_user.id)
         )
         
         # 设置响应头
@@ -305,7 +305,7 @@ async def get_document_detail(
         document_service = get_document_service(db)
         document = document_service.get_document_by_id(
             document_id=document_id,
-            user_id=current_user.id
+            user_id=str(current_user.id)
         )
         
         if not document:
@@ -344,7 +344,7 @@ async def get_document_statistics(
     """
     try:
         from models.document import Document
-        from enums import DocumentType
+        from models.enums import DocumentType
         from sqlalchemy import func
         
         # 统计文件夹数量

@@ -33,7 +33,7 @@ async def login(login_data: LoginRequest, db: Session = Depends(get_db)):
     
     # 更新最后登录时间
     from datetime import datetime
-    user.last_login = datetime.now()
+    setattr(user, 'last_login', datetime.utcnow())
     db.commit()
     
     return BaseResponse(
@@ -103,14 +103,14 @@ async def refresh_token(
 ):
     """刷新访问令牌"""
     # 检查用户是否已登出
-    if current_user.last_logout:
+    if current_user.last_logout is not None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="用户已登出",
             headers={"WWW-Authenticate": "Bearer"},
         )
     # 检查用户是否已登录
-    if not current_user.last_login:
+    if current_user.last_login is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="用户未登录",
@@ -214,31 +214,8 @@ async def change_password(
         )
 
     # 验证旧密码
-    if not verify_password(password_data.currentPassword, current_user.password_hash):
+    if not verify_password(password_data.currentPassword, str(current_user.password_hash)):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="原密码错误"
         )
-    
-    # 更新密码
-    current_user.password_hash = get_password_hash(password_data.newPassword)
-    db.commit()
-    db.refresh(current_user)
-    
-    return BaseResponse(
-        message="密码修改成功",
-        data="success"
-    )
-
-@router.post("/refresh-token", response_model=BaseResponse)
-async def refresh_token(current_user: User = Depends(get_current_active_user)):
-    """刷新令牌"""
-    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    access_token = create_access_token(
-        data={"sub": current_user.username}, expires_delta=access_token_expires
-    )
-    
-    return BaseResponse(
-        message="令牌刷新成功",
-        data={"access_token": access_token, "token_type": "bearer"}
-    )

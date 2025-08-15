@@ -9,7 +9,7 @@ from fastapi.responses import HTMLResponse
 # 导入路由
 from routers import (
     auth, users, projects, tasks, defects, 
-    organizations, positons, comments, dashboard, uploads, documents
+    organizations, positons, roles, comments, dashboard, uploads, documents
 )
 
 
@@ -37,6 +37,7 @@ def configure_routes(app: FastAPI) -> None:
     app.include_router(defects.router, prefix="/api/v1/defects", tags=["缺陷管理"])
     app.include_router(organizations.router, prefix="/api/v1/organizations", tags=["组织管理"])
     app.include_router(positons.router, prefix="/api/v1/positions", tags=["岗位管理"])
+    app.include_router(roles.router, prefix="/api/v1/roles", tags=["角色管理"])
     app.include_router(comments.router, prefix="/api/v1/comments", tags=["评论管理"])
     app.include_router(dashboard.router, prefix="/api/v1/dashboard", tags=["仪表板"])
     app.include_router(uploads.router, prefix="/api/v1/uploads", tags=["文件上传"])

@@ -1,7 +1,7 @@
 """评论相关的API路由
 提供评论的增删改查功能
 """
-from typing import List, Optional
+from typing import List, Optional, cast
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import and_, or_
@@ -31,7 +31,10 @@ async def create_comment(
         parent_comment = db.query(Comment).filter(Comment.id == comment_data.parent_id).first()
         if not parent_comment:
             raise HTTPException(status_code=404, detail="父评论不存在")
-        if parent_comment.target_type != comment_data.target_type or parent_comment.target_id != comment_data.target_id:
+        # 使用cast明确类型，解决Pylance类型检查错误
+        parent_target_type = cast(CommentTargetType, parent_comment.target_type)
+        parent_target_id = cast(str, parent_comment.target_id)
+        if parent_target_type != comment_data.target_type or parent_target_id != comment_data.target_id:
             raise HTTPException(status_code=400, detail="回复评论必须在同一目标下")
     
     # 创建评论
@@ -98,7 +101,7 @@ async def get_comments(
     pages = math.ceil(total / size) if total > 0 else 1
     
     return CommentListResponse(
-        comments=comments,
+        comments=[CommentResponse.model_validate(comment) for comment in comments],
         total=total,
         page=page,
         size=size,
@@ -138,12 +141,13 @@ async def update_comment(
         raise HTTPException(status_code=404, detail="评论不存在")
     
     # 只有评论作者或管理员可以修改评论
-    if comment.author_id != current_user.id and not check_permission(current_user, "comment:update"):
-        raise HTTPException(status_code=403, detail="没有权限修改此评论")
+    if cast(str, comment.author_id) != current_user.id:
+        if not check_permission(current_user, "comment:update"):
+            raise HTTPException(status_code=403, detail="没有权限修改此评论")
     
     # 更新评论内容
     if comment_data.content is not None:
-        comment.content = comment_data.content
+        comment.content = cast(str, comment_data.content) # type: ignore
     
     db.commit()
     db.refresh(comment)
@@ -170,8 +174,9 @@ async def delete_comment(
         raise HTTPException(status_code=404, detail="评论不存在")
     
     # 只有评论作者或管理员可以删除评论
-    if comment.author_id != current_user.id and not check_permission(current_user, "comment:delete"):
-        raise HTTPException(status_code=403, detail="没有权限删除此评论")
+    if cast(str, comment.author_id) != current_user.id:
+        if not check_permission(current_user, "comment:delete"):
+            raise HTTPException(status_code=403, detail="没有权限删除此评论")
     
     db.delete(comment)
     db.commit()
