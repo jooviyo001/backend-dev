@@ -1,76 +1,85 @@
-from fastapi import FastAPI, HTTPException, Depends, status
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+import os
+from fastapi.security import HTTPBearer
 import uvicorn
-from datetime import datetime
-from typing import Optional, List
-import jwt
-from pydantic import BaseModel
 
-# 导入路由模块
-from routers import auth, users, projects, tasks, organizations, dashboard
+# 导入数据库相关
 from models.database import engine, Base
-from models import models
+from utils.snowflake import init_snowflake
+from utils.database_initializer import init_database
+from utils.database_schema_manager import ensure_database_schema
 
-# 创建数据库表
-Base.metadata.create_all(bind=engine)
+# 导入配置模块
+from config import create_app, configure_middleware, configure_exception_handlers
+from config.app_config import configure_routes
 
-app = FastAPI(
-    title="项目管理系统API",
-    description="基于FastAPI的项目管理系统后端接口",
-    version="1.0.0"
-)
+# 初始化雪花算法（机器ID可以通过环境变量配置）
+machine_id = int(os.getenv("MACHINE_ID", "1"))  # 默认机器ID为1
+init_snowflake(machine_id)
 
-# CORS中间件配置
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],  # 生产环境应该限制具体域名
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# 检查和更新数据库表结构
+print("🔍 正在检查数据库表结构...")
+try:
+    schema_success = ensure_database_schema()
+    if schema_success:
+        print("✅ 数据库表结构检查完成")
+    else:
+        print("❌ 数据库表结构检查失败，但继续启动")
+except Exception as e:
+    print(f"❌ 数据库表结构检查出错: {e}")
+    print("⚠️  使用基础表创建方式...")
+    # 如果新的检查方式失败，回退到原有方式
+    Base.metadata.create_all(bind=engine)
+
+# 初始化数据库数据（仅在开发环境）
+try:
+    init_database(force=False)
+except Exception as e:
+    print(f"⚠️  数据库初始化跳过: {e}")
+
+# 创建FastAPI应用
+app = create_app()
+
+# 配置中间件
+configure_middleware(app)
+
+# 配置异常处理器
+configure_exception_handlers(app)
+
+# 配置路由
+configure_routes(app)
 
 # 安全配置
 security = HTTPBearer()
 
-# 全局异常处理
-@app.exception_handler(HTTPException)
-async def http_exception_handler(request, exc):
-    return JSONResponse(
-        status_code=exc.status_code,
-        content={
-            "success": False,
-            "message": exc.detail,
-            "data": None,
-            "timestamp": datetime.now().isoformat()
-        }
-    )
-
-# 根路径
-@app.get("/")
-async def root():
-    return {
-        "message": "项目管理系统API",
-        "version": "1.0.0",
-        "timestamp": datetime.now().isoformat()
-    }
-
-# 健康检查
-@app.get("/health")
-async def health_check():
-    return {
-        "status": "healthy",
-        "timestamp": datetime.now().isoformat()
-    }
-
-# 注册路由
-app.include_router(auth.router, prefix="/api/v1/auth", tags=["认证"])
-app.include_router(users.router, prefix="/api/v1/users", tags=["用户管理"])
-app.include_router(projects.router, prefix="/api/v1/projects", tags=["项目管理"])
-app.include_router(tasks.router, prefix="/api/v1/tasks", tags=["任务管理"])
-app.include_router(organizations.router, prefix="/api/v1/organizations", tags=["组织管理"])
-app.include_router(dashboard.router, prefix="/api/v1/dashboard", tags=["仪表盘"])
-
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    # 从环境变量获取配置，如果没有则使用默认值
+    from dotenv import load_dotenv
+    load_dotenv()
+    
+    host = os.getenv("HOST", "127.0.0.1")
+    port = int(os.getenv("PORT", "8000"))
+    debug = os.getenv("DEBUG", "false").lower() == "true"
+    
+    print(f"🚀 启动项目管理系统API服务器...")
+    print(f"📍 地址: http://{host}:{port}")
+    print(f"🔧 调试模式: {debug}")
+    print(f"📚 API文档: http://{host}:{port}/docs")
+    print(f"📖 ReDoc文档: http://{host}:{port}/redoc")
+    
+    if debug:
+        # 开发模式使用import string以支持reload
+        uvicorn.run(
+            "main:app",
+            host=host,
+            port=port,
+            reload=True,
+            log_level="debug"
+        )
+    else:
+        # 生产模式直接传递app对象
+        uvicorn.run(
+            app,
+            host=host,
+            port=port,
+            log_level="info"
+        )

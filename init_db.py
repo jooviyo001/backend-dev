@@ -4,8 +4,11 @@
 用于创建数据库表和初始数据
 """
 
+from argparse import Action
 import sys
 import os
+from tkinter import ACTIVE
+from fastapi import status
 from sqlalchemy.orm import Session
 from datetime import datetime
 
@@ -13,7 +16,7 @@ from datetime import datetime
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from models.database import engine, SessionLocal
-from models.models import Base, User, Organization, Project, Task, UserRole, ProjectStatus, TaskStatus, TaskPriority, TaskType
+from models import Base, User, Organization, Project, Task, UserRole, ProjectStatus, TaskStatus, TaskPriority, TaskType, OrganizationType
 from utils.auth import get_password_hash
 
 def create_tables():
@@ -41,7 +44,7 @@ def create_initial_data():
             username="admin",
             email="admin@example.com",
             password_hash=get_password_hash(admin_password),
-            full_name="系统管理员",
+            name="系统管理员",
             role=UserRole.ADMIN,
             is_active=True,
             is_verified=True
@@ -54,22 +57,22 @@ def create_initial_data():
                 "username": "manager",
                 "email": "manager@example.com",
                 "password": "manager123",
-                "full_name": "项目经理",
+                "name": "项目经理",
                 "role": UserRole.MANAGER
             },
             {
                 "username": "developer1",
                 "email": "dev1@example.com",
                 "password": "dev123",
-                "full_name": "开发者1",
-                "role": UserRole.DEVELOPER
+                "name": "开发者1",
+                "role": UserRole.MEMBER
             },
             {
                 "username": "developer2",
                 "email": "dev2@example.com",
                 "password": "dev123",
-                "full_name": "开发者2",
-                "role": UserRole.DEVELOPER
+                "name": "开发者2",
+                "role": UserRole.MEMBER
             }
         ]
         
@@ -79,7 +82,7 @@ def create_initial_data():
                 username=user_data["username"],
                 email=user_data["email"],
                 password_hash=get_password_hash(user_data["password"]),
-                full_name=user_data["full_name"],
+                name=user_data["name"],
                 role=user_data["role"],
                 is_active=True,
                 is_verified=True
@@ -95,7 +98,10 @@ def create_initial_data():
         
         # 创建示例组织
         organization = Organization(
-            name="示例科技公司",
+            name="chemi科技公司",
+            code="DEMO001",
+            type=OrganizationType.COMPANY,
+            status=ACTIVE,
             description="这是一个示例组织，用于演示系统功能",
             website="https://example.com",
             is_active=True
@@ -115,7 +121,7 @@ def create_initial_data():
             status=ProjectStatus.ACTIVE,
             start_date=datetime.now(),
             creator_id=admin_user.id,
-            organization_id=organization.id
+            department_id=organization.id
         )
         db.add(project)
         db.commit()
