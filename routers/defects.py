@@ -49,8 +49,13 @@ async def get_defects_page(
     - 类型和严重程度筛选
     - 日期范围筛选
     """ 
-    # 查询缺陷表
-    db_query = db.query(Defect)
+    # 查询缺陷表，预加载关联对象
+    db_query = db.query(Defect).options(
+        joinedload(Defect.reporter),
+        joinedload(Defect.assignee),
+        joinedload(Defect.handler),
+        joinedload(Defect.project)
+    )
     
     # 根据用户角色进行数据过滤
     # 如果不是管理员，只能查看自己相关的缺陷（创建的、分配给自己的、报告的、验证的）
@@ -73,9 +78,9 @@ async def get_defects_page(
             )
         )
     
-    # 状态筛选,支持多个状态
+    # 状态筛选
     if query.status:
-        db_query = db_query.filter(Defect.status.in_(query.status))
+        db_query = db_query.filter(Defect.status == query.status)
     
     # 项目筛选
     if query.project_id:
@@ -242,8 +247,16 @@ async def create_defect(
     db.add(initial_status_history)
     db.commit()
     
+    # 重新查询缺陷以包含关联对象
+    db_defect_with_relations = db.query(Defect).options(
+        joinedload(Defect.reporter),
+        joinedload(Defect.assignee),
+        joinedload(Defect.handler),
+        joinedload(Defect.project)
+    ).filter(Defect.id == db_defect.id).first()
+    
     return standard_response(
-        data=DefectResponse.model_validate(db_defect, from_attributes=True),
+        data=DefectResponse.model_validate(db_defect_with_relations, from_attributes=True),
         message="缺陷创建成功"
     )
 
@@ -328,7 +341,8 @@ async def get_defect_by_id(
     defect = db.query(Defect).options(
         joinedload(Defect.project),
         joinedload(Defect.assignee),
-        joinedload(Defect.reporter)
+        joinedload(Defect.reporter),
+        joinedload(Defect.handler)
     ).filter(Defect.id == defect_id).first()
     
     if not defect:
@@ -465,9 +479,17 @@ async def update_defect(
     existing_defect.updated_by = current_user.id
     
     db.commit()
-    db.refresh(existing_defect)
+    
+    # 重新查询缺陷以包含关联对象
+    updated_defect = db.query(Defect).options(
+        joinedload(Defect.reporter),
+        joinedload(Defect.assignee),
+        joinedload(Defect.handler),
+        joinedload(Defect.project)
+    ).filter(Defect.id == defect_id).first()
+    
     return standard_response(
-        data=DefectResponse.model_validate(existing_defect, from_attributes=True),
+        data=DefectResponse.model_validate(updated_defect, from_attributes=True),
         message="缺陷更新成功"
     )
 
@@ -654,7 +676,8 @@ async def export_defects(
     query = db.query(Defect).options(
         joinedload(Defect.project),
         joinedload(Defect.assignee),
-        joinedload(Defect.reporter)
+        joinedload(Defect.reporter),
+        joinedload(Defect.handler)
     )
     
     # 权限过滤：非管理员只能导出自己相关的缺陷

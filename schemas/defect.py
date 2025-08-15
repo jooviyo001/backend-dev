@@ -31,16 +31,25 @@ class DefectBase(BaseModel):
     parent_id: Optional[str] = Field(None, description="父缺陷ID")
     source: Optional[str] = Field(None, description="缺陷来源")
     tags: Optional[List[str]] = Field(None, description="标签")
+    
+
 
 # 缺陷响应模式
 class DefectResponse(DefectBase):
     id: str
     created_at: datetime
     updated_at: datetime
+    due_date: Optional[date] = Field(None, description="到期日期")
+    closed_at: Optional[datetime] = Field(None, description="关闭时间")
     
     @classmethod
     def model_validate(cls, obj, **kwargs):
         """自定义验证方法，从关联对象中填充名称字段"""
+        # 处理 due_date 字段的类型转换
+        if hasattr(obj, 'due_date') and obj.due_date and isinstance(obj.due_date, datetime):
+            # 将 datetime 转换为 date
+            obj.due_date = obj.due_date.date()
+        
         # 先调用父类的验证
         instance = super().model_validate(obj, **kwargs)
         
