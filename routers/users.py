@@ -62,14 +62,14 @@ async def get_users(
             query = query.filter(User.organizition_name == organizition_name.strip())
         # 组织过滤
         if organization and organization.strip():
-            query = query.filter(User.organization_name == organization.strip())
+            query = query.filter(User.department == organization.strip())
 
         # 岗位过滤
         if position and position.strip():
             query = query.filter(User.position == position.strip())
         # 组织过滤
         if organization and organization.strip():
-            query = query.filter(User.organization_name == organization.strip())
+            query = query.filter(User.department == organization.strip())
         # 手机号过滤
         if phone and phone.strip():
             query = query.filter(User.phone == phone.strip())
@@ -91,7 +91,7 @@ async def get_users(
     role: Optional[str] = Query(None, description="角色过滤"),
     status: Optional[str] = Query(None, description="状态过滤"),
     position: Optional[str] = Query(None, description="职位过滤"),
-    organization_name: Optional[str] = Query(None, description="部门过滤"),
+    department: Optional[str] = Query(None, description="部门过滤"),
     page: int = Query(1, ge=1, description="页码"),
     limit: Optional[int] = Query(None, ge=1, le=1000, description="每页数量"),
     pageSize: Optional[int] = Query(None, ge=1, le=100, description="每页数量(兼容参数)"),
@@ -138,13 +138,13 @@ async def get_users(
             query = query.filter(User.is_active == False)
     
     # 部门组织过滤
-    if organization_name and organization_name.strip():
+    if department and department.strip():
         from models.organization import Organization
-        org_name = organization_name.strip()
+        org_name = department.strip()
         # 同时支持直接字段和关联表查询
         query = query.filter(
             or_(
-                User.organization_name == org_name,
+                User.department == org_name,
                 User.organization.has(Organization.name == org_name)
             )
         )
@@ -415,8 +415,8 @@ async def create_user(
         name=user_data.name,  # type: ignore
         phone=user_data.phone,  # type: ignore
         position=user_data.position,  # type: ignore
-        organization_name=user_data.organization_name,  # type: ignore
-        organization_id=user_data.organization_id,  # type: ignore
+        department=user_data.department,  # type: ignore
+        department_id=user_data.department_id,  # type: ignore
         role=user_data.role  # type: ignore
     )
     
@@ -522,7 +522,7 @@ async def update_user(
                     detail="不能停用自己"
                 )
             user.is_active = value  # type: ignore
-        elif key in ["avatar", "username", "email", "name", "phone", "position", "organizition_name", "role", "is_verified", "organization_id"]: 
+        elif key in ["avatar", "username", "email", "name", "phone", "position", "organizition_name", "role", "is_verified", "department_id"]: 
             # 处理其他字段
             setattr(user, key, value)
 

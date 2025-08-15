@@ -30,8 +30,8 @@ class Position(Base):
     code = Column(String(100), nullable=False, unique=True, comment='职位编码')
     name = Column(String(100), nullable=False, unique=True, comment='职位名称')
     description = Column(Text, comment='职位描述')
-    organization_id = Column(String(25), ForeignKey('organizations.id'), comment='组织ID')
-    organization_name = Column(String(100), comment='组织名称')
+    department_id = Column(String(25), ForeignKey('organizations.id'), comment='组织ID')
+    department = Column(String(100), comment='组织名称')
     level = Column(String(100), comment='职位等级')
     is_active = Column(Boolean, default=True, comment='是否启用')
     created_at = Column(DateTime, default=func.now(), comment='创建时间')  # 需要格式化时间yyyy-MM-dd HH:mm:ss
@@ -39,15 +39,15 @@ class Position(Base):
 
     
     users = relationship("User", back_populates="position", lazy="dynamic")
-    organization = relationship("Organization", foreign_keys=[organization_id])
+    organization = relationship("Organization", foreign_keys=[department_id])
     
-    def __init__(self, code: str, name: str, description: str, organization_id: str, is_active: bool = True):
+    def __init__(self, code: str, name: str, description: str, department_id: str, is_active: bool = True):
         self.code = code
         self.name = name
         self.description = description
-        self.organization_id = organization_id
+        self.department_id = department_id
         self.is_active = is_active
     
     
     def __repr__(self):
-        return f"<Position(id={self.id}, code={self.code}, name={self.name}, organization_id={self.organization_id})>"
+        return f"<Position(id={self.id}, code={self.code}, name={self.name}, department_id={self.department_id})>"

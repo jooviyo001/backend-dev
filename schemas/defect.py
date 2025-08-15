@@ -120,7 +120,7 @@ class DefectPageQuery(BaseModel):
     size: int = Field(10, ge=1, le=100, description="每页数量")
     keyword: Optional[str] = Field(None, description="关键词搜索")
     status: Optional[DefectStatus] = Field(None, description="缺陷状态")
-    organization_id: Optional[str] = Field(None, description="组织ID")
+    department_id: Optional[str] = Field(None, description="组织ID")
     project_id: Optional[str] = Field(None, description="项目ID")
     assignee_id: Optional[str] = Field(None, description="执行人ID")
     reporter_id: Optional[str] = Field(None, description="报告人ID")

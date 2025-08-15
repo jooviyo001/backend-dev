@@ -189,7 +189,7 @@ def update_users():
                 organizition_name=user_data["organizition_name"],
                 position=user_data["position"],
                 phone=user_data["phone"],
-                organization_id=organization.id,
+                department_id=organization.id,
                 is_active=True,
                 is_verified=True
             )

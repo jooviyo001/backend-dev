@@ -43,7 +43,7 @@ def create_initial_data():
             password_hash=get_password_hash(admin_password),
             name="系统管理员",
             role=UserRole.ADMIN,
-            organization_name="信息技术部",
+            department="信息技术部",
             position="系统管理员",
             phone="13800138001",
             is_active=True,
@@ -58,7 +58,7 @@ def create_initial_data():
             password_hash=get_password_hash("super123"),
             name="超级管理员",
             role=UserRole.ADMIN,
-            organization_name="信息技术部",
+            department="信息技术部",
             position="超级管理员",
             phone="13800138002",
             is_active=True,
@@ -74,7 +74,7 @@ def create_initial_data():
                 "password": "manager123",
                 "name": "项目经理",
                 "role": UserRole.MANAGER,
-                "organization_name": "项目管理部",
+                "department": "项目管理部",
                 "position": "项目经理",
                 "phone": "13800138011"
             },
@@ -84,7 +84,7 @@ def create_initial_data():
                 "password": "manager123",
                 "name": "部门经理",
                 "role": UserRole.MANAGER,
-                "organization_name": "技术部",
+                "department": "技术部",
                 "position": "部门经理",
                 "phone": "13800138012"
             },
@@ -94,7 +94,7 @@ def create_initial_data():
                 "password": "dev123",
                 "name": "高级开发工程师",
                 "role": UserRole.MEMBER,
-                "organization_name": "开发部",
+                "department": "开发部",
                 "position": "高级开发工程师",
                 "phone": "13800138021"
             },
@@ -104,7 +104,7 @@ def create_initial_data():
                 "password": "dev123",
                 "name": "前端开发工程师",
                 "role": UserRole.MEMBER,
-                "organization_name": "开发部",
+                "department": "开发部",
                 "position": "前端开发工程师",
                 "phone": "13800138022"
             },
@@ -114,7 +114,7 @@ def create_initial_data():
                 "password": "test123",
                 "name": "测试工程师",
                 "role": UserRole.MEMBER,
-                "organization_name": "质量保证部",
+                "department": "质量保证部",
                 "position": "测试工程师",
                 "phone": "13800138023"
             },
@@ -124,7 +124,7 @@ def create_initial_data():
                 "password": "user123",
                 "name": "实习生",
                 "role": UserRole.USER,
-                "organization_name": "开发部",
+                "department": "开发部",
                 "position": "实习生",
                 "phone": "13800138031"
             }
@@ -138,7 +138,7 @@ def create_initial_data():
                 password_hash=get_password_hash(user_data["password"]),
                 name=user_data["name"],
                 role=user_data["role"],
-                organization_name=user_data["organization_name"],
+                department=user_data["department"],
                 position=user_data["position"],
                 phone=user_data["phone"],
                 is_active=True,
@@ -192,12 +192,12 @@ def create_initial_data():
         
         # 将用户分配到组织
         # admin和superadmin分配到创新实验室
-        admin_user.organization_id = created_orgs[1].id
-        superadmin_user.organization_id = created_orgs[1].id
+        admin_user.department_id = created_orgs[1].id
+        superadmin_user.department_id = created_orgs[1].id
         
         # 其他用户分配到示例科技公司
         for user in users[2:]:  # 跳过admin和superadmin
-            user.organization_id = created_orgs[0].id
+            user.department_id = created_orgs[0].id
         
         # 创建示例项目
         project = Project(
@@ -206,7 +206,7 @@ def create_initial_data():
             status=ProjectStatus.ACTIVE,
             start_date=datetime.now(),
             creator_id=admin_user.id,
-            organization_id=created_orgs[0].id
+            department_id=created_orgs[0].id
         )
         db.add(project)
         db.commit()

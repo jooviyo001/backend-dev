@@ -60,8 +60,8 @@ async def get_positions(
                 "id": position.id,
                 "code": position.code,
                 "name": position.name,
-                "organization_id": position.organization_id,
-                "organization_name": None,  # 可以后续添加组织名称查询
+                "department_id": position.department_id,
+                "department": None,  # 可以后续添加组织名称查询
                 "level": position.level,
                 "description": position.description,
                 "is_active": position.is_active,
@@ -107,7 +107,7 @@ async def create_position(
             code=position_data.code,
             name=position_data.name,
             description=position_data.description,
-            organization_id=position_data.organization_id,
+            department_id=position_data.department_id,
             is_active=position_data.is_active
         )
         
@@ -120,8 +120,8 @@ async def create_position(
             "id": new_position.id,
             "name": new_position.name,
             "code": new_position.code,
-            "organization_id": new_position.organization_id,
-            "organization_name": None,  # 可以后续添加组织名称查询
+            "department_id": new_position.department_id,
+            "department": None,  # 可以后续添加组织名称查询
             "is_active": new_position.is_active,
             "description": new_position.description,
             "created_at": new_position.created_at,

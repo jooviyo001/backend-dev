@@ -121,7 +121,7 @@ def create_initial_data():
             status=ProjectStatus.ACTIVE,
             start_date=datetime.now(),
             creator_id=admin_user.id,
-            organization_id=organization.id
+            department_id=organization.id
         )
         db.add(project)
         db.commit()

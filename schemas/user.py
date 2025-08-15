@@ -10,7 +10,7 @@ class UserBase(BaseModel):
     name: Optional[str] = None
     phone: Optional[str] = None
     position: Optional[str] = None
-    organization_name: Optional[str] = None  # 组织名称
+    department: Optional[str] = None  # 组织名称
     role: UserRole = UserRole.MEMBER
     status: Optional[str] = Field(None, description="用户状态")
     last_login: Optional[datetime] = None
@@ -23,8 +23,8 @@ class UserCreate(BaseModel):
     name: Optional[str] = None
     phone: Optional[str] = None
     position: Optional[str] = None
-    organization_name: Optional[str] = None  # 组织名称
-    organization_id: Optional[str] = None
+    department: Optional[str] = None  # 组织名称
+    department_id: Optional[str] = None
     role: UserRole = UserRole.MEMBER
     password: str
 
@@ -35,7 +35,7 @@ class UserUpdate(BaseModel):
     phone: Optional[str] = None
     position: Optional[str] = None
     organizition_name: Optional[str] = None
-    organization_id: Optional[str] = None
+    department_id: Optional[str] = None
     role: Optional[UserRole] = None
     is_active: Optional[bool] = None  # 用户是否活跃
     is_verified: Optional[bool] = Field(None, description="用户是否已验证")
@@ -63,7 +63,7 @@ class UserProfileUpdateRequest(BaseModel):
     email: Optional[EmailStr] = None
     phone: Optional[str] = None
     position: Optional[str] = None
-    organization_id: Optional[str] = None  # 组织ID
+    department_id: Optional[str] = None  # 组织ID
     organizition_name: Optional[str] = None  # 部门
     avatar: Optional[str] = None
     is_active: Optional[bool] = None
@@ -76,8 +76,8 @@ class UserResponse(UserBase):
     is_active: bool
     is_verified: bool
     position: Optional[str] = None  # 职位
-    organization_id: Optional[str] = None  # 所属组织ID
-    organization_name: Optional[str] = None  # 组织名称
+    department_id: Optional[str] = None  # 所属组织ID
+    department: Optional[str] = None  # 组织名称
     role: UserRole = UserRole.MEMBER  # 用户角色
     status: Optional[str] = Field(None, description="用户状态")
     last_login: Optional[datetime] = None
@@ -93,7 +93,7 @@ class UserResponse(UserBase):
         
         # 从关联的organization对象中获取组织名称
         if hasattr(obj, 'organization') and obj.organization:
-            instance.organization_name = obj.organization.name
+            instance.department = obj.organization.name
             
         return instance
     

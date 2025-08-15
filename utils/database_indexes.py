@@ -29,7 +29,7 @@ def create_database_indexes():
         
         # 项目表索引
         Index('idx_project_status', Project.status),
-        Index('idx_project_organization', Project.organization_id),
+        Index('idx_project_organization', Project.department_id),
         Index('idx_project_created_at', Project.created_at.desc()),
         Index('idx_project_soft_delete', Project.is_deleted, Project.deleted_at),
         

@@ -274,7 +274,7 @@ class DatabaseInitializer:
                 start_date=project_data["start_date"],
                 end_date=project_data["end_date"],
                 creator_id=admin_user.id,
-                organization_id=org.id,
+                department_id=org.id,
                 is_archived=False,
                 created_at=datetime.now(),
                 updated_at=datetime.now()

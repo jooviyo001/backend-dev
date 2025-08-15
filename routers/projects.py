@@ -18,7 +18,7 @@ router = APIRouter()
 async def get_projects(
     keyword: Optional[str] = Query(None, description="关键词搜索"),
     status: Optional[str] = Query(None, description="项目状态"),
-    organization_id: Optional[str] = Query(None, description="组织ID"),
+    department_id: Optional[str] = Query(None, description="组织ID"),
     creator_id: Optional[str] = Query(None, description="创建者ID"),
     page: int = Query(1, ge=1, description="页码"),
     size: int = Query(10, ge=1, le=100, description="每页数量"),
@@ -49,8 +49,8 @@ async def get_projects(
         query = query.filter(Project.status == status)
     
     # 组织过滤
-    if organization_id:
-        query = query.filter(Project.organization_id == organization_id)
+    if department_id:
+        query = query.filter(Project.department_id == department_id)
     
     # 创建者过滤
     if creator_id:
@@ -70,7 +70,7 @@ async def get_projects(
     for project in projects:
         project_response = ProjectResponse.from_orm(project)
         project_response.manager_name = project.manager.name if project.manager else None
-        project_response.organization_name = project.organization.name if project.organization else None
+        project_response.department = project.organization.name if project.organization else None
         project_responses.append(project_response)
     
     return list_response(
@@ -87,7 +87,7 @@ async def get_projects_page(
     size: int = Query(10, ge=1, le=100, description="每页数量"),
     keyword: Optional[str] = Query(None, description="关键词搜索"),
     status: Optional[str] = Query(None, description="项目状态"),
-    organization_id: Optional[str] = Query(None, description="组织ID"),
+    department_id: Optional[str] = Query(None, description="组织ID"),
     db: Session = Depends(get_db),
     current_user: User = Depends(require_permission("project:read"))
 ):
@@ -99,7 +99,7 @@ async def get_projects_page(
     if not user_is_admin:
         query = query.filter(Project.creator_id == current_user.id)
 
-    return await get_projects(keyword, status, organization_id, None, page, size, db, current_user)
+    return await get_projects(keyword, status, department_id, None, page, size, db, current_user)
 
 # 我的项目
 @router.get("/my", response_model=BaseResponse)
@@ -149,7 +149,7 @@ async def get_my_projects(
     for project in projects:
         project_response = ProjectResponse.from_orm(project)
         project_response.manager_name = project.manager.name if project.manager else None
-        project_response.organization_name = project.organization.name if project.organization else None
+        project_response.department = project.organization.name if project.organization else None
         project_responses.append(project_response)
     
     return list_response(
@@ -198,9 +198,9 @@ async def get_project(
         for task in latest_tasks
     ]
     # 项目组织
-    project_response_data.organization_name = project.organization.name if project.organization else ""
+    project_response_data.department = project.organization.name if project.organization else ""
     # 项目组织ID
-    project_response_data.organization_id = project.organization_id
+    project_response_data.department_id = project.department_id
     # 项目负责人
     project_response_data.manager_name = project.manager.name if project.manager else ""
     # 项目创建时间
@@ -263,9 +263,9 @@ async def create_project(
         )
     
     # 检查组织是否存在
-    if project_data.organization_id:
+    if project_data.department_id:
         organization = db.query(Organization).filter(
-            Organization.id == project_data.organization_id
+            Organization.id == project_data.department_id
         ).first()
         if not organization:
             raise HTTPException(
@@ -304,7 +304,7 @@ async def create_project(
         end_date=project_data.end_date,
         creator_id=current_user.id,
         manager_id=project_data.manager_id,
-        organization_id=project_data.organization_id,
+        department_id=project_data.department_id,
         budget=project_data.budget,
         tags=json.dumps(project_data.tags) if project_data.tags else None
     )

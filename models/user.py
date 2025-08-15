@@ -26,8 +26,8 @@ class User(Base, BaseModelMixin):
     phone = Column(String(20), comment='手机号码')
     position_id = Column(String(25), ForeignKey("positions.id"), comment='用户岗位/职位ID')
     position = relationship("Position", foreign_keys=[position_id])
-    organization_name = Column(String(100), comment='用户所属组织名称')
-    organization_id = Column(String(25), ForeignKey("organizations.id"), comment='用户所属组织ID')
+    department = Column(String(100), comment='用户所属组织名称')
+    department_id = Column(String(25), ForeignKey("organizations.id"), comment='用户所属组织ID')
     role_id = Column(String(25), ForeignKey("roles.id"), comment='用户角色ID')
     role = Column(Enum(UserRole), default=UserRole.MEMBER, comment='用户角色枚举(备用)')
     is_active = Column(Boolean, default=True, comment='是否激活状态')
@@ -40,7 +40,7 @@ class User(Base, BaseModelMixin):
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now(), comment='更新时间')
     
     # 关系
-    organization = relationship("Organization", foreign_keys=[organization_id])
+    organization = relationship("Organization", foreign_keys=[department_id])
     user_role = relationship("Role", back_populates="users", foreign_keys=[role_id])
     created_projects = relationship("Project", back_populates="creator", foreign_keys="Project.creator_id")
     assigned_tasks = relationship("Task", back_populates="assignee", foreign_keys="Task.assignee_id")

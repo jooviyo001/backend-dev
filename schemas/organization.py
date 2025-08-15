@@ -99,7 +99,7 @@ class OrganizationMemberUpdate(BaseModel):
 
 class OrganizationMemberResponse(BaseModel):
     id: str
-    organization_id: str
+    department_id: str
     user_id: str
     user_name: Optional[str] = None
     user_email: Optional[str] = None

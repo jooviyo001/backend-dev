@@ -15,7 +15,7 @@ class ProjectBase(BaseModel):
     priority: ProjectPriority = ProjectPriority.MEDIUM
     start_date: Optional[datetime] = None
     end_date: Optional[datetime] = None
-    organization_id: Optional[str] = None
+    department_id: Optional[str] = None
     budget: Optional[float] = Field(None, ge=0, description="项目预算，数值类型，≥0")
     tags: Optional[List[str]] = Field(default_factory=list, description="项目标签，字符串数组")
 
@@ -41,7 +41,7 @@ class ProjectUpdate(BaseModel):
     end_date: Optional[datetime] = None  # 项目结束日期
     manager_id: Optional[str] = None  # 项目负责人ID
     member_ids: Optional[List[str]] = Field(default_factory=list, description="项目成员ID列表")
-    organization_id: Optional[str] = None  # 组织ID
+    department_id: Optional[str] = None  # 组织ID
     is_archived: Optional[bool] = False  # 是否已归档，布尔类型，默认false
     budget: Optional[float] = Field(None, ge=0, description="项目预算，数值类型，≥0")
     tags: Optional[List[str]] = Field(None, description="项目标签，字符串数组")
@@ -62,8 +62,8 @@ class ProjectResponse(BaseModel):
     priority: Optional[ProjectPriority] = None
     start_date: Optional[datetime] = None
     end_date: Optional[datetime] = None
-    organization_id: Optional[str] = None
-    organization_name: Optional[str] = None
+    department_id: Optional[str] = None
+    department: Optional[str] = None
     manager_id: Optional[str] = None
     manager_name: Optional[str] = None
     budget: Optional[float] = None  # 项目预算，数值类型，≥0

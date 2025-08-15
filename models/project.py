@@ -24,7 +24,7 @@ class Project(Base):
     end_date = Column(DateTime, comment='项目结束日期')
     creator_id = Column(String(25), ForeignKey("users.id"), comment='项目创建者ID')
     manager_id = Column(String(25), ForeignKey("users.id"), comment='项目管理者ID')
-    organization_id = Column(String(25), ForeignKey("organizations.id"), comment='所属组织ID')
+    department_id = Column(String(25), ForeignKey("organizations.id"), comment='所属组织ID')
     budget = Column(Numeric(15, 2), comment='项目预算，数值类型，≥0')
     tags = Column(String(500), comment='项目标签，JSON字符串存储标签数组')
     is_archived = Column(Boolean, default=False, comment='是否已归档')

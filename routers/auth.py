@@ -148,7 +148,7 @@ async def get_current_user_info(
             organization_members.c.position,
             Organization.name
         ).select_from(
-            organization_members.join(Organization, organization_members.c.organization_id == Organization.id)
+            organization_members.join(Organization, organization_members.c.department_id == Organization.id)
         ).where(
             organization_members.c.user_id == current_user.id
         ).limit(1)  # 取第一个组织的信息

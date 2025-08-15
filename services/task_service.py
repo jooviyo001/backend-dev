@@ -198,7 +198,7 @@ class TaskService:
                       size: int = 10,
                       keyword: Optional[str] = None,
                       status: Optional[TaskStatus] = None,
-                      organization_id: Optional[str] = None,
+                      department_id: Optional[str] = None,
                       project_id: Optional[str] = None,
                       assignee_id: Optional[str] = None,
                       reporter_id: Optional[str] = None,
@@ -234,8 +234,8 @@ class TaskService:
             )
         if status:
             query = query.filter(Task.status == status)
-        if organization_id:
-            query = query.join(Project).filter(Project.organization_id == organization_id)
+        if department_id:
+            query = query.join(Project).filter(Project.department_id == department_id)
         if project_id:
             query = query.filter(Task.project_id == project_id)
         if assignee_id:

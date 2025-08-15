@@ -57,7 +57,7 @@ def get_member_count(db: Session, org_id) -> int:
     """获取组织成员数量"""
     try:
         return db.query(func.count(organization_members.c.user_id)).filter(
-            organization_members.c.organization_id == org_id
+            organization_members.c.department_id == org_id
         ).scalar() or 0
     except Exception:
         return 0
@@ -326,16 +326,16 @@ async def get_organization_tree(
         logger.error(f"获取组织树失败: {str(e)}")
         return error_response(code=INTERNAL_ERROR, message="获取组织树失败")
 
-@router.get("/{organization_id}", response_model=BaseResponse)
+@router.get("/{department_id}", response_model=BaseResponse)
 async def get_organization(
-    organization_id: str,
+    department_id: str,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
     """获取组织详情"""
     try:
         # 直接使用传入的organization_id，不进行格式转换
-        extracted_org_id = organization_id
+        extracted_org_id = department_id
         organization = db.query(Organization).options(
             joinedload(Organization.parent),
             joinedload(Organization.manager)
@@ -479,9 +479,9 @@ async def create_organization(
         return error_response(code=INTERNAL_ERROR, data={"detail": str(e)}, message="创建组织失败")
 
 # 组织更新
-@router.put("/update/{organization_id}", response_model=BaseResponse)
+@router.put("/update/{department_id}", response_model=BaseResponse)
 async def update_organization(
-    organization_id: str,
+    department_id: str,
     organization_data: OrganizationUpdate,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
@@ -489,7 +489,7 @@ async def update_organization(
     """更新组织信息"""
     try:
         # 直接使用传入的organization_id，不进行格式转换
-        extracted_org_id = organization_id
+        extracted_org_id = department_id
         organization = db.query(Organization).options(
             joinedload(Organization.parent),
             joinedload(Organization.manager)
@@ -606,19 +606,19 @@ async def update_organization(
         return error_response(code=INTERNAL_ERROR, data={"detail": str(e)}, message="更新组织信息失败")
 
 # 组织删除
-@router.delete("/delete/{organization_id}", response_model=BaseResponse)
+@router.delete("/delete/{department_id}", response_model=BaseResponse)
 async def delete_organization(
-    organization_id: str,
+    department_id: str,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """删除组织"""
     try:
         # 直接使用传入的organization_id，不进行格式转换
-        extracted_org_id = organization_id
+        extracted_org_id = department_id
         organization = db.query(Organization).filter(Organization.id == extracted_org_id).first()
         if not organization:
-            return error_response(code=NOT_FOUND, data={"organization_id": organization_id}, message="组织不存在")
+            return error_response(code=NOT_FOUND, data={"department_id": department_id}, message="组织不存在")
         
         # 检查是否有子组织
         child_count = get_child_count(db, extracted_org_id)
@@ -632,14 +632,14 @@ async def delete_organization(
 
         
         # 检查是否有关联的项目
-        project_count = db.query(func.count(Project.id)).filter(Project.organization_id == extracted_org_id).scalar() or 0
+        project_count = db.query(func.count(Project.id)).filter(Project.department_id == extracted_org_id).scalar() or 0
         if project_count > 0:
             return error_response(code=BAD_REQUEST, data={"project_count": project_count}, message="组织下还有项目，无法删除")
         
         db.delete(organization)
         db.commit()
         
-        return success_response(data={"organization_id": organization_id}, message="删除组织成功")
+        return success_response(data={"department_id": department_id}, message="删除组织成功")
         
     except Exception as e:
         logger.error(f"删除组织失败: {str(e)}")
@@ -676,7 +676,7 @@ async def batch_delete_organizations(
                     continue
                 
                 # 检查是否有关联的项目
-                project_count = db.query(func.count(Project.id)).filter(Project.organization_id == org_id).scalar() or 0
+                project_count = db.query(func.count(Project.id)).filter(Project.department_id == org_id).scalar() or 0
                 if project_count > 0:
                     failed_ids.append(org_id)
                     continue
@@ -749,9 +749,9 @@ async def batch_update_organization_status(
         return error_response(code=INTERNAL_ERROR, message="批量更新组织状态失败")
 
 # 移动组织
-@router.put("/{organization_id}/move", response_model=BaseResponse)
+@router.put("/{department_id}/move", response_model=BaseResponse)
 async def move_organization(
-    organization_id: str,
+    department_id: str,
     request: OrganizationMove,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
@@ -759,7 +759,7 @@ async def move_organization(
     """移动组织"""
     try:
         # 直接使用传入的organization_id，不进行格式转换
-        extracted_org_id = organization_id
+        extracted_org_id = department_id
         organization = db.query(Organization).filter(Organization.id == extracted_org_id).first()
         if not organization:
             return error_response(code=NOT_FOUND, message="组织不存在")
@@ -836,20 +836,20 @@ async def move_organization(
         return error_response(code=INTERNAL_ERROR, message="移动组织失败")
 
 # 组织统计
-@router.get("/{organization_id}/statistics", response_model=BaseResponse)
+@router.get("/{department_id}/statistics", response_model=BaseResponse)
 async def get_organization_statistics(
-    organization_id: str,
+    department_id: str,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """获取组织统计信息"""
     try:
-        organization = db.query(Organization).filter(Organization.id == organization_id).first()
+        organization = db.query(Organization).filter(Organization.id == department_id).first()
         if not organization:
             return error_response(code=NOT_FOUND, message="组织不存在")
         
         # 统计直接成员数量
-        direct_member_count = get_member_count(db, organization_id)
+        direct_member_count = get_member_count(db, department_id)
         
         # 统计所有子组织成员数量（包括子组织的子组织）
         def get_all_descendant_member_count(org_id) -> int:
@@ -859,10 +859,10 @@ async def get_organization_statistics(
                 count += get_all_descendant_member_count(child.id)
             return count
         
-        total_member_count = get_all_descendant_member_count(organization_id)
+        total_member_count = get_all_descendant_member_count(department_id)
         
         # 统计直接子组织数量
-        direct_child_count = get_child_count(db, organization_id)
+        direct_child_count = get_child_count(db, department_id)
         
         # 统计所有子组织数量（包括子组织的子组织）
         def get_all_descendant_count(org_id) -> int:
@@ -872,25 +872,25 @@ async def get_organization_statistics(
                 count += get_all_descendant_count(child.id)
             return count
         
-        total_child_count = get_all_descendant_count(organization_id)
+        total_child_count = get_all_descendant_count(department_id)
         
         # 统计项目数量
-        project_count = db.query(func.count(Project.id)).filter(Project.organization_id == organization_id).scalar() or 0
+        project_count = db.query(func.count(Project.id)).filter(Project.department_id == department_id).scalar() or 0
         
         # 按类型统计子组织
         child_type_stats = db.query(
             Organization.type,
             func.count(Organization.id).label('count')
-        ).filter(Organization.parent_id == organization_id).group_by(Organization.type).all()
+        ).filter(Organization.parent_id == department_id).group_by(Organization.type).all()
         
         # 按状态统计子组织
         child_status_stats = db.query(
             Organization.status,
             func.count(Organization.id).label('count')
-        ).filter(Organization.parent_id == organization_id).group_by(Organization.status).all()
+        ).filter(Organization.parent_id == department_id).group_by(Organization.status).all()
         
         statistics = OrganizationStatistics(
-            organization_id=organization_id,
+            department_id=department_id,
             direct_member_count=direct_member_count,
             total_member_count=total_member_count,
             direct_child_count=direct_child_count,
@@ -907,16 +907,16 @@ async def get_organization_statistics(
         return error_response(code=INTERNAL_ERROR, message="获取组织统计信息失败")
 
 # 添加组织成员
-@router.post("/{organization_id}/members", response_model=BaseResponse)
+@router.post("/{department_id}/members", response_model=BaseResponse)
 async def add_organization_member(
-    organization_id: str,
+    department_id: str,
     member_data: OrganizationMemberCreate,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """添加组织成员"""
     try:
-        organization = db.query(Organization).filter(Organization.id == organization_id).first()
+        organization = db.query(Organization).filter(Organization.id == department_id).first()
         if not organization:
             return error_response(code=NOT_FOUND, message="组织不存在")
         
@@ -927,7 +927,7 @@ async def add_organization_member(
         # 检查用户是否已是组织成员
         existing_member = db.query(organization_members).filter(
             and_(
-                organization_members.c.organization_id == organization_id,
+                organization_members.c.department_id == department_id,
                 organization_members.c.user_id == member_data.user_id
             )
         ).first()
@@ -937,7 +937,7 @@ async def add_organization_member(
         
         # 添加成员
         stmt = organization_members.insert().values(
-            organization_id=organization_id,
+            department_id=department_id,
             user_id=member_data.user_id,
             role=member_data.role,
             joined_at=func.now()
@@ -963,9 +963,9 @@ async def add_organization_member(
         return error_response(code=INTERNAL_ERROR, message="添加组织成员失败")
 
 # 更新组织成员角色
-@router.put("/{organization_id}/members/{user_id}", response_model=BaseResponse)
+@router.put("/{department_id}/members/{user_id}", response_model=BaseResponse)
 async def update_organization_member(
-    organization_id: str,
+    department_id: str,
     user_id: str,
     member_data: OrganizationMemberUpdate,
     current_user: User = Depends(get_current_user),
@@ -973,7 +973,7 @@ async def update_organization_member(
 ):
     """更新组织成员角色"""
     try:
-        organization = db.query(Organization).filter(Organization.id == organization_id).first()
+        organization = db.query(Organization).filter(Organization.id == department_id).first()
         if not organization:
             return error_response(code=NOT_FOUND, message="组织不存在")
         
@@ -984,7 +984,7 @@ async def update_organization_member(
         # 检查用户是否是组织成员
         member = db.query(organization_members).filter(
             and_(
-                organization_members.c.organization_id == organization_id,
+                organization_members.c.department_id == department_id,
                 organization_members.c.user_id == user_id
             )
         ).first()
@@ -995,7 +995,7 @@ async def update_organization_member(
         # 更新成员角色
         stmt = organization_members.update().where(
             and_(
-                organization_members.c.organization_id == organization_id,
+                organization_members.c.department_id == department_id,
                 organization_members.c.user_id == user_id
             )
         ).values(role=member_data.role)
@@ -1021,16 +1021,16 @@ async def update_organization_member(
         return error_response(code=INTERNAL_ERROR, message="更新组织成员角色失败")
 
 # 移除组织成员
-@router.delete("/{organization_id}/members/{user_id}", response_model=BaseResponse)
+@router.delete("/{department_id}/members/{user_id}", response_model=BaseResponse)
 async def remove_organization_member(
-    organization_id: str,
+    department_id: str,
     user_id: str,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """移除组织成员"""
     try:
-        organization = db.query(Organization).filter(Organization.id == organization_id).first()
+        organization = db.query(Organization).filter(Organization.id == department_id).first()
         if not organization:
             return error_response(code=NOT_FOUND, message="组织不存在")
         
@@ -1041,7 +1041,7 @@ async def remove_organization_member(
         # 检查用户是否是组织成员
         member = db.query(organization_members).filter(
             and_(
-                organization_members.c.organization_id == organization_id,
+                organization_members.c.department_id == department_id,
                 organization_members.c.user_id == user_id
             )
         ).first()
@@ -1052,7 +1052,7 @@ async def remove_organization_member(
         # 移除成员
         stmt = organization_members.delete().where(
             and_(
-                organization_members.c.organization_id == organization_id,
+                organization_members.c.department_id == department_id,
                 organization_members.c.user_id == user_id
             )
         )
@@ -1067,9 +1067,9 @@ async def remove_organization_member(
         return error_response(code=INTERNAL_ERROR, message="移除组织成员失败")
 
 # 获取组织成员列表
-@router.get("/{organization_id}/members", response_model=BaseResponse)
+@router.get("/{department_id}/members", response_model=BaseResponse)
 async def get_organization_members(
-    organization_id: str,
+    department_id: str,
     page: int = Query(1, ge=1, description="页码"),
     page_size: int = Query(10, ge=1, le=100, description="每页数量"),
     keyword: Optional[str] = Query(None, description="搜索关键词"),
@@ -1079,7 +1079,7 @@ async def get_organization_members(
 ):
     """获取组织成员列表"""
     try:
-        organization = db.query(Organization).filter(Organization.id == organization_id).first()
+        organization = db.query(Organization).filter(Organization.id == department_id).first()
         if not organization:
             return error_response(code=NOT_FOUND, message="组织不存在")
         
@@ -1092,7 +1092,7 @@ async def get_organization_members(
             organization_members,
             User.id == organization_members.c.user_id
         ).filter(
-            organization_members.c.organization_id == organization_id
+            organization_members.c.department_id == department_id
         )
         
         # 关键词搜索
@@ -1160,7 +1160,7 @@ async def get_user_organizations(
             organization_members.c.joined_at
         ).join(
             organization_members,
-            Organization.id == organization_members.c.organization_id
+            Organization.id == organization_members.c.department_id
         ).filter(
             organization_members.c.user_id == user_id
         ).order_by(organization_members.c.joined_at.desc())
@@ -1204,15 +1204,15 @@ async def get_user_organizations(
         return error_response(code=INTERNAL_ERROR, message="获取用户所属组织列表失败")
 
 # 获取组织路径
-@router.get("/{organization_id}/path", response_model=BaseResponse)
+@router.get("/{department_id}/path", response_model=BaseResponse)
 async def get_organization_path(
-    organization_id: str,
+    department_id: str,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """获取组织路径"""
     try:
-        organization = db.query(Organization).filter(Organization.id == organization_id).first()
+        organization = db.query(Organization).filter(Organization.id == department_id).first()
         if not organization:
             return error_response(code=NOT_FOUND, message="组织不存在")
         
@@ -1241,21 +1241,21 @@ async def get_organization_path(
         return error_response(code=INTERNAL_ERROR, message="获取组织路径失败")
 
 # 获取子组织列表
-@router.get("/{organization_id}/children", response_model=BaseResponse)
+@router.get("/{department_id}/children", response_model=BaseResponse)
 async def get_organization_children(
-    organization_id: str,
+    department_id: str,
     include_inactive: bool = Query(False, description="是否包含非活跃组织"),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """获取子组织列表"""
     try:
-        organization = db.query(Organization).filter(Organization.id == organization_id).first()
+        organization = db.query(Organization).filter(Organization.id == department_id).first()
         if not organization:
             return error_response(code=NOT_FOUND, message="组织不存在")
         
         # 构建查询
-        query = db.query(Organization).filter(Organization.parent_id == organization_id)
+        query = db.query(Organization).filter(Organization.parent_id == department_id)
         
         # 是否包含非活跃组织
         if not include_inactive:
@@ -1300,9 +1300,9 @@ async def get_organization_children(
         return error_response(code=INTERNAL_ERROR, message="获取子组织列表失败")
 
 # 获取组织项目列表
-@router.get("/{organization_id}/projects", response_model=BaseResponse)
+@router.get("/{department_id}/projects", response_model=BaseResponse)
 async def get_organization_projects(
-    organization_id: str,
+    department_id: str,
     page: int = Query(1, ge=1, description="页码"),
     page_size: int = Query(10, ge=1, le=100, description="每页数量"),
     keyword: Optional[str] = Query(None, description="搜索关键词"),
@@ -1313,14 +1313,14 @@ async def get_organization_projects(
     """获取组织项目列表"""
     try:
         # 直接使用传入的organization_id，不进行格式转换
-        extracted_org_id = organization_id
+        extracted_org_id = department_id
         
         organization = db.query(Organization).filter(Organization.id == extracted_org_id).first()
         if not organization:
             return error_response(code=NOT_FOUND, message="组织不存在")
         
         # 构建查询
-        query = db.query(Project).filter(Project.organization_id == extracted_org_id)
+        query = db.query(Project).filter(Project.department_id == extracted_org_id)
         
         # 关键词搜索
         if keyword:
@@ -1347,8 +1347,8 @@ async def get_organization_projects(
                 "name": project.name,
                 "description": project.description,
                 "status": project.status,
-                "organization_id": project.organization_id,
-                "organization_name": project.organization.name if project.organization else None,
+                "department_id": project.department_id,
+                "department": project.organization.name if project.organization else None,
                 "created_at": project.created_at,
                 "updated_at": project.updated_at
             }

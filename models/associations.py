@@ -21,7 +21,7 @@ project_members = Table(
 organization_members = Table(
     'organization_members',
     Base.metadata,
-    Column('organization_id', String(25), ForeignKey('organizations.id'), primary_key=True, comment='组织ID'),
+    Column('department_id', String(25), ForeignKey('organizations.id'), primary_key=True, comment='组织ID'),
     Column('user_id', String(25), ForeignKey('users.id'), primary_key=True, comment='用户ID'),
     Column('position', String(100), comment='职位'),
     Column('role', Enum(MemberRole), default=MemberRole.MEMBER, comment='成员角色'),
