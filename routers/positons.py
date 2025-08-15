@@ -60,11 +60,14 @@ async def get_positions(
                 "id": position.id,
                 "code": position.code,
                 "name": position.name,
+                "organization_id": position.organization_id,
+                "organization_name": None,  # 可以后续添加组织名称查询
+                "level": position.level,
                 "description": position.description,
                 "is_active": position.is_active,
-                "created_at": position.created_at,
-                "updated_at": position.updated_at,
-                "user_count": user_count
+                "created_at": position.created_at.strftime("%Y-%m-%d %H:%M:%S"),
+                "updated_at": position.updated_at.strftime("%Y-%m-%d %H:%M:%S"),
+                "user_count": user_count,
             }
             position_list.append(position_data)
         

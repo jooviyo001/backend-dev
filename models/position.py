@@ -32,9 +32,10 @@ class Position(Base):
     description = Column(Text, comment='职位描述')
     organization_id = Column(String(25), ForeignKey('organizations.id'), comment='组织ID')
     organization_name = Column(String(100), comment='组织名称')
+    level = Column(String(100), comment='职位等级')
     is_active = Column(Boolean, default=True, comment='是否启用')
-    created_at = Column(DateTime, default=func.now(), comment='创建时间')
-    updated_at = Column(DateTime, default=func.now(), onupdate=func.now(), comment='更新时间')
+    created_at = Column(DateTime, default=func.now(), comment='创建时间')  # 需要格式化时间yyyy-MM-dd HH:mm:ss
+    updated_at = Column(DateTime, default=func.now(), onupdate=func.now(), comment='更新时间')  # 需要格式化时间yyyy-MM-dd HH:mm:ss
 
     
     users = relationship("User", back_populates="position", lazy="dynamic")
