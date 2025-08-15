@@ -48,6 +48,13 @@ from .dashboard import (
     RecentActivity, UserWorkload, ProjectTrend, TaskTrend
 )
 
+# 权限相关模式
+from .permission import (
+    PermissionModule, PermissionModuleResponse, PermissionModuleListResponse,
+    UserPermissionResponse, RolePermissionResponse,
+    PermissionCheckRequest, PermissionCheckResponse
+)
+
 __all__ = [
     # 基础模式
     "BaseResponse", "PaginationResponse", "default_timestamp",
@@ -86,6 +93,11 @@ __all__ = [
     # 仪表盘相关模式
     "DashboardStats", "RecentTask", "ProjectProgress", "TaskStatusDistribution",
     "RecentActivity", "UserWorkload", "ProjectTrend", "TaskTrend",
+    
+    # 权限相关模式
+    "PermissionModule", "PermissionModuleResponse", "PermissionModuleListResponse",
+    "UserPermissionResponse", "RolePermissionResponse",
+    "PermissionCheckRequest", "PermissionCheckResponse",
 ]
 
 # 解决前向引用问题，重建模型

@@ -156,7 +156,7 @@ def create_initial_data():
         # 创建示例组织
         organizations = [
             {
-                "name": "示例科技公司",
+                "name": "车秘科技公司",
                 "code": "DEMO001",
                 "type": OrganizationType.COMPANY,
                 "description": "这是一个示例组织，用于演示系统功能",
@@ -165,9 +165,44 @@ def create_initial_data():
             {
                 "name": "创新实验室",
                 "code": "LAB001",
-                "type": OrganizationType.ORGANIZATIN_NAME,
+                "type": OrganizationType.ORGANIZATION,
                 "description": "专注于技术创新的实验室",
                 "website": "https://lab.example.com"
+            },
+            {
+                "name": "开发部",
+                "code": "DEV001",
+                "type": OrganizationType.DEPARTMENT,
+                "description": "负责系统开发的部门",
+                "website": "https://dev.example.com"
+            },
+            {
+                "name": "质量保证部",
+                "code": "QA001",
+                "type": OrganizationType.DEPARTMENT,
+                "description": "负责系统质量保证的部门",
+                "website": "https://qa.example.com"
+            },
+            {
+                "name": "销售部",
+                "code": "SAL001",
+                "type": OrganizationType.DEPARTMENT,
+                "description": "负责销售的部门",
+                "website": "https://sales.example.com"
+            },
+            {
+                "name": "客户服务部",
+                "code": "CS001",
+                "type": OrganizationType.DEPARTMENT,
+                "description": "负责客户服务的部门",
+                "website": "https://cs.example.com"
+            },
+            {
+                "name": "采购部",
+                "code": "PUR001",
+                "type": OrganizationType.DEPARTMENT,
+                "description": "负责采购的部门",
+                "website": "https://pur.example.com"
             }
         ]
         
@@ -181,6 +216,8 @@ def create_initial_data():
                 website=org_data["website"],
                 is_active=True
             )
+
+
             db.add(organization)
             created_orgs.append(organization)
         

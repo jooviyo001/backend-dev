@@ -9,6 +9,7 @@ from schemas.role import RoleCreate, RoleUpdate, RoleResponse, RoleListResponse
 from schemas.base import BaseResponse
 from utils.auth import require_permission
 from utils.response_utils import standard_response, list_response
+from sqlalchemy import func
 
 router = APIRouter()
 
@@ -74,8 +75,41 @@ async def get_roles(
     
     return list_response(
         message="获取角色列表成功",
-        data=role_list,
+        records=role_list,
         total=len(role_list)
+    )
+
+
+# 获取角色统计信息
+@router.get("/stats", response_model=BaseResponse)
+async def get_role_stats(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_permission("role:read"))
+):
+    """获取角色统计信息"""
+    # 总角色数
+    total_roles = db.query(Role).count()
+    
+    # 启用角色数
+    active_roles = db.query(Role).filter(Role.is_active == True).count()
+    
+    # 系统角色数（通过角色编码判断，系统角色通常有固定编码如ADMIN、USER、MANAGER等）
+    system_role_codes = ['ADMIN', 'USER', 'MANAGER', 'VIEWER', 'EDITOR']
+    system_roles = db.query(Role).filter(Role.code.in_(system_role_codes)).count()
+    
+    # 自定义角色数
+    custom_roles = total_roles - system_roles
+    
+    stats_data = {
+        "total_roles": total_roles,
+        "active_roles": active_roles,
+        "system_roles": system_roles,
+        "custom_roles": custom_roles
+    }
+    
+    return standard_response(
+        message="获取角色统计信息成功",
+        data=stats_data
     )
 
 
