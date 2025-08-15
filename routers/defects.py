@@ -72,9 +72,9 @@ async def get_defects_page(
             )
         )
     
-    # 状态筛选
+    # 状态筛选,支持多个状态
     if query.status:
-        db_query = db_query.filter(Defect.status == query.status)
+        db_query = db_query.filter(Defect.status.in_(query.status))
     
     # 项目筛选
     if query.project_id:
@@ -258,33 +258,52 @@ async def get_defect_statistics(
                 Defect.verified_by_id == current_user.id
             )
         )
-    # 统计数据
+    # 统计数据，全部缺陷
     total_count = query.count()
-    open_count = query.filter(Defect.status.in_([DefectStatus.NEW, DefectStatus.ASSIGNED, DefectStatus.IN_PROGRESS, DefectStatus.REOPENED])).count()
-    closed_count = query.filter(Defect.status.in_([DefectStatus.RESOLVED, DefectStatus.VERIFIED, DefectStatus.CLOSED])).count()
-    # 逾期缺陷统计
-    overdue_count = query.filter(
-        and_(
-            Defect.status.in_([DefectStatus.NEW, DefectStatus.ASSIGNED, DefectStatus.IN_PROGRESS, DefectStatus.REOPENED]),
-            Defect.due_date < datetime.now()
-        )
-    ).count()
+
     # 未解决缺陷统计
-    unresolved_count = query.filter(Defect.status == DefectStatus.NEW).count()
+    unresolved_count = query.filter(Defect.status.in_([
+        DefectStatus.NEW, DefectStatus.ASSIGNED, DefectStatus.IN_PROGRESS, DefectStatus.REOPENED
+        ])).count()
     # 已解决缺陷统计
-    resolved_count = query.filter(Defect.status.in_([DefectStatus.RESOLVED, DefectStatus.VERIFIED, DefectStatus.CLOSED])).count()
+    resolved_count = query.filter(
+        Defect.status.in_(
+            [DefectStatus.RESOLVED, DefectStatus.VERIFIED, DefectStatus.CLOSED]
+            )
+    ).count()
+    # 所有逾期缺陷统计
+    overdue_count = query.filter(
+        Defect.status.in_([
+            DefectStatus.NEW, DefectStatus.ASSIGNED, DefectStatus.IN_PROGRESS, DefectStatus.REOPENED
+            ]),
+        Defect.due_date < datetime.now()
+    ).count()
+    # 高优先级缺陷统计只包括（high、critical）
+    high_priority_count = query.filter(
+        Defect.priority.in_([DefectPriority.HIGH, DefectPriority.CRITICAL])
+    ).count()
+
+    # 我的缺陷统计
+    my_count = query.filter(
+        Defect.assignee_id == current_user.id
+    ).count()
+
+    # 未分配缺陷统计
+    unassigned_count = query.filter(
+        Defect.assignee_id == None
+    ).count()
 
 
     return standard_response(
         message="缺陷统计数据获取成功",
         data={
-            "total_count": total_count,
-            "open_count": open_count,
-            "closed_count": closed_count,
-            "overdue_count": overdue_count,
-            "unresolved_count": unresolved_count,
-            "resolved_count": resolved_count
-
+            "total_count": total_count,  # 全部缺陷
+            "unresolved_count": unresolved_count,  # 未解决缺陷
+            "resolved_count": resolved_count,  # 已解决缺陷
+            "overdue_count": overdue_count,  # 所有逾期缺陷
+            "unassigned_count": unassigned_count,  # 未分配缺陷
+            "high_priority_count": high_priority_count,  # 高优先级缺陷
+            "my_count": my_count,  # 我的缺陷
         }
     )
 
