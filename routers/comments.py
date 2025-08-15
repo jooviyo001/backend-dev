@@ -13,7 +13,7 @@ from utils.auth import get_current_user
 from utils.permissions import check_permission
 import math
 
-router = APIRouter(prefix="/comments")
+router = APIRouter()
 
 
 @router.post("/add", response_model=CommentResponse, summary="创建评论")

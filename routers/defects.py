@@ -221,6 +221,17 @@ async def create_defect(
     db.commit()
     db.refresh(db_defect)
     
+    # 创建初始状态历史记录
+    initial_status_history = DefectStatusHistory(
+        defect_id=db_defect.id,
+        old_status=None,  # 创建时没有旧状态
+        new_status=db_defect.status,
+        changed_by=current_user.id,
+        comment=f"缺陷创建，初始状态为 {db_defect.status.value}"
+    )
+    db.add(initial_status_history)
+    db.commit()
+    
     return standard_response(
         data=DefectResponse.model_validate(db_defect, from_attributes=True),
         message="缺陷创建成功"
@@ -378,6 +389,9 @@ async def update_defect(
         ):
             raise HTTPException(status_code=403, detail="权限不足，无法更新此缺陷")
     
+    # 记录原始状态，用于状态历史记录
+    old_status = existing_defect.status
+    
     # 更新缺陷字段
     update_data = defect.model_dump(exclude_unset=True)
     
@@ -396,6 +410,17 @@ async def update_defect(
             existing_defect.handler_name = handler.name
         else:
             raise HTTPException(status_code=404, detail="处理人不存在")
+    
+    # 如果状态发生变化，记录状态历史
+    if 'status' in update_data and update_data['status'] != old_status:
+        status_history = DefectStatusHistory(
+            defect_id=defect_id,
+            old_status=old_status,
+            new_status=update_data['status'],
+            changed_by=current_user.id,
+            comment=f"状态从 {old_status.value} 变更为 {update_data['status'].value}"
+        )
+        db.add(status_history)
     
     # 设置更新者
     existing_defect.updated_by = current_user.id
@@ -479,8 +504,24 @@ async def batch_update_defects(
             raise HTTPException(status_code=400, detail="子缺陷不能为缺陷")
     # 更新缺陷
     for i, defect_data in enumerate(defects):
-        for key, value in defect_data.model_dump(exclude_unset=True).items():
+        # 记录原始状态，用于状态历史记录
+        old_status = existing_defects[i].status
+        
+        update_data = defect_data.model_dump(exclude_unset=True)
+        for key, value in update_data.items():
             setattr(existing_defects[i], key, value)
+        
+        # 如果状态发生变化，记录状态历史
+        if 'status' in update_data and update_data['status'] != old_status:
+            status_history = DefectStatusHistory(
+                defect_id=existing_defects[i].id,
+                old_status=old_status,
+                new_status=update_data['status'],
+                changed_by=current_user.id,
+                comment=f"批量更新：状态从 {old_status.value} 变更为 {update_data['status'].value}"
+            )
+            db.add(status_history)
+        
         # 设置更新者
         existing_defects[i].updated_by = current_user.id
     db.commit()
