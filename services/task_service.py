@@ -39,6 +39,7 @@ class TaskService:
                 )
         
         # 创建任务
+        import json
         task = Task(
             title=task_data.title,
             description=task_data.description,
@@ -54,7 +55,7 @@ class TaskService:
             due_date=task_data.due_date,
             estimated_hours=task_data.estimated_hours,
             parent_task_id=task_data.parent_task_id,
-            tags=task_data.tags
+            tags=json.dumps(task_data.tags, ensure_ascii=False) if task_data.tags else None
         )
         
         self.db.add(task)

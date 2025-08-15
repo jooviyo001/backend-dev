@@ -92,10 +92,12 @@ class DefectStatus(str, enum.Enum):
 
 class DefectPriority(str, enum.Enum):
     """缺陷优先级枚举"""
+    LOWEST = "lowest"              # 最低优先级
     LOW = "low"        # 低优先级
     MEDIUM = "medium"  # 中等优先级
     HIGH = "high"      # 高优先级
     URGENT = "urgent"  # 紧急
+    CRITICAL = "critical"  # 关键
 
 
 class DefectType(str, enum.Enum):

@@ -14,7 +14,8 @@ from models.project import Project
 from models.associations import MemberRole
 from models.enums import UserRole
 from schemas.base import BaseResponse
-from schemas.defect import DefectResponse, DefectCreate, DefectUpdate, DefectAssign, DefectStatusHistory as DefectStatusHistorySchema, DefectPageQuery
+from schemas.defect import DefectResponse, DefectCreate, DefectUpdate, DefectPriority,\
+    DefectAssign, DefectStatusHistory as DefectStatusHistorySchema, DefectPageQuery
 
 from utils.auth import require_permission
 from utils.response_utils import list_response, paginate_query, standard_response
@@ -124,7 +125,7 @@ async def get_defects_page(
                 Defect.verified_by_id == current_user.id
             )
         )
-    
+
     # 只显示逾期缺陷
     if query.only_overdue:
         from datetime import datetime
@@ -207,11 +208,20 @@ async def create_defect(
     # 创建缺陷对象
     defect_data = defect.model_dump()
     # 将tags列表转换为JSON字符串
-    if defect_data.get('tags'):
+    if 'tags' in defect_data:
         import json
         defect_data['tags'] = json.dumps(defect_data['tags'], ensure_ascii=False)
     
-    db_defect = Defect(**defect_data)
+    # 过滤掉Defect模型中不存在的字段
+    allowed_fields = {
+        'title', 'description', 'status', 'priority', 'type', 'severity',
+        'project_id', 'assignee_id', 'reporter_id', 'verified_by_id',
+        'version', 'environment', 'steps_to_reproduce', 'expected_result',
+        'actual_result', 'resolution', 'parent_id', 'tags', 'due_date', 'source'
+    }
+    filtered_data = {k: v for k, v in defect_data.items() if k in allowed_fields}
+    
+    db_defect = Defect(**filtered_data)
     # 设置创建人为当前用户
     db_defect.created_by = current_user.id
     db_defect.updated_by = current_user.id
@@ -415,11 +425,21 @@ async def update_defect(
     update_data = defect.model_dump(exclude_unset=True)
     
     # 处理tags字段，转换为JSON字符串
-    if 'tags' in update_data and update_data['tags'] is not None:
+    if 'tags' in update_data:
         import json
         update_data['tags'] = json.dumps(update_data['tags'], ensure_ascii=False)
     
-    for key, value in update_data.items():
+    # 过滤掉Defect模型中不存在的字段
+    allowed_fields = {
+        'title', 'description', 'status', 'priority', 'type', 'severity',
+        'project_id', 'assignee_id', 'handler_id', 'handler_name', 'reporter_id', 
+        'verified_by_id', 'version', 'environment', 'steps_to_reproduce', 
+        'expected_result', 'actual_result', 'resolution', 'parent_id', 'tags', 
+        'due_date', 'source'
+    }
+    filtered_update_data = {k: v for k, v in update_data.items() if k in allowed_fields}
+    
+    for key, value in filtered_update_data.items():
         setattr(existing_defect, key, value)
     
     # 如果更新了handler_id，需要同时更新handler_name
@@ -527,7 +547,16 @@ async def batch_update_defects(
         old_status = existing_defects[i].status
         
         update_data = defect_data.model_dump(exclude_unset=True)
-        for key, value in update_data.items():
+        # 过滤掉Defect模型中不存在的字段
+        valid_fields = {key: value for key, value in update_data.items() 
+                       if hasattr(Defect, key)}
+        
+        # 处理tags字段
+        if 'tags' in valid_fields:
+            import json
+            valid_fields['tags'] = json.dumps(valid_fields['tags'], ensure_ascii=False)
+        
+        for key, value in valid_fields.items():
             setattr(existing_defects[i], key, value)
         
         # 如果状态发生变化，记录状态历史
@@ -666,7 +695,16 @@ async def import_defects(
     defect_data = df.to_dict(orient='records')
     # 导入缺陷
     for data in defect_data:
-        defect = Defect(**data)
+        # 过滤掉Defect模型中不存在的字段
+        filtered_data = {key: value for key, value in data.items() 
+                        if hasattr(Defect, key) and value is not None}
+        
+        # 处理tags字段
+        if 'tags' in filtered_data:
+            import json
+            filtered_data['tags'] = json.dumps(filtered_data['tags'], ensure_ascii=False)
+        
+        defect = Defect(**filtered_data)
         db.add(defect)
     db.commit()
     return standard_response(
