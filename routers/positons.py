@@ -1,6 +1,6 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, status, Query
 from sqlalchemy.orm import Session
-from sqlalchemy import or_, and_, func
+from sqlalchemy import or_
 from typing import Optional
 from models.database import get_db
 from models.position import Position
@@ -121,7 +121,8 @@ async def create_position(
             "name": new_position.name,
             "code": new_position.code,
             "department_id": new_position.department_id,
-            "department": None,  # 可以后续添加组织名称查询
+            "department": new_position.department,
+            "level": new_position.level,
             "is_active": new_position.is_active,
             "description": new_position.description,
             "created_at": new_position.created_at,
@@ -161,8 +162,22 @@ async def get_position(
         # 统计使用该职位的用户数量
         user_count = db.query(User).filter(User.position_id == position.id).count()
         
-        position_data = PositionResponse.model_validate(position).model_dump()
-        position_data["user_count"] = user_count
+        # 构建响应数据
+        position_data = {
+            "id": position.id,
+            "name": position.name,
+            "code": position.code,
+            "department_id": position.department_id,
+            "department": position.department,
+            "level": position.level,
+            "is_active": position.is_active,
+            "description": position.description,
+            "created_at": position.created_at,
+            "updated_at": position.updated_at,
+            "user_count": user_count,
+            "created_by": position.created_by,
+            "updated_by": position.updated_by,
+        }
         
         return success_response(
             data=position_data,
@@ -215,8 +230,22 @@ async def update_position(
         db.commit()
         db.refresh(position)
         
+        # 构建响应数据
+        position_data = {
+            "id": position.id,
+            "name": position.name,
+            "code": position.code,
+            "department_id": position.department_id,
+            "department": position.department,
+            "level": position.level,
+            "is_active": position.is_active,
+            "description": position.description,
+            "created_at": position.created_at,
+            "updated_at": position.updated_at
+        }
+    
         return success_response(
-            data=PositionResponse.model_validate(position),
+            data=position_data,
             message="职位更新成功"
         )
     

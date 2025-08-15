@@ -36,9 +36,10 @@ class Position(Base):
     is_active = Column(Boolean, default=True, comment='是否启用')
     created_at = Column(DateTime, default=func.now(), comment='创建时间')  # 需要格式化时间yyyy-MM-dd HH:mm:ss
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now(), comment='更新时间')  # 需要格式化时间yyyy-MM-dd HH:mm:ss
-
+    created_by = Column(String(25), ForeignKey('users.id'), comment='创建人ID')
+    updated_by = Column(String(25), ForeignKey('users.id'), comment='更新人ID')
     
-    users = relationship("User", back_populates="position", lazy="dynamic")
+    users = relationship("User", foreign_keys="User.position_id", lazy="dynamic")
     organization = relationship("Organization", foreign_keys=[department_id])
     
     def __init__(self, code: str, name: str, description: str, department_id: str, is_active: bool = True):
