@@ -12,6 +12,7 @@ class PositionBase(BaseModel):
     code: str = Field(..., max_length=100, description="职位编码")
     department: str = Field(..., description="组织名称")
     level: str = Field(..., max_length=100, description="职位级别")
+    organization_id: str = Field(..., description="组织ID")
     is_active: bool = Field(True, description="是否启用")
     description: Optional[str] = Field(None, description="职位描述")
     # 职位要求
@@ -58,9 +59,15 @@ class PositionUpdate(BaseModel):
         return v
 
 
-class PositionResponse(PositionBase):
+class PositionResponse(BaseModel):
     """职位响应模式"""
     id: str = Field(..., description="职位ID")
+    name: str = Field(..., max_length=100, description="职位名称")
+    code: str = Field(..., max_length=100, description="职位编码")
+    organization_id: str = Field(..., description="组织ID")
+    organization_name: Optional[str] = Field(None, description="组织名称")
+    is_active: bool = Field(True, description="是否启用")
+    description: Optional[str] = Field(None, description="职位描述")
     created_at: datetime = Field(..., description="创建时间")
     updated_at: datetime = Field(..., description="更新时间")
     

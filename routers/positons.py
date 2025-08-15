@@ -70,7 +70,7 @@ async def get_positions(
         
         return success_response(
             data={
-                "items": position_list,
+                "records": position_list,
                 "total": total,
                 "pageNum": pageNum,
                 "pageSize": pageSize,
@@ -94,12 +94,17 @@ async def create_position(
         # 检查职位名称是否已存在
         existing_position = db.query(Position).filter(Position.name == position_data.name).first()
         if existing_position:
-            return error_response(message="职位名称已存在")
+            return success_response(
+                message="职位名称已存在",
+                code="200002"
+            )
         
         # 创建新职位
         new_position = Position(
+            code=position_data.code,
             name=position_data.name,
             description=position_data.description,
+            organization_id=position_data.organization_id,
             is_active=position_data.is_active
         )
         
@@ -107,9 +112,21 @@ async def create_position(
         db.commit()
         db.refresh(new_position)
         
+        # 构建响应数据
+        position_data = {
+            "id": new_position.id,
+            "name": new_position.name,
+            "code": new_position.code,
+            "organization_id": new_position.organization_id,
+            "organization_name": None,  # 可以后续添加组织名称查询
+            "is_active": new_position.is_active,
+            "description": new_position.description,
+            "created_at": new_position.created_at,
+            "updated_at": new_position.updated_at
+        }
+        
         return success_response(
-            code=status.HTTP_200_OK,
-            data=PositionResponse.model_validate(new_position).model_dump(),
+            data=position_data,
             message="职位创建成功"
         )
     
