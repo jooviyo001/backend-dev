@@ -661,21 +661,10 @@ class PermissionService:
         return results
 
 
-def get_permission_service(db: Session) -> PermissionService:
-    """获取权限服务实例
-    
-    Args:
-        db: 数据库会话
-        
-    Returns:
-        PermissionService: 权限服务实例
-    """
-    return PermissionService(db)
-    
     def get_permissions_paginated(
         self,
         page: int,
-        page_size: int,
+        limit: int,
         query: Optional[str] = None,
         resource_type: Optional[str] = None,
         action_type: Optional[str] = None,
@@ -687,7 +676,7 @@ def get_permission_service(db: Session) -> PermissionService:
 
         Args:
             page: 页码
-            page_size: 每页大小
+            limit: 每页大小
             query: 搜索关键字
             resource_type: 资源类型过滤
             action_type: 操作类型过滤
@@ -719,8 +708,8 @@ def get_permission_service(db: Session) -> PermissionService:
 
         total_count = q.count()
         permissions = q.order_by(Permission.created_at.desc())\
-                       .offset((page - 1) * page_size)\
-                       .limit(page_size)\
+                       .offset((page - 1) * limit)\
+                       .limit(limit)\
                        .all()
 
         return permissions, total_count

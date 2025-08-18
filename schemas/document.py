@@ -91,7 +91,7 @@ class DocumentListResponse(BaseModel):
     items: List[DocumentResponse] = Field(..., description="文档列表")
     total: int = Field(..., description="总数量")
     page: int = Field(..., description="当前页码")
-    page_size: int = Field(..., description="每页数量")
+    limit: int = Field(..., description="每页数量")
     
     class Config:
         from_attributes = True
@@ -148,7 +148,7 @@ class DocumentSearchRequest(BaseModel):
     file_type: Optional[str] = Field(None, description="文件类型过滤")
     document_type: Optional[DocumentType] = Field(None, description="文档类型过滤")
     page: int = Field(1, ge=1, description="页码")
-    page_size: int = Field(20, ge=1, le=100, description="每页数量")
+    limit: int = Field(20, ge=1, le=100, description="每页数量")
 
 
 class DocumentStatistics(BaseModel):

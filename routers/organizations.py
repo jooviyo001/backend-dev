@@ -188,7 +188,7 @@ async def get_organizations(
 @router.get("/page", response_model=BaseResponse)
 async def get_organizations_page(
     page: int = Query(1, ge=1, description="页码"),
-    page_size: int = Query(10, ge=1, le=100, description="每页数量"),
+    limit: int = Query(10, ge=1, le=100, description="每页数量"),
     keyword: Optional[str] = Query(None, description="搜索关键词"),
     type: Optional[OrganizationType] = Query(None, description="组织类型"),
     status: Optional[OrganizationStatus] = Query(None, description="组织状态"),
@@ -231,7 +231,7 @@ async def get_organizations_page(
         
         # 分页
         total = query.count()
-        organizations = query.order_by(Organization.sort.asc(), Organization.created_at.desc()).offset((page - 1) * page_size).limit(page_size).all()
+        organizations = query.order_by(Organization.sort.asc(), Organization.created_at.desc()).offset((page - 1) * limit).limit(limit).all()
         
         # 构建响应数据
         items = []
@@ -267,7 +267,7 @@ async def get_organizations_page(
             "items": items,
             "total": total,
             "page": page,
-            "page_size": page_size
+            "limit": limit
         }
         
         return success_response(data=data, message="获取组织分页数据成功")
@@ -1071,7 +1071,7 @@ async def remove_organization_member(
 async def get_organization_members(
     department_id: str,
     page: int = Query(1, ge=1, description="页码"),
-    page_size: int = Query(10, ge=1, le=100, description="每页数量"),
+    limit: int = Query(10, ge=1, le=100, description="每页数量"),
     keyword: Optional[str] = Query(None, description="搜索关键词"),
     role: Optional[MemberRole] = Query(None, description="成员角色"),
     current_user: User = Depends(get_current_user),
@@ -1111,7 +1111,7 @@ async def get_organization_members(
         
         # 分页
         total = query.count()
-        members = query.order_by(organization_members.c.joined_at.desc()).offset((page - 1) * page_size).limit(page_size).all()
+        members = query.order_by(organization_members.c.joined_at.desc()).offset((page - 1) * limit).limit(limit).all()
         
         # 构建响应数据
         items = []
@@ -1130,8 +1130,8 @@ async def get_organization_members(
             "items": items,
             "total": total,
             "page": page,
-            "page_size": page_size,
-            "total_pages": (total + page_size - 1) // page_size
+            "limit": limit,
+            "total_pages": (total + limit - 1) // limit
         }
         
         return success_response(data=pagination_data, message="获取组织成员列表成功")
@@ -1304,7 +1304,7 @@ async def get_organization_children(
 async def get_organization_projects(
     department_id: str,
     page: int = Query(1, ge=1, description="页码"),
-    page_size: int = Query(10, ge=1, le=100, description="每页数量"),
+    limit: int = Query(10, ge=1, le=100, description="每页数量"),
     keyword: Optional[str] = Query(None, description="搜索关键词"),
     status: Optional[str] = Query(None, description="项目状态"),
     current_user: User = Depends(get_current_user),
@@ -1337,7 +1337,7 @@ async def get_organization_projects(
         
         # 分页
         total = query.count()
-        projects = query.order_by(Project.created_at.desc()).offset((page - 1) * page_size).limit(page_size).all()
+        projects = query.order_by(Project.created_at.desc()).offset((page - 1) * limit).limit(limit).all()
         
         # 构建响应数据
         items = []
@@ -1358,8 +1358,8 @@ async def get_organization_projects(
             "items": items,
             "total": total,
             "page": page,
-            "page_size": page_size,
-            "total_pages": (total + page_size - 1) // page_size
+            "limit": limit,
+            "total_pages": (total + limit - 1) // limit
         }
         
         return success_response(data=pagination_data, message="获取组织项目列表成功")

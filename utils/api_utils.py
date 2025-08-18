@@ -60,14 +60,14 @@ class APIResponse:
     
     @staticmethod
     def paginated(data: List[Any], total: int, page: int = 1, 
-                  page_size: int = 10, message: str = "查询成功") -> JSONResponse:
+                  limit: int = 10, message: str = "查询成功") -> JSONResponse:
         """分页响应"""
-        total_pages = (total + page_size - 1) // page_size
+        total_pages = (total + limit - 1) // limit
         
         meta = {
             "pagination": {
                 "page": page,
-                "page_size": page_size,
+                "limit": limit,
                 "total": total,
                 "total_pages": total_pages,
                 "has_next": page < total_pages,
@@ -541,19 +541,19 @@ class APIValidator:
     """API验证器"""
     
     @staticmethod
-    def validate_pagination_params(page: int = 1, page_size: int = 10, 
+    def validate_pagination_params(page: int = 1, limit: int = 10, 
                                    max_page_size: int = 100) -> tuple:
         """验证分页参数"""
         if page < 1:
             raise HTTPException(status_code=400, detail="页码必须大于0")
         
-        if page_size < 1:
+        if limit < 1:
             raise HTTPException(status_code=400, detail="每页大小必须大于0")
         
-        if page_size > max_page_size:
+        if limit > max_page_size:
             raise HTTPException(status_code=400, detail=f"每页大小不能超过{max_page_size}")
         
-        return page, page_size
+        return page, limit
     
     @staticmethod
     def validate_sort_params(sort_by: str = None, sort_order: str = "asc", 
@@ -657,14 +657,14 @@ def validate_pagination(max_page_size: int = 100):
         @wraps(func)
         def wrapper(*args, **kwargs):
             page = kwargs.get('page', 1)
-            page_size = kwargs.get('page_size', 10)
+            limit = kwargs.get('limit', 10)
             
-            page, page_size = api_validator.validate_pagination_params(
-                page, page_size, max_page_size
+            page, limit = api_validator.validate_pagination_params(
+                page, limit, max_page_size
             )
             
             kwargs['page'] = page
-            kwargs['page_size'] = page_size
+            kwargs['limit'] = limit
             
             return func(*args, **kwargs)
         

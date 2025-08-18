@@ -64,16 +64,28 @@ async def get_permissions(
 ):
     """获取权限列表"""
     try:
-        result = await permission_service.get_permissions_paginated(
+        permissions, total_count = permission_service.get_permissions_paginated(
             page=params.page,
-            page_size=params.limit,
+            limit=params.limit,
             query=params.keyword,
             resource_type=params.resource_type,
             action_type=params.action_type,
             start_time=params.created_at_start,
             end_time=params.created_at_end
         )
-        return result
+        
+        # 计算总页数
+        total_pages = (total_count + params.limit - 1) // params.limit
+        
+        return PermissionListResponse(
+            success=True,
+            message="获取权限列表成功",
+            data=permissions,
+            total=total_count,
+            page=params.page,
+            limit=params.limit,
+            totalPages=total_pages
+        )
     except BusinessException as e:
         raise HTTPException(status_code=400, detail=str(e))
 

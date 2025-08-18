@@ -28,7 +28,7 @@ class DocumentService:
         self,
         parent_id: str = "0",
         page: int = 1,
-        page_size: int = 20,
+        limit: int = 20,
         user_id: Optional[str] = None
     ) -> DocumentListResponse:
         """获取文档列表
@@ -36,7 +36,7 @@ class DocumentService:
         Args:
             parent_id: 父级文件夹ID
             page: 页码
-            page_size: 每页数量
+            limit: 每页数量
             user_id: 用户ID（用于权限控制）
             
         Returns:
@@ -56,8 +56,8 @@ class DocumentService:
         total = query.count()
         
         # 分页查询
-        offset = (page - 1) * page_size
-        documents = query.order_by(Document.type, Document.name).offset(offset).limit(page_size).all()
+        offset = (page - 1) * limit
+        documents = query.order_by(Document.type, Document.name).offset(offset).limit(limit).all()
         
         # 转换为响应格式
         items = [self._document_to_response(doc) for doc in documents]
@@ -66,7 +66,7 @@ class DocumentService:
             items=items,
             total=total,
             page=page,
-            page_size=page_size
+            limit=limit
         )
     
     def create_folder(

@@ -22,7 +22,7 @@ router = APIRouter()
 async def get_documents(
     parent_id: str = "0",
     page: int = 1,
-    page_size: int = 20,
+    limit: int = 20,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -31,7 +31,7 @@ async def get_documents(
     Args:
         parent_id: 父级文件夹ID，默认为'0'（根目录）
         page: 页码，默认为1
-        page_size: 每页数量，默认为20
+        limit: 每页数量，默认为20
         current_user: 当前用户
         db: 数据库会话
         
@@ -42,14 +42,14 @@ async def get_documents(
         # 验证分页参数
         if page < 1:
             page = 1
-        if page_size < 1 or page_size > 100:
-            page_size = 20
+        if limit < 1 or limit > 100:
+            limit = 20
         
         document_service = get_document_service(db)
         result = document_service.get_documents(
             parent_id=parent_id,
             page=page,
-            page_size=page_size,
+            limit=limit,
             user_id=str(current_user.id)
         )
         
