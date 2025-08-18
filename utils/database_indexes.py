@@ -33,12 +33,25 @@ def create_database_indexes():
         Index('idx_project_created_at', Project.created_at.desc()),
         Index('idx_project_soft_delete', Project.is_deleted, Project.deleted_at),
         
-        # 缺陷表索引
+        # 缺陷表索引 - 基础索引
         Index('idx_defect_status_priority', Defect.status, Defect.priority),
         Index('idx_defect_project_assignee', Defect.project_id, Defect.assignee_id),
         Index('idx_defect_severity', Defect.severity),
         Index('idx_defect_created_at', Defect.created_at.desc()),
         Index('idx_defect_soft_delete', Defect.is_deleted, Defect.deleted_at),
+        
+        # 缺陷表复合索引 - 提升查询性能
+        Index('idx_defect_project_status_priority', Defect.project_id, Defect.status, Defect.priority),
+        Index('idx_defect_assignee_status', Defect.assignee_id, Defect.status),
+        Index('idx_defect_severity_type', Defect.severity, Defect.defect_type),
+        Index('idx_defect_reporter_created', Defect.reporter_id, Defect.created_at.desc()),
+        Index('idx_defect_status_updated', Defect.status, Defect.updated_at.desc()),
+        Index('idx_defect_priority_due_date', Defect.priority, Defect.due_date),
+        Index('idx_defect_project_severity', Defect.project_id, Defect.severity),
+        Index('idx_defect_assignee_priority', Defect.assignee_id, Defect.priority),
+        
+        # 缺陷统计查询优化索引
+        Index('idx_defect_stats_combo', Defect.is_deleted, Defect.status, Defect.priority, Defect.severity),
         
         # 组织表索引
         Index('idx_organization_type_status', Organization.type, Organization.status),

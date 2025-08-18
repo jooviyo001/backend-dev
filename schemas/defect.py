@@ -114,6 +114,66 @@ class DefectCreate(BaseModel):
     source: Optional[str] = Field(None, max_length=100, description="缺陷来源")
 
 
+# 缺陷统计相关模式
+class DefectStatusStatistics(BaseModel):
+    """缺陷状态统计"""
+    status: DefectStatus = Field(..., description="缺陷状态")
+    count: int = Field(..., description="数量")
+    percentage: float = Field(..., description="百分比")
+
+
+class DefectPriorityStatistics(BaseModel):
+    """缺陷优先级统计"""
+    priority: DefectPriority = Field(..., description="缺陷优先级")
+    count: int = Field(..., description="数量")
+    percentage: float = Field(..., description="百分比")
+
+
+class DefectTypeStatistics(BaseModel):
+    """缺陷类型统计"""
+    type: DefectType = Field(..., description="缺陷类型")
+    count: int = Field(..., description="数量")
+    percentage: float = Field(..., description="百分比")
+
+
+class DefectSeverityStatistics(BaseModel):
+    """缺陷严重程度统计"""
+    severity: DefectSeverity = Field(..., description="缺陷严重程度")
+    count: int = Field(..., description="数量")
+    percentage: float = Field(..., description="百分比")
+
+
+class DefectTrendData(BaseModel):
+    """缺陷趋势数据"""
+    date: str = Field(..., description="日期 (YYYY-MM-DD)")
+    created_count: int = Field(..., description="新建缺陷数量")
+    resolved_count: int = Field(..., description="解决缺陷数量")
+    closed_count: int = Field(..., description="关闭缺陷数量")
+
+
+class DefectStatisticsResponse(BaseModel):
+    """缺陷统计响应"""
+    # 总体统计
+    total_count: int = Field(..., description="缺陷总数")
+    open_count: int = Field(..., description="未关闭缺陷数")
+    closed_count: int = Field(..., description="已关闭缺陷数")
+    overdue_count: int = Field(..., description="逾期缺陷数")
+    unassigned_count: int = Field(..., description="未分配缺陷数")
+    
+    # 分类统计
+    status_statistics: List[DefectStatusStatistics] = Field(..., description="状态统计")
+    priority_statistics: List[DefectPriorityStatistics] = Field(..., description="优先级统计")
+    type_statistics: List[DefectTypeStatistics] = Field(..., description="类型统计")
+    severity_statistics: List[DefectSeverityStatistics] = Field(..., description="严重程度统计")
+    
+    # 趋势数据 (最近30天)
+    trend_data: List[DefectTrendData] = Field(..., description="趋势数据")
+    
+    # 项目统计 (如果指定了项目)
+    project_id: Optional[str] = Field(None, description="项目ID")
+    project_name: Optional[str] = Field(None, description="项目名称")
+
+
 class DefectPageQuery(BaseModel):
     """缺陷分页查询请求模型"""
     page: int = Field(1, ge=1, description="页码")
@@ -138,7 +198,8 @@ class DefectPageQuery(BaseModel):
 
 # 缺陷分配模式
 class DefectAssign(BaseModel):
-    assignee_id: str = Field(..., description="执行人ID")
+    assignee_id: Optional[str] = Field(None, description="执行人ID，为空表示取消分配")
+    comment: Optional[str] = Field(None, description="分配备注")
 
 # 缺陷状态历史模式
 class DefectStatusHistory(BaseModel):

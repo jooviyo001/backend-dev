@@ -30,7 +30,11 @@ from .task import (
 )
 
 # 缺陷相关模式
-from .defect import DefectBase, DefectResponse, DefectCreate, DefectUpdate
+from .defect import (
+    DefectBase, DefectResponse, DefectCreate, DefectPageQuery, DefectAssign,
+    DefectStatusHistory, DefectUpdate, DefectStatusStatistics, DefectPriorityStatistics,
+    DefectTypeStatistics, DefectSeverityStatistics, DefectTrendData, DefectStatisticsResponse
+)
 
 # 职位相关模式
 from .positions import (
@@ -82,7 +86,9 @@ __all__ = [
     "AttachmentResponse", "CommentBase", "CommentCreate", "CommentResponse",
     
     # 缺陷相关模式
-    "DefectBase", "DefectResponse", "DefectCreate", "DefectUpdate",
+    "DefectBase", "DefectResponse", "DefectCreate", "DefectPageQuery", "DefectAssign",
+    "DefectStatusHistory", "DefectUpdate", "DefectStatusStatistics", "DefectPriorityStatistics",
+    "DefectTypeStatistics", "DefectSeverityStatistics", "DefectTrendData", "DefectStatisticsResponse",
     
     # 职位相关模式
     "PositionBase", "PositionCreate", "PositionUpdate", "PositionResponse", "PositionListResponse",

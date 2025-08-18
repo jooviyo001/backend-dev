@@ -145,12 +145,12 @@ def check_permission(user: User, required_permission: str) -> bool:
 
         "admin": ["user:read", "user:write", "project:read", "project:write", 
                  "task:read", "task:write", "organization:read", "organization:write",
-                 "defect:read", "defect:write", "upload:read", "upload:write", "upload:delete"],
+                 "defect:read", "defect:write", "defect:assign", "upload:read", "upload:write", "upload:delete"],
         "manager": ["user:read", "project:read", "project:write", 
                    "task:read", "task:write", "organization:read",
-                   "defect:read", "defect:write", "upload:read", "upload:write", "upload:delete"],
+                   "defect:read", "defect:write", "defect:assign", "upload:read", "upload:write", "upload:delete"],
         "member": ["user:read", "project:read", "task:read", "task:write",
-                  "defect:read", "defect:write", "upload:read", "upload:write"],
+                  "defect:read", "defect:write", "defect:assign", "upload:read", "upload:write"],
         "user": ["user:read", "project:read", "task:read", "defect:read", "upload:read"]
     }
     

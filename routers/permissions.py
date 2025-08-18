@@ -47,8 +47,8 @@ PERMISSION_MODULES = {
     "defect": {
         "name": "缺陷管理",
         "code": "defect",
-        "description": "缺陷报告、跟踪、修复状态管理等功能",
-        "permissions": ["defect:read", "defect:write"]
+        "description": "缺陷报告、跟踪、修复状态管理、分配等功能",
+        "permissions": ["defect:read", "defect:write", "defect:assign"]
     },
     "upload": {
         "name": "文件管理",
@@ -68,12 +68,12 @@ PERMISSION_MODULES = {
 ROLE_PERMISSIONS = {
     "admin": ["user:read", "user:write", "project:read", "project:write", 
              "task:read", "task:write", "organization:read", "organization:write",
-             "defect:read", "defect:write", "upload:read", "upload:write", "upload:delete"],
+             "defect:read", "defect:write", "defect:assign", "upload:read", "upload:write", "upload:delete"],
     "manager": ["user:read", "project:read", "project:write", 
                "task:read", "task:write", "organization:read",
-               "defect:read", "defect:write", "upload:read", "upload:write", "upload:delete"],
+               "defect:read", "defect:write", "defect:assign", "upload:read", "upload:write", "upload:delete"],
     "member": ["user:read", "project:read", "task:read", "task:write",
-              "defect:read", "defect:write", "upload:read", "upload:write"],
+              "defect:read", "defect:write", "defect:assign", "upload:read", "upload:write"],
     "user": ["user:read", "project:read", "task:read", "defect:read", "upload:read"]
 }
 
