@@ -55,7 +55,7 @@ class CommentListResponse(BaseModel):
     total: int = Field(..., description="总数量")
     page: int = Field(..., description="当前页码")
     size: int = Field(..., description="每页大小")
-    pages: int = Field(..., description="总页数")
+    totalPages: int = Field(..., description="总页数")
 
 
 # 解决前向引用问题

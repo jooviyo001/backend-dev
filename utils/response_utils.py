@@ -127,7 +127,7 @@ def list_response(records: List[Any], total: Optional[int] = None, page: int = 1
         "total": total,
         "page": page,
         "size": size,
-        "pages": ceil(total / size) if size > 0 else 0
+        "totalPages": ceil(total / size) if size > 0 else 0
     }
     
     return standard_response(data=data, code=code, message=message)

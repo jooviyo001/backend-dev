@@ -98,14 +98,14 @@ async def get_comments(
     comments = query.offset(offset).limit(size).all()
     
     # 计算总页数
-    pages = math.ceil(total / size) if total > 0 else 1
+    totalPages = math.ceil(total / size) if total > 0 else 1
     
     return CommentListResponse(
         comments=[CommentResponse.model_validate(comment) for comment in comments],
         total=total,
         page=page,
         size=size,
-        pages=pages
+        totalPages=totalPages
     )
 
 

@@ -13,7 +13,7 @@ from datetime import datetime
 import logging
 from functools import wraps
 
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator
 try:
     from pydantic_settings import BaseSettings
 except ImportError:
@@ -36,10 +36,10 @@ class ConfigType(str, Enum):
 
 class Environment(str, Enum):
     """环境类型枚举"""
-    DEVELOPMENT = "development"
-    TESTING = "testing"
-    STAGING = "staging"
-    PRODUCTION = "production"
+    DEVELOPMENT = "development"  # 开发环境
+    TESTING = "testing"          # 测试环境
+    STAGING = "staging"          # 预发布环境
+    PRODUCTION = "production"    # 生产环境
 
 
 @dataclass
@@ -61,7 +61,7 @@ class ConfigItem:
         if self.required and self.value is None:
             return False
         
-        if self.validator_func:
+        if self.environment and self.environment != Environment(os.getenv("ENVIRONMENT", "development")):
             try:
                 return self.validator_func(self.value)
             except Exception as e:
@@ -77,16 +77,18 @@ class ConfigItem:
 
 class DatabaseConfig(BaseSettings):
     """数据库配置"""
-    host: str = Field(default="localhost", env="DB_HOST")
-    port: int = Field(default=5432, env="DB_PORT")
-    username: str = Field(default="postgres", env="DB_USERNAME")
-    password: str = Field(default="", env="DB_PASSWORD")
-    database: str = Field(default="project_db", env="DB_DATABASE")
-    pool_size: int = Field(default=10, env="DB_POOL_SIZE")
-    max_overflow: int = Field(default=20, env="DB_MAX_OVERFLOW")
-    pool_timeout: int = Field(default=30, env="DB_POOL_TIMEOUT")
-    pool_recycle: int = Field(default=3600, env="DB_POOL_RECYCLE")
-    echo: bool = Field(default=False, env="DB_ECHO")
+    model_config = {"extra": "allow", "env_file": ".env", "env_file_encoding": "utf-8"} # 允许额外字段
+    
+    host: str = Field(default="localhost", env="DB_HOST", description="数据库主机")
+    port: int = Field(default=5432, env="DB_PORT", description="数据库端口")
+    username: str = Field(default="postgres", env="DB_USERNAME", description="数据库用户名")
+    password: str = Field(default="", env="DB_PASSWORD", description="数据库密码")
+    database: str = Field(default="project_db", env="DB_DATABASE", description="数据库名称")
+    pool_size: int = Field(default=10, env="DB_POOL_SIZE", description="连接池大小")
+    max_overflow: int = Field(default=20, env="DB_MAX_OVERFLOW", description="最大溢出连接数")
+    pool_timeout: int = Field(default=30, env="DB_POOL_TIMEOUT", description="连接池超时时间")
+    pool_recycle: int = Field(default=3600, env="DB_POOL_RECYCLE", description="连接池回收时间")
+    echo: bool = Field(default=False, env="DB_ECHO", description="是否打印SQL语句")
     
     @field_validator('port')
     def validate_port(cls, v):
@@ -103,14 +105,12 @@ class DatabaseConfig(BaseSettings):
     def get_database_url(self) -> str:
         """获取数据库连接URL"""
         return f"postgresql://{self.username}:{self.password}@{self.host}:{self.port}/{self.database}"
-    
-    class Config:
-        env_file = ".env"
-        env_file_encoding = "utf-8"
 
 
 class SecurityConfig(BaseSettings):
     """安全配置"""
+    model_config = {"extra": "allow", "env_file": ".env", "env_file_encoding": "utf-8"}
+    
     secret_key: str = Field(env="SECRET_KEY")
     algorithm: str = Field(default="HS256", env="JWT_ALGORITHM")
     access_token_expire_minutes: int = Field(default=30, env="ACCESS_TOKEN_EXPIRE_MINUTES")
@@ -136,14 +136,12 @@ class SecurityConfig(BaseSettings):
         if v < 1:
             raise ValueError('令牌过期时间必须大于0')
         return v
-    
-    class Config:
-        env_file = ".env"
-        env_file_encoding = "utf-8"
 
 
 class FeatureFlags(BaseSettings):
     """功能开关配置"""
+    model_config = {"extra": "allow", "env_file": ".env", "env_file_encoding": "utf-8"}
+    
     enable_user_registration: bool = Field(default=True, env="ENABLE_USER_REGISTRATION")
     enable_email_verification: bool = Field(default=True, env="ENABLE_EMAIL_VERIFICATION")
     enable_sms_notification: bool = Field(default=False, env="ENABLE_SMS_NOTIFICATION")
@@ -158,14 +156,12 @@ class FeatureFlags(BaseSettings):
     enable_swagger_ui: bool = Field(default=True, env="ENABLE_SWAGGER_UI")
     enable_debug_mode: bool = Field(default=False, env="ENABLE_DEBUG_MODE")
     enable_maintenance_mode: bool = Field(default=False, env="ENABLE_MAINTENANCE_MODE")
-    
-    class Config:
-        env_file = ".env"
-        env_file_encoding = "utf-8"
 
 
 class BusinessConfig(BaseSettings):
     """业务配置"""
+    model_config = {"extra": "allow", "env_file": ".env", "env_file_encoding": "utf-8"}
+    
     default_page_size: int = Field(default=10, env="DEFAULT_PAGE_SIZE")
     max_page_size: int = Field(default=100, env="MAX_PAGE_SIZE")
     max_file_size_mb: int = Field(default=10, env="MAX_FILE_SIZE_MB")
@@ -188,14 +184,12 @@ class BusinessConfig(BaseSettings):
     def get_allowed_extensions(self) -> List[str]:
         """获取允许的文件扩展名列表"""
         return [ext.strip() for ext in self.allowed_file_extensions.split(',')]
-    
-    class Config:
-        env_file = ".env"
-        env_file_encoding = "utf-8"
 
 
 class PerformanceConfig(BaseSettings):
     """性能配置"""
+    model_config = {"extra": "allow", "env_file": ".env", "env_file_encoding": "utf-8"}
+    
     cache_ttl_seconds: int = Field(default=3600, env="CACHE_TTL_SECONDS")
     query_timeout_seconds: int = Field(default=30, env="QUERY_TIMEOUT_SECONDS")
     api_rate_limit_per_minute: int = Field(default=60, env="API_RATE_LIMIT_PER_MINUTE")
@@ -204,10 +198,6 @@ class PerformanceConfig(BaseSettings):
     max_concurrent_requests: int = Field(default=100, env="MAX_CONCURRENT_REQUESTS")
     connection_pool_size: int = Field(default=20, env="CONNECTION_POOL_SIZE")
     slow_query_threshold_ms: int = Field(default=1000, env="SLOW_QUERY_THRESHOLD_MS")
-    
-    class Config:
-        env_file = ".env"
-        env_file_encoding = "utf-8"
 
 
 class ConfigManager:

@@ -10,10 +10,9 @@ from enum import Enum
 
 from models.permission import Permission, RolePermission, UserPermissionCache, role_permissions
 from models.role import Role
-# from models.user import User  # 避免循环导入，在函数内部导入
 from schemas.permission import (
-    PermissionCreate, PermissionUpdate, PermissionResponse,
-    RolePermissionAssign, UserPermissionResponse, PermissionCheckRequest
+    UserPermissionResponse, PermissionCheckRequest, PermissionCheckResponse,
+    RolePermissionResponse, PermissionModule
 )
 from utils.exceptions import BusinessException, ResourceNotFoundException, ValidationException
 from utils.status_codes import NOT_FOUND, VALIDATION_ERROR, CONFLICT, FORBIDDEN
@@ -54,7 +53,7 @@ class PermissionService:
     
     @invalidate_cache("permission_list")
     @invalidate_cache("active_permissions")
-    def create_permission(self, permission_data: PermissionCreate) -> Permission:
+    def create_permission(self, permission_data: dict) -> Permission:
         """创建新权限
         
         Args:
@@ -132,7 +131,7 @@ class PermissionService:
     @invalidate_cache("permission_list")
     @invalidate_cache("permission_detail")
     @invalidate_cache("active_permissions")
-    def update_permission(self, permission_id: str, permission_data: PermissionUpdate) -> Permission:
+    def update_permission(self, permission_id: str, permission_data: dict) -> Permission:
         """更新权限信息
         
         Args:

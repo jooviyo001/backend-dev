@@ -19,8 +19,8 @@ router = APIRouter()
 async def get_positions(
     include_inactive: bool = Query(False, description="是否包含已停用的职位"),
     search: Optional[str] = Query(None, description="搜索关键词"),
-    pageNum: int = Query(1, ge=1, description="页码"),
-    pageSize: int = Query(10, ge=1, le=100, description="每页数量"),
+    page: int = Query(1, ge=1, description="页码"),
+    limit: int = Query(10, ge=1, le=100, description="每页数量"),
     db: Session = Depends(get_db),
     current_user = Depends(require_permission("user:read"))
 ):
@@ -47,8 +47,8 @@ async def get_positions(
         total = query.count()
         
         # 分页
-        offset = (pageNum - 1) * pageSize
-        positions = query.offset(offset).limit(pageSize).all()
+        offset = (page - 1) * limit
+        positions = query.offset(offset).limit(limit).all()
         
         # 转换为响应格式
         position_list = []
@@ -75,9 +75,9 @@ async def get_positions(
             data={
                 "records": position_list,
                 "total": total,
-                "pageNum": pageNum,
-                "pageSize": pageSize,
-                "pages": (total + pageSize - 1) // pageSize
+                "page": page,
+                "limit": limit,
+                "totalPages": (total + limit - 1) // limit
             },
             message="获取职位列表成功"
         )

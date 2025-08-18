@@ -112,22 +112,22 @@ def calculate_pagination_info(total: int, page: int, size: int) -> dict:
             'total': 0,
             'page': 1,
             'size': size,
-            'pages': 0,
+            'totalPages': 0,
             'has_prev': False,
             'has_next': False,
             'prev_page': None,
             'next_page': None
         }
     
-    pages = ceil(total / size)
+    totalPages = ceil(total / size)
     has_prev = page > 1
-    has_next = page < pages
+    has_next = page < totalPages
     
     return {
         'total': total,
         'page': page,
         'size': size,
-        'pages': pages,
+        'totalPages': totalPages,
         'has_prev': has_prev,
         'has_next': has_next,
         'prev_page': page - 1 if has_prev else None,

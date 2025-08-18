@@ -22,5 +22,5 @@ class PaginationResponse(BaseModel):
     total: int
     page: int
     size: int
-    pages: int
+    totalPages: int
     items: List[Any]

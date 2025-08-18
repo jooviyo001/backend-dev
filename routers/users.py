@@ -93,8 +93,7 @@ async def get_users(
     position: Optional[str] = Query(None, description="职位过滤"),
     department: Optional[str] = Query(None, description="部门过滤"),
     page: int = Query(1, ge=1, description="页码"),
-    limit: Optional[int] = Query(None, ge=1, le=1000, description="每页数量"),
-    pageSize: Optional[int] = Query(None, ge=1, le=100, description="每页数量(兼容参数)"),
+    limit: Optional[int] = Query(None, ge=1, le=100, description="每页数量"),
     db: Session = Depends(get_db),
     current_user = Depends(require_permission("user:read"))
 ):
@@ -105,8 +104,8 @@ async def get_users(
 
     from utils.response_utils import list_response, paginate_query
     
-    # 处理分页参数，优先使用 limit，如果没有则使用 pageSize，默认为 10
-    size = limit or pageSize or 10
+    # 处理分页参数，优先使用 limit，如果没有则使用 limit，默认为 10
+    size = limit or limit or 10
     
     # 预加载组织信息以获取组织名称
     from sqlalchemy.orm import joinedload
