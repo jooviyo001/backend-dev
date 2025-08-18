@@ -122,16 +122,10 @@ class RoleService:
         # 系统角色编码列表
         system_role_codes = ['ADMIN', 'USER', 'MANAGER', 'VIEWER', 'EDITOR']
         
-        # 使用单次查询获取所有统计数据，避免多次数据库访问
-        stats_query = self.db.query(
-            func.count(Role.id).label('total_roles'),
-            func.sum(func.case([(Role.is_active == True, 1)], else_=0)).label('active_roles'),
-            func.sum(func.case([(Role.code.in_(system_role_codes), 1)], else_=0)).label('system_roles')
-        ).first()
-        
-        total_roles = stats_query.total_roles or 0
-        active_roles = stats_query.active_roles or 0
-        system_roles = stats_query.system_roles or 0
+        # 分别查询各项统计数据
+        total_roles = self.db.query(func.count(Role.id)).scalar() or 0
+        active_roles = self.db.query(func.count(Role.id)).filter(Role.is_active == True).scalar() or 0
+        system_roles = self.db.query(func.count(Role.id)).filter(Role.code.in_(system_role_codes)).scalar() or 0
         
         # 自定义角色数
         custom_roles = total_roles - system_roles
