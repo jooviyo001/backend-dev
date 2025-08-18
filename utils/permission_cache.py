@@ -17,7 +17,7 @@ from redis import Redis
 from redis.exceptions import RedisError
 
 from models.database import get_db
-from services.permission_service import get_permission_service
+# from services.permission_service import get_permission_service  # 避免循环导入，在函数内部导入
 from utils.cache_manager import cache_manager
 from utils.logging_middleware import logger
 from utils.config_manager import config_manager
@@ -313,6 +313,7 @@ class PermissionCache:
         
         # 缓存未命中，从数据库获取
         try:
+            from services.permission_service import get_permission_service  # 避免循环导入
             permission_service = get_permission_service(db)
             permissions = permission_service.get_user_permissions(user_id)
             
@@ -373,6 +374,7 @@ class PermissionCache:
             if not db:
                 db = next(get_db())
             
+            from services.permission_service import get_permission_service  # 避免循环导入
             permission_service = get_permission_service(db)
             has_permission = permission_service.check_user_permission(
                 user_id=user_id,
@@ -423,6 +425,7 @@ class PermissionCache:
             if not db:
                 db = next(get_db())
             
+            from services.permission_service import get_permission_service  # 避免循环导入
             permission_service = get_permission_service(db)
             results = permission_service.batch_check_permissions(
                 user_id=user_id,
@@ -512,6 +515,7 @@ class PermissionCache:
             
             # 获取活跃用户列表进行预热
             db = next(get_db())
+            from services.permission_service import get_permission_service  # 避免循环导入
             permission_service = get_permission_service(db)
             
             # 这里可以根据实际需求实现预热逻辑

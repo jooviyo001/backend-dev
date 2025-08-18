@@ -10,7 +10,7 @@ from enum import Enum
 
 from models.permission import Permission, RolePermission, UserPermissionCache, role_permissions
 from models.role import Role
-from models.user import User
+# from models.user import User  # 避免循环导入，在函数内部导入
 from schemas.permission import (
     PermissionCreate, PermissionUpdate, PermissionResponse,
     RolePermissionAssign, UserPermissionResponse, PermissionCheckRequest
@@ -480,6 +480,7 @@ class PermissionService:
         Returns:
             List[Permission]: 权限列表
         """
+        from models.user import User  # 避免循环导入
         return self.db.query(Permission).join(
             RolePermission, Permission.id == RolePermission.permission_id
         ).join(
@@ -510,6 +511,7 @@ class PermissionService:
         Args:
             role_id: 角色ID
         """
+        from models.user import User  # 避免循环导入
         # 获取该角色下的所有用户
         user_ids = self.db.query(User.id).filter(User.role_id == role_id).all()
         user_id_list = [user_id[0] for user_id in user_ids]

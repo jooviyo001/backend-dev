@@ -14,7 +14,10 @@ import logging
 from functools import wraps
 
 from pydantic import BaseModel, Field, validator
-from pydantic.env_settings import BaseSettings
+try:
+    from pydantic_settings import BaseSettings
+except ImportError:
+    from pydantic import BaseSettings
 
 logger = logging.getLogger(__name__)
 
