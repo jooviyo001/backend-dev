@@ -236,3 +236,61 @@ class DefectUpdate(BaseModel):
     tags: Optional[List[str]] = Field(None, description="标签")
     due_date: Optional[datetime] = Field(None, description="截止时间")
     source: Optional[str] = Field(None, max_length=100, description="缺陷来源")
+
+
+# ==================== 批量操作模式 ====================
+
+# 批量指派请求模式
+class DefectBatchAssign(BaseModel):
+    defect_ids: List[str] = Field(..., min_items=1, max_items=100, description="缺陷ID列表，最多100个")
+    assignee_id: Optional[str] = Field(None, description="执行人ID，为空表示取消分配")
+    comment: Optional[str] = Field(None, max_length=500, description="分配备注")
+    
+    @field_validator('defect_ids')
+    @classmethod
+    def validate_defect_ids(cls, v):
+        """验证缺陷ID列表"""
+        if not v:
+            raise ValueError("缺陷ID列表不能为空")
+        if len(v) != len(set(v)):
+            raise ValueError("缺陷ID列表中存在重复项")
+        return v
+
+
+# 批量删除请求模式
+class DefectBatchDelete(BaseModel):
+    defect_ids: List[str] = Field(..., min_items=1, max_items=100, description="缺陷ID列表，最多100个")
+    comment: Optional[str] = Field(None, max_length=500, description="删除备注")
+    
+    @field_validator('defect_ids')
+    @classmethod
+    def validate_defect_ids(cls, v):
+        """验证缺陷ID列表"""
+        if not v:
+            raise ValueError("缺陷ID列表不能为空")
+        if len(v) != len(set(v)):
+            raise ValueError("缺陷ID列表中存在重复项")
+        return v
+
+
+# 批量操作结果项
+class BatchOperationResultItem(BaseModel):
+    defect_id: str = Field(..., description="缺陷ID")
+    success: bool = Field(..., description="操作是否成功")
+    message: str = Field(..., description="操作结果消息")
+    defect_title: Optional[str] = Field(None, description="缺陷标题")
+
+
+# 批量操作响应模式
+class BatchOperationResponse(BaseModel):
+    total_count: int = Field(..., description="总操作数量")
+    success_count: int = Field(..., description="成功操作数量")
+    failed_count: int = Field(..., description="失败操作数量")
+    results: List[BatchOperationResultItem] = Field(..., description="详细操作结果")
+    
+    @property
+    def success_rate(self) -> float:
+        """成功率"""
+        if self.total_count == 0:
+            return 0.0
+        return round(self.success_count / self.total_count * 100, 2)

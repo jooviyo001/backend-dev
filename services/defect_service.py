@@ -493,6 +493,204 @@ class DefectService:
         
         return defect
     
+    # ==================== 批量操作方法 ====================
+    
+    def batch_assign_defects(self, defect_ids: List[str], assignee_id: Optional[str], 
+                           current_user: User, comment: Optional[str] = None) -> Dict[str, Any]:
+        """批量指派缺陷责任人"""
+        from schemas.defect import BatchOperationResultItem, BatchOperationResponse
+        
+        results = []
+        success_count = 0
+        failed_count = 0
+        
+        # 验证执行人是否存在
+        assignee = None
+        if assignee_id:
+            try:
+                assignee = self.validate_user_exists(assignee_id, "执行人")
+            except HTTPException as e:
+                # 如果执行人不存在，所有操作都失败
+                for defect_id in defect_ids:
+                    results.append(BatchOperationResultItem(
+                        defect_id=defect_id,
+                        success=False,
+                        message=f"执行人不存在: {e.detail}",
+                        defect_title=None
+                    ))
+                    failed_count += 1
+                
+                return BatchOperationResponse(
+                    total_count=len(defect_ids),
+                    success_count=0,
+                    failed_count=len(defect_ids),
+                    results=results
+                )
+        
+        # 批量处理每个缺陷
+        for defect_id in defect_ids:
+            try:
+                # 验证缺陷是否存在
+                defect = self.validate_defect_exists(defect_id)
+                
+                # 权限检查
+                if not self.check_defect_permission(defect, current_user, "write"):
+                    results.append(BatchOperationResultItem(
+                        defect_id=defect_id,
+                        success=False,
+                        message="无权限操作此缺陷",
+                        defect_title=defect.title
+                    ))
+                    failed_count += 1
+                    continue
+                
+                # 记录旧的执行人
+                old_assignee_id = defect.assignee_id
+                
+                # 更新执行人
+                defect.assignee_id = assignee_id
+                defect.updated_at = datetime.now()
+                
+                # 状态自动变更逻辑
+                if not old_assignee_id and assignee_id:
+                    if defect.status == DefectStatus.NEW:
+                        defect.status = DefectStatus.ASSIGNED
+                        self.create_status_history(defect.id, DefectStatus.NEW, DefectStatus.ASSIGNED, 
+                                                 current_user.id, "缺陷已分配，状态自动变更")
+                
+                # 记录分配历史
+                operation_comment = comment or (
+                    f"批量分配给 {assignee.username}" if assignee else "批量取消分配"
+                )
+                
+                self.create_status_history(defect.id, defect.status, defect.status, 
+                                         current_user.id, operation_comment)
+                
+                results.append(BatchOperationResultItem(
+                    defect_id=defect_id,
+                    success=True,
+                    message="分配成功",
+                    defect_title=defect.title
+                ))
+                success_count += 1
+                
+            except HTTPException as e:
+                results.append(BatchOperationResultItem(
+                    defect_id=defect_id,
+                    success=False,
+                    message=e.detail,
+                    defect_title=None
+                ))
+                failed_count += 1
+            except Exception as e:
+                results.append(BatchOperationResultItem(
+                    defect_id=defect_id,
+                    success=False,
+                    message=f"操作失败: {str(e)}",
+                    defect_title=None
+                ))
+                failed_count += 1
+        
+        # 提交事务
+        try:
+            self.db.commit()
+        except Exception as e:
+            self.db.rollback()
+            raise HTTPException(status_code=500, detail=f"批量操作提交失败: {str(e)}")
+        
+        return BatchOperationResponse(
+            total_count=len(defect_ids),
+            success_count=success_count,
+            failed_count=failed_count,
+            results=results
+        )
+    
+    def batch_delete_defects(self, defect_ids: List[str], current_user: User, 
+                           comment: Optional[str] = None) -> Dict[str, Any]:
+        """批量删除缺陷（软删除）"""
+        from schemas.defect import BatchOperationResultItem, BatchOperationResponse
+        
+        results = []
+        success_count = 0
+        failed_count = 0
+        
+        # 批量处理每个缺陷
+        for defect_id in defect_ids:
+            try:
+                # 验证缺陷是否存在
+                defect = self.validate_defect_exists(defect_id)
+                
+                # 权限检查 - 只有创建者和管理员可以删除
+                if not self.check_defect_permission(defect, current_user, "delete"):
+                    results.append(BatchOperationResultItem(
+                        defect_id=defect_id,
+                        success=False,
+                        message="无权限删除此缺陷",
+                        defect_title=defect.title
+                    ))
+                    failed_count += 1
+                    continue
+                
+                # 检查缺陷是否已删除
+                if defect.is_deleted:
+                    results.append(BatchOperationResultItem(
+                        defect_id=defect_id,
+                        success=False,
+                        message="缺陷已被删除",
+                        defect_title=defect.title
+                    ))
+                    failed_count += 1
+                    continue
+                
+                # 软删除
+                defect.is_deleted = True
+                defect.deleted_at = datetime.now()
+                defect.updated_at = datetime.now()
+                
+                # 记录删除历史
+                operation_comment = comment or "批量删除缺陷"
+                self.create_status_history(defect.id, defect.status, defect.status, 
+                                         current_user.id, operation_comment)
+                
+                results.append(BatchOperationResultItem(
+                    defect_id=defect_id,
+                    success=True,
+                    message="删除成功",
+                    defect_title=defect.title
+                ))
+                success_count += 1
+                
+            except HTTPException as e:
+                results.append(BatchOperationResultItem(
+                    defect_id=defect_id,
+                    success=False,
+                    message=e.detail,
+                    defect_title=None
+                ))
+                failed_count += 1
+            except Exception as e:
+                results.append(BatchOperationResultItem(
+                    defect_id=defect_id,
+                    success=False,
+                    message=f"操作失败: {str(e)}",
+                    defect_title=None
+                ))
+                failed_count += 1
+        
+        # 提交事务
+        try:
+            self.db.commit()
+        except Exception as e:
+            self.db.rollback()
+            raise HTTPException(status_code=500, detail=f"批量操作提交失败: {str(e)}")
+        
+        return BatchOperationResponse(
+            total_count=len(defect_ids),
+            success_count=success_count,
+            failed_count=failed_count,
+            results=results
+        )
+    
     def update_defect(self, defect_id: str, defect_update: DefectUpdate, current_user: User) -> Defect:
         """更新缺陷"""
         defect = self.validate_defect_exists(defect_id)

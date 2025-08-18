@@ -13,7 +13,8 @@ from models.enums import DefectStatus, DefectPriority, DefectType, DefectSeverit
 from schemas.base import BaseResponse
 from schemas.defect import (
     DefectResponse, DefectCreate, DefectUpdate, DefectPageQuery,
-    DefectStatusHistory as DefectStatusHistorySchema, DefectAssign
+    DefectStatusHistory as DefectStatusHistorySchema, DefectAssign,
+    DefectBatchAssign, DefectBatchDelete, BatchOperationResponse
 )
 from services.defect_service import DefectService
 from utils.auth import require_permission
@@ -228,4 +229,90 @@ async def assign_defect(
     return standard_response(
         data=DefectResponse.model_validate(updated_defect, from_attributes=True),
         message="缺陷分配成功"
+    )
+
+
+# ==================== 批量操作接口 ====================
+
+# 批量指派缺陷责任人
+@router.put("/batch/assign", response_model=BaseResponse)
+async def batch_assign_defects(
+    batch_data: DefectBatchAssign,
+    defect_service: DefectService = Depends(get_defect_service),
+    current_user: User = Depends(require_permission("defect:assign"))
+):
+    """批量指派缺陷责任人
+    
+    支持批量分配缺陷给指定执行人，或批量取消分配。
+    最多支持100个缺陷的批量操作。
+    
+    权限要求：
+    - 需要 defect:assign 权限
+    - 只能操作有写入权限的缺陷
+    
+    操作规则：
+    - 如果assignee_id为空，表示取消分配
+    - 新建状态的缺陷分配后会自动变更为已分配状态
+    - 会记录操作历史和状态变更历史
+    """
+    # 使用服务层进行批量分配
+    result = defect_service.batch_assign_defects(
+        defect_ids=batch_data.defect_ids,
+        assignee_id=batch_data.assignee_id,
+        current_user=current_user,
+        comment=batch_data.comment
+    )
+    
+    # 根据操作结果确定响应消息
+    if result.success_count == result.total_count:
+        message = f"批量分配成功，共处理 {result.total_count} 个缺陷"
+    elif result.success_count > 0:
+        message = f"部分成功：成功 {result.success_count} 个，失败 {result.failed_count} 个"
+    else:
+        message = f"批量分配失败，共 {result.failed_count} 个缺陷操作失败"
+    
+    return standard_response(
+        data=result,
+        message=message
+    )
+
+
+# 批量删除缺陷
+@router.delete("/batch/delete", response_model=BaseResponse)
+async def batch_delete_defects(
+    batch_data: DefectBatchDelete,
+    defect_service: DefectService = Depends(get_defect_service),
+    current_user: User = Depends(require_permission("defect:write"))
+):
+    """批量删除缺陷（软删除）
+    
+    支持批量软删除缺陷，最多支持100个缺陷的批量操作。
+    
+    权限要求：
+    - 需要 defect:write 权限
+    - 只有缺陷创建者和管理员可以删除缺陷
+    
+    操作规则：
+    - 执行软删除，不会物理删除数据
+    - 已删除的缺陷不能重复删除
+    - 会记录删除操作历史
+    """
+    # 使用服务层进行批量删除
+    result = defect_service.batch_delete_defects(
+        defect_ids=batch_data.defect_ids,
+        current_user=current_user,
+        comment=batch_data.comment
+    )
+    
+    # 根据操作结果确定响应消息
+    if result.success_count == result.total_count:
+        message = f"批量删除成功，共处理 {result.total_count} 个缺陷"
+    elif result.success_count > 0:
+        message = f"部分成功：成功 {result.success_count} 个，失败 {result.failed_count} 个"
+    else:
+        message = f"批量删除失败，共 {result.failed_count} 个缺陷操作失败"
+    
+    return standard_response(
+        data=result,
+        message=message
     )
