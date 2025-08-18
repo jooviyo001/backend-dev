@@ -25,7 +25,7 @@ class User(Base, BaseModelMixin):
     avatar = Column(String(255), comment='头像URL地址')
     phone = Column(String(20), comment='手机号码')
     position_id = Column(String(25), ForeignKey("positions.id"), comment='用户岗位/职位ID')
-    position = relationship("Position", foreign_keys=[position_id])
+    position = relationship("Position", foreign_keys=[position_id], overlaps="users")
     department = Column(String(100), comment='用户所属组织名称')
     department_id = Column(String(25), ForeignKey("organizations.id"), comment='用户所属组织ID')
     role_id = Column(String(25), ForeignKey("roles.id"), comment='用户角色ID')

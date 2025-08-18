@@ -7,9 +7,6 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from .database import Base
 from utils.snowflake import generate_position_id
-from models.organization import Organization
-from models.role import Role
-from models.user import User
 
 class Position(Base):
     """
@@ -39,7 +36,7 @@ class Position(Base):
     created_by = Column(String(25), ForeignKey('users.id'), comment='创建人ID')
     updated_by = Column(String(25), ForeignKey('users.id'), comment='更新人ID')
     
-    users = relationship("User", foreign_keys="User.position_id", lazy="dynamic")
+    users = relationship("User", foreign_keys="User.position_id", lazy="dynamic", overlaps="position")
     organization = relationship("Organization", foreign_keys=[department_id])
     
     def __init__(self, code: str, name: str, description: str, department_id: str, is_active: bool = True):

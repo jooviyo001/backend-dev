@@ -12,29 +12,42 @@ from utils.database_schema_manager import ensure_database_schema
 from config import create_app, configure_middleware, configure_exception_handlers
 from config.app_config import configure_routes
 
+# 全局标志，避免重复初始化
+_initialized = False
+
+def initialize_database():
+    """初始化数据库（避免重复执行）"""
+    global _initialized
+    if _initialized:
+        return
+    
+    print("🔍 正在检查数据库表结构...")
+    try:
+        schema_success = ensure_database_schema()
+        if schema_success:
+            print("✅ 数据库表结构检查完成")
+        else:
+            print("❌ 数据库表结构检查失败，但继续启动")
+    except Exception as e:
+        print(f"❌ 数据库表结构检查出错: {e}")
+        print("⚠️  使用基础表创建方式...")
+        # 如果新的检查方式失败，回退到原有方式
+        Base.metadata.create_all(bind=engine)
+    
+    # 初始化数据库数据（仅在开发环境）
+    try:
+        init_database(force=False)
+    except Exception as e:
+        print(f"⚠️  数据库初始化跳过: {e}")
+    
+    _initialized = True
+
 # 初始化雪花算法（机器ID可以通过环境变量配置）
 machine_id = int(os.getenv("MACHINE_ID", "1"))  # 默认机器ID为1
 init_snowflake(machine_id)
 
-# 检查和更新数据库表结构
-print("🔍 正在检查数据库表结构...")
-try:
-    schema_success = ensure_database_schema()
-    if schema_success:
-        print("✅ 数据库表结构检查完成")
-    else:
-        print("❌ 数据库表结构检查失败，但继续启动")
-except Exception as e:
-    print(f"❌ 数据库表结构检查出错: {e}")
-    print("⚠️  使用基础表创建方式...")
-    # 如果新的检查方式失败，回退到原有方式
-    Base.metadata.create_all(bind=engine)
-
-# 初始化数据库数据（仅在开发环境）
-try:
-    init_database(force=False)
-except Exception as e:
-    print(f"⚠️  数据库初始化跳过: {e}")
+# 初始化数据库（避免重复执行）
+initialize_database()
 
 # 创建FastAPI应用
 app = create_app()

@@ -180,13 +180,14 @@ class DatabaseSchemaManager:
             print(f"❌ 添加列失败: {e}")
             return False
     
-    def update_database_schema(self) -> bool:
+    def update_database_schema(self, schema_issues: Dict[str, any] = None) -> bool:
         """更新数据库表结构"""
         print("🔄 正在更新数据库表结构...")
         
         try:
-            # 检查表结构
-            schema_issues = self.check_database_schema()
+            # 如果没有传入检查结果，则进行检查
+            if schema_issues is None:
+                schema_issues = self.check_database_schema()
             
             # 报告检查结果
             if schema_issues['missing_tables']:
@@ -235,8 +236,11 @@ class DatabaseSchemaManager:
             print("🏗️  确保基础表结构存在...")
             Base.metadata.create_all(bind=self.engine)
             
-            # 然后检查和更新表结构
-            return self.update_database_schema()
+            # 检查表结构（只检查一次）
+            schema_issues = self.check_database_schema()
+            
+            # 然后更新表结构（传入检查结果，避免重复检查）
+            return self.update_database_schema(schema_issues)
             
         except Exception as e:
             print(f"❌ 数据库表结构检查失败: {e}")
