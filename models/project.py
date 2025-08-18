@@ -32,7 +32,7 @@ class Project(Base):
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now(), comment='更新时间')
     
     # 关系
-    creator = relationship("User", back_populates="created_projects", foreign_keys=[creator_id])
+    creator = relationship("User", back_populates="created_projects", foreign_keys=[creator_id], overlaps="created_projects")
     manager = relationship("User", foreign_keys=[manager_id])
     organization = relationship("Organization", back_populates="projects")
     tasks = relationship("Task", back_populates="project")

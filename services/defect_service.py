@@ -192,12 +192,9 @@ class DefectService:
         # 按创建时间倒序排列
         db_query = db_query.order_by(desc(Defect.created_at))
         
-        # 使用优化的计数查询
-        total = QueryOptimizer.optimize_count_query(db_query)
-        
         # 分页查询
         from utils.pagination import paginate_query
-        defects = paginate_query(db_query, query.page, query.size)
+        total, defects = paginate_query(db_query, query.page, query.size)
         return total, defects
     
     @monitor_query_performance
@@ -362,19 +359,19 @@ class DefectService:
         
         # 填充创建数据
         for date, count in trend_query:
-            date_str = date.strftime('%Y-%m-%d')
+            date_str = date.strftime('%Y-%m-%d') if hasattr(date, 'strftime') else str(date)
             if date_str in trend_dict:
                 trend_dict[date_str]['created_count'] = count
         
         # 填充解决数据
         for date, count in resolved_query:
-            date_str = date.strftime('%Y-%m-%d')
+            date_str = date.strftime('%Y-%m-%d') if hasattr(date, 'strftime') else str(date)
             if date_str in trend_dict:
                 trend_dict[date_str]['resolved_count'] = count
         
         # 填充关闭数据
         for date, count in closed_query:
-            date_str = date.strftime('%Y-%m-%d')
+            date_str = date.strftime('%Y-%m-%d') if hasattr(date, 'strftime') else str(date)
             if date_str in trend_dict:
                 trend_dict[date_str]['closed_count'] = count
         

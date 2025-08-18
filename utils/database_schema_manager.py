@@ -188,6 +188,9 @@ class DatabaseSchemaManager:
             # 如果没有传入检查结果，则进行检查
             if schema_issues is None:
                 schema_issues = self.check_database_schema()
+            else:
+                # 如果已经传入检查结果，就不再重复检查，直接使用传入的结果
+                print("📋 使用已有的表结构检查结果...")
             
             # 报告检查结果
             if schema_issues['missing_tables']:

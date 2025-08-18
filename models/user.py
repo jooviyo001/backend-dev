@@ -41,10 +41,10 @@ class User(Base, BaseModelMixin):
     
     # 关系
     organization = relationship("Organization", foreign_keys=[department_id])
-    user_role = relationship("Role", back_populates="users", foreign_keys=[role_id])
-    created_projects = relationship("Project", back_populates="creator", foreign_keys="Project.creator_id")
-    assigned_tasks = relationship("Task", back_populates="assignee", foreign_keys="Task.assignee_id")
-    reported_tasks = relationship("Task", back_populates="reporter", foreign_keys="Task.reporter_id")
+    user_role = relationship("Role", back_populates="users", foreign_keys=[role_id], overlaps="users")
+    created_projects = relationship("Project", back_populates="creator", foreign_keys="Project.creator_id", overlaps="creator")
+    assigned_tasks = relationship("Task", back_populates="assignee", foreign_keys="Task.assignee_id", overlaps="assignee")
+    reported_tasks = relationship("Task", back_populates="reporter", foreign_keys="Task.reporter_id", overlaps="reporter")
     projects = relationship("Project", secondary=project_members, back_populates="members")
     organizations = relationship("Organization", secondary=organization_members, back_populates="members")
     comments = relationship("Comment", back_populates="author")

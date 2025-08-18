@@ -42,8 +42,8 @@ class Task(Base):
 
     # 关系
     project = relationship("Project", back_populates="tasks")
-    assignee = relationship("User", foreign_keys=[assignee_id], back_populates="assigned_tasks")
-    reporter = relationship("User", foreign_keys=[reporter_id], back_populates="reported_tasks")
+    assignee = relationship("User", foreign_keys=[assignee_id], back_populates="assigned_tasks", overlaps="assigned_tasks")
+    reporter = relationship("User", foreign_keys=[reporter_id], back_populates="reported_tasks", overlaps="reported_tasks")
     parent_task = relationship("Task", remote_side=[id], back_populates="sub_tasks")
     sub_tasks = relationship("Task", back_populates="parent_task")
     attachments = relationship("TaskAttachment", back_populates="task")

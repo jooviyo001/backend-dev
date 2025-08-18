@@ -36,7 +36,7 @@ class Role(Base):
     created_at = Column(DateTime, default=func.now(), comment='创建时间')
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now(), comment='更新时间')
     
-    users = relationship("User", back_populates="user_role", lazy="dynamic")
+    users = relationship("User", back_populates="user_role", lazy="dynamic", overlaps="user_role")
 
     def __init__(self, code: str, name: str, description: str, is_active: bool = True):
         self.code = code
