@@ -28,6 +28,8 @@ from .defect import Defect, DefectStatusHistory
 from .position import Position
 from .comment import Comment
 from .document import Document
+from .role import Role
+from .permission import Permission, RolePermission, UserPermissionCache, role_permissions
 
 # 为了向后兼容，将所有模型导出到models命名空间
 __all__ = [
@@ -48,5 +50,6 @@ __all__ = [
     # 模型类
     'User', 'Organization', 'Project',
     'Task', 'TaskAttachment', 'TaskComment',
+    'Role', 'Permission', 'RolePermission', 'UserPermissionCache', 'role_permissions',
     'Defect', 'DefectStatusHistory', 'Position', 'Comment', 'Document'
 ]

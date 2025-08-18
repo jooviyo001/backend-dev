@@ -207,6 +207,11 @@ def generate_document_id() -> str:
     return generate_snowflake_id("DOC")
 
 
+def generate_permission_id() -> str:
+    """生成权限ID，格式：PER + 雪花算法ID"""
+    return generate_snowflake_id("PER")
+
+
 def parse_snowflake_id(snowflake_id: int) -> dict:
     """
     解析雪花算法ID

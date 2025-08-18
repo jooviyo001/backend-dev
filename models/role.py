@@ -4,8 +4,9 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from .database import Base
 from utils.snowflake import generate_role_id
+from models.base import BaseModelMixin
 
-class Role(Base):
+class Role(Base, BaseModelMixin):
     """
     角色表模型,
     用于存储角色相关信息,
@@ -37,6 +38,9 @@ class Role(Base):
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now(), comment='更新时间')
     
     users = relationship("User", back_populates="user_role", lazy="dynamic", overlaps="user_role")
+    
+    # 权限关联关系（需要在permission.py导入后才能使用）
+    permissions = relationship("Permission", secondary="role_permissions", back_populates="roles", lazy="dynamic")
 
     def __init__(self, code: str, name: str, description: str, is_active: bool = True):
         self.code = code

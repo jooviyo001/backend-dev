@@ -1,7 +1,9 @@
-"""服务层模块
+"""服务层模块初始化文件
 
-包含所有业务逻辑服务类
+提供服务层的统一导入接口
 """
+
+from .permission_service import PermissionService, get_permission_service
 
 from .task_service import TaskService
 

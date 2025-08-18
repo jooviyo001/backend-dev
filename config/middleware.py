@@ -12,6 +12,7 @@ from starlette.requests import Request
 from starlette.responses import Response
 
 from utils.logging_middleware import RequestResponseLoggingMiddleware
+from utils.permission_middleware import PermissionMiddleware
 
 
 class ResponseMiddleware(BaseHTTPMiddleware):
@@ -128,6 +129,9 @@ def configure_middleware(app: FastAPI) -> None:
         ],
         expose_headers=["*"],  # 允许前端访问所有响应头
     )
+    
+    # 权限验证中间件
+    app.add_middleware(PermissionMiddleware)
     
     # 请求响应日志中间件
     log_level = os.getenv("LOG_LEVEL", "INFO")
