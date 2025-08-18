@@ -198,8 +198,22 @@ class QueryOptimizer:
         """
         if eager_load_relations:
             from sqlalchemy.orm import joinedload
+            from models.defect import Defect
+            
+            # 映射字符串关系名到实际的关系属性
+            relation_mapping = {
+                'reporter': Defect.reporter,
+                'assignee': Defect.assignee,
+                'handler': Defect.handler,
+                'project': Defect.project,
+                'parent': Defect.parent_defect,
+                'children': Defect.sub_defects,
+                'status_history': Defect.status_history
+            }
+            
             for relation in eager_load_relations:
-                query = query.options(joinedload(relation))
+                if relation in relation_mapping:
+                    query = query.options(joinedload(relation_mapping[relation]))
         
         return query
     
