@@ -55,7 +55,7 @@ async def create_permission(
     except BusinessException as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-@router.get("/totalPages", response_model=PermissionListResponse)
+@router.get("/pages", response_model=PermissionListResponse)
 async def get_permissions(
     params: PermissionSearchParams = Depends(),
     db: Session = Depends(get_db),

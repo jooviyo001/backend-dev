@@ -51,6 +51,7 @@ class PermissionSearchParams(BaseModel):
     sort_order: Optional[str] = Field(None, description="排序顺序")
     created_at: Optional[datetime] = Field(None, description="创建时间")
     updated_at: Optional[datetime] = Field(None, description="更新时间")
+    func: Optional[str] = Field(None, description="前端功能标识")
 
 # 权限列表响应
 class PermissionListResponse(BaseModel):
