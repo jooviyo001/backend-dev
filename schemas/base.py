@@ -8,6 +8,7 @@ def default_timestamp() -> str:
 
 # 基础响应模式
 class BaseResponse(BaseModel):
+    """基础响应模式"""
     code: str = "200"
     message: str = "操作成功"
     data: Optional[Any] = None
@@ -19,8 +20,12 @@ class BaseResponse(BaseModel):
 
 # 分页响应模式
 class PaginationResponse(BaseModel):
-    total: int
-    page: int
-    size: int
-    totalPages: int
-    items: List[Any]
+    """分页响应模式"""
+    total: int = Field(..., description="总记录数")
+    page: int = Field(..., description="当前页码")
+    size: int = Field(..., description="每页数量")
+    totalPages: int = Field(..., description="总页数")
+    items: List[Any] = Field(..., description="数据列表")
+
+    class Config:
+        from_attributes = True

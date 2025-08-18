@@ -66,18 +66,12 @@ async def get_permissions(
     try:
         result = await permission_service.get_permissions_paginated(
             page=params.page,
-            limit=params.limit,
-            name=params.name,
-            code=params.code,
-            module=params.module,
+            page_size=params.limit,
+            query=params.keyword,
             resource_type=params.resource_type,
             action_type=params.action_type,
-            status=params.status,
-            search_query=params.keyword,
-            sort_field=params.sort_field,
-            sort_order=params.sort_order,
-            created_at=params.created_at,
-            updated_at=params.updated_at
+            start_time=params.created_at_start,
+            end_time=params.created_at_end
         )
         return result
     except BusinessException as e:

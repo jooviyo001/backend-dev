@@ -2,7 +2,15 @@
 from typing import List, Dict, Any, Optional
 from pydantic import BaseModel, Field
 from datetime import datetime
+from enum import Enum
 from schemas.base import BaseResponse
+
+
+# 排序顺序枚举
+class SortOrder(str, Enum):
+    """排序顺序枚举"""
+    ASC = "asc"
+    DESC = "desc"
 
 
 # 基础权限模型
@@ -47,24 +55,25 @@ class PermissionSearchParams(BaseModel):
     action_type: Optional[str] = Field(None, description="操作类型")
     status: Optional[str] = Field(None, description="权限状态")
     keyword: Optional[str] = Field(None, description="搜索关键词")
-    sort_field: Optional[str] = Field(None, description="排序字段")
-    sort_order: Optional[str] = Field(None, description="排序顺序")
-    created_at: Optional[datetime] = Field(None, description="创建时间")
-    updated_at: Optional[datetime] = Field(None, description="更新时间")
+    sort_order: Optional[SortOrder] = Field(None, description="排序顺序，asc或desc")
+    created_at_start: Optional[datetime] = Field(None, description="创建时间范围-开始")
+    created_at_end: Optional[datetime] = Field(None, description="创建时间范围-结束")
+    updated_at_start: Optional[datetime] = Field(None, description="更新时间范围-开始")
+    updated_at_end: Optional[datetime] = Field(None, description="更新时间范围-结束")
     func: Optional[str] = Field(None, description="前端功能标识")
 
 # 权限列表响应
-class PermissionListResponse(BaseModel):
+class PermissionListResponse(BaseResponse):
     """权限列表响应"""
-    items: List[Permission]
-    total: int
-    page: int
-    limit: int
-    totalPages: int
+    data: List[Permission] = Field(..., description="权限列表")
+    total: int = Field(..., description="总记录数")
+    page: int = Field(..., description="当前页码")
+    limit: int = Field(..., description="每页数量")
+    totalPages: int = Field(..., description="总页数")
 
 
 # 批量操作参数
-class PermissionBatchOperationParams(BaseModel):
+class PermissionBatchOperationParams(BaseResponse):
     """权限批量操作参数"""
     permission_ids: List[str] = Field(..., description="权限ID列表")
     operation: str = Field(..., description="操作类型: activate, deactivate, delete")
