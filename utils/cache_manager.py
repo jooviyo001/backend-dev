@@ -64,6 +64,13 @@ class CacheManager:
     
     def _init_redis(self):
         """初始化Redis连接"""
+        # 检查Redis是否被启用
+        redis_enabled = os.getenv("REDIS_ENABLED", "true").lower() == "true"
+        if not redis_enabled:
+            print("⚠️ Redis缓存已被配置禁用，将仅使用本地内存缓存")
+            self.enabled = False
+            return
+            
         if not REDIS_AVAILABLE:
             print("⚠️ Redis未安装，缓存功能将被禁用")
             return

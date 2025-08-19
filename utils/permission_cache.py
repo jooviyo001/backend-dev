@@ -20,7 +20,7 @@ from models.database import get_db
 # from services.permission_service import get_permission_service  # 避免循环导入，在函数内部导入
 from utils.cache_manager import cache_manager
 from utils.logging_middleware import logger
-from utils.config_manager import config_manager
+from utils.config_manager import get_redis_config
 
 
 class PermissionCacheConfig:
@@ -150,15 +150,21 @@ class PermissionCache:
     def _create_redis_client(self) -> Optional[Redis]:
         """创建Redis客户端"""
         try:
-            redis_config = config_manager.get_redis_config()
+            redis_config = get_redis_config()
+            
+            # 检查Redis是否被启用
+            if not redis_config.get('enabled', True):
+                logger.info("Redis缓存已被配置禁用，将仅使用本地缓存")
+                return None
+                
             return Redis(
                 host=redis_config.get('host', 'localhost'),
                 port=redis_config.get('port', 6379),
                 db=redis_config.get('db', 0),
                 password=redis_config.get('password'),
                 decode_responses=True,
-                socket_timeout=5,
-                socket_connect_timeout=5,
+                socket_timeout=redis_config.get('socket_timeout', 5),
+                socket_connect_timeout=redis_config.get('socket_connect_timeout', 5),
                 retry_on_timeout=True
             )
         except Exception as e:

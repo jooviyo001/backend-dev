@@ -771,6 +771,112 @@ async def get_cache_stats(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"获取缓存统计失败: {str(e)}")
 
+
+@router.post("/cache/redis/toggle", response_model=BaseResponse)
+async def toggle_redis_cache(
+    enabled: bool = True,
+    permission_cache = Depends(get_permission_cache_dep),
+    current_user: User = Depends(require_admin)
+):
+    """动态切换Redis缓存开关"""
+    try:
+        import os
+        from utils.cache_manager import cache_manager
+        
+        # 更新环境变量
+        os.environ["REDIS_ENABLED"] = str(enabled).lower()
+        
+        # 重新初始化缓存管理器
+        if enabled:
+            cache_manager._init_redis()
+            # 重新创建权限缓存的Redis客户端
+            permission_cache.redis_client = permission_cache._create_redis_client()
+            message = "Redis缓存已启用"
+        else:
+            # 禁用Redis缓存
+            cache_manager.enabled = False
+            cache_manager.redis_client = None
+            cache_manager.async_redis_client = None
+            permission_cache.redis_client = None
+            message = "Redis缓存已禁用，将仅使用本地内存缓存"
+        
+        return success_response(
+            data={
+                "redis_enabled": enabled,
+                "cache_manager_enabled": cache_manager.enabled,
+                "permission_cache_redis_available": permission_cache.redis_client is not None
+            },
+            message=message
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"切换Redis缓存开关失败: {str(e)}"
+        )
+
+
+@router.get("/cache/redis/status", response_model=BaseResponse)
+async def get_redis_cache_status(
+    permission_cache = Depends(get_permission_cache_dep),
+    current_user: User = Depends(require_permission("system", "read"))
+):
+    """获取Redis缓存状态"""
+    try:
+        import os
+        from utils.cache_manager import cache_manager
+        
+        redis_enabled_env = os.getenv("REDIS_ENABLED", "true").lower() == "true"
+        
+        return success_response(
+            data={
+                "redis_enabled_env": redis_enabled_env,
+                "cache_manager_enabled": cache_manager.enabled,
+                "cache_manager_redis_available": cache_manager.redis_client is not None,
+                "permission_cache_redis_available": permission_cache.redis_client is not None,
+                "redis_connection_test": await _test_redis_connection()
+            },
+            message="Redis缓存状态获取成功"
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"获取Redis缓存状态失败: {str(e)}"
+        )
+
+
+async def _test_redis_connection():
+    """测试Redis连接"""
+    try:
+        from utils.cache_manager import cache_manager
+        from utils.permission_cache import get_permission_cache
+        
+        permission_cache = get_permission_cache()
+        
+        result = {
+            "cache_manager": False,
+            "permission_cache": False
+        }
+        
+        # 测试cache_manager的Redis连接
+        if cache_manager.redis_client:
+            try:
+                cache_manager.redis_client.ping()
+                result["cache_manager"] = True
+            except:
+                pass
+        
+        # 测试permission_cache的Redis连接
+        if permission_cache.redis_client:
+            try:
+                permission_cache.redis_client.ping()
+                result["permission_cache"] = True
+            except:
+                pass
+        
+        return result
+    except Exception:
+        return {"cache_manager": False, "permission_cache": False}
+
 # 权限模块API（兼容性保持）
 @router.get("/modules", response_model=BaseResponse)
 def get_permission_modules(

@@ -701,6 +701,23 @@ def get_database_url() -> str:
     return database_config.get_database_url()
 
 
+def get_redis_config() -> Dict[str, Any]:
+    """获取Redis配置"""
+    return {
+        'enabled': config_manager.get_config('redis_enabled', True),
+        'host': config_manager.get_config('redis_host', 'localhost'),
+        'port': config_manager.get_config('redis_port', 6379),
+        'db': config_manager.get_config('redis_db', 0),
+        'password': config_manager.get_config('redis_password', None),
+        'socket_timeout': config_manager.get_config('redis_socket_timeout', 30),
+        'socket_connect_timeout': config_manager.get_config('redis_socket_connect_timeout', 30),
+        'socket_keepalive': config_manager.get_config('redis_socket_keepalive', 30),
+        'socket_keepalive_delay': config_manager.get_config('redis_socket_keepalive_delay', 30),
+        'socket_keepalive_interval': config_manager.get_config('redis_socket_keepalive_interval', 30),
+        'socket_keepalive_max_failures': config_manager.get_config('redis_socket_keepalive_max_failures', 3)
+    }
+
+
 def is_debug_mode() -> bool:
     """是否调试模式"""
     return config_manager.get_config('debug', False)
