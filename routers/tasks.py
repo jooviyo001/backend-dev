@@ -1,110 +1,68 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Query, UploadFile, File
-from sqlalchemy.orm import Session
-from sqlalchemy import or_, and_, func
-from typing import Optional, List
-from math import ceil
-from datetime import datetime
-import json
-import os
-import uuid
+from fastapi import APIRouter, Depends, Query, HTTPException, status
+from sqlalchemy.orm import Session, joinedload
+from typing import Optional
+from datetime import date
 
 from models.database import get_db
-from models.models import Task, User, Project, TaskAttachment, TaskComment
-from schemas.schemas import (
-    TaskCreate, TaskUpdate, TaskResponse, BaseResponse, PaginationResponse,
-    TaskStatistics, BatchDeleteRequest, BatchAssignRequest,
-    AttachmentResponse, CommentCreate, CommentResponse
-)
-from utils.auth import (
-    get_current_active_user, require_permission
-)
+from models import User, UserRole, Task
+from schemas.base import BaseResponse
+from schemas.task import TaskResponse, TaskListResponse, TaskUpdate, \
+    TaskCreate, TaskBatchStatusUpdate, TaskBatchAssigneeUpdate, TaskBatchDelete, \
+    TaskStatusUpdate
+
+from utils.auth import require_permission
+from utils.response_utils import list_response, standard_response
+from services.task_service import TaskService
 
 router = APIRouter()
 
-@router.get("/", response_model=BaseResponse)
-async def get_tasks(
-    keyword: Optional[str] = Query(None, description="关键词搜索"),
-    status: Optional[str] = Query(None, description="任务状态"),
-    priority: Optional[str] = Query(None, description="优先级"),
-    type: Optional[str] = Query(None, description="任务类型"),
-    project_id: Optional[int] = Query(None, description="项目ID"),
-    assignee_id: Optional[int] = Query(None, description="分配人ID"),
-    reporter_id: Optional[int] = Query(None, description="报告人ID"),
-    tags: Optional[str] = Query(None, description="标签"),
-    due_date_from: Optional[datetime] = Query(None, description="截止日期范围开始"),
-    due_date_to: Optional[datetime] = Query(None, description="截止日期范围结束"),
-    created_at_from: Optional[datetime] = Query(None, description="创建时间范围开始"),
-    created_at_to: Optional[datetime] = Query(None, description="创建时间范围结束"),
-    page: int = Query(1, ge=1, description="页码"),
-    size: int = Query(10, ge=1, le=100, description="每页数量"),
+@router.get("/list", response_model=BaseResponse)
+async def get_tasks_list(
+    limit: int = Query(5, ge=1, le=100, description="返回数量限制"),
+    status: Optional[str] = Query(None, description="任务状态筛选"),
+    priority: Optional[str] = Query(None, description="优先级筛选"),
+    project_id: Optional[str] = Query(None, description="项目ID筛选"),
+    assignee_id: Optional[str] = Query(None, description="负责人ID筛选"),
+    params: Optional[str] = Query(None, description="JSON格式的参数（用于前端兼容）"),
     db: Session = Depends(get_db),
     current_user: User = Depends(require_permission("task:read"))
 ):
-    """获取任务列表"""
-    query = db.query(Task)
+    """获取任务列表（倒序查询最新任务）
     
-    # 关键词搜索
-    if keyword:
-        query = query.filter(
-            or_(
-                Task.title.contains(keyword),
-                Task.description.contains(keyword)
-            )
-        )
+    返回字段：
+    - 任务ID
+    - 任务标题
+    - 所属项目
+    - 负责人
+    - 优先级
+    - 状态
+    - 截止日期
+    - 创建日期
+    - 更新时间
+    """
+    task_service = TaskService(db)
     
-    # 状态过滤
-    if status:
-        query = query.filter(Task.status == status)
+    # 构建过滤参数
+    filters = {
+        "status": status,
+        "priority": priority,
+        "project_id": project_id,
+        "assignee_id": assignee_id,
+        "params": params
+    }
     
-    # 优先级过滤
-    if priority:
-        query = query.filter(Task.priority == priority)
+    task_list = task_service.get_tasks_list(
+        limit=limit,
+        status=status,
+        priority=priority,
+        project_id=project_id,
+        assignee_id=assignee_id,
+        current_user=current_user
+    )
     
-    # 类型过滤
-    if type:
-        query = query.filter(Task.type == type)
-    
-    # 项目过滤
-    if project_id:
-        query = query.filter(Task.project_id == project_id)
-    
-    # 分配人过滤
-    if assignee_id:
-        query = query.filter(Task.assignee_id == assignee_id)
-    
-    # 报告人过滤
-    if reporter_id:
-        query = query.filter(Task.reporter_id == reporter_id)
-    
-    # 标签过滤
-    if tags:
-        query = query.filter(Task.tags.contains(tags))
-    
-    # 截止日期范围过滤
-    if due_date_from:
-        query = query.filter(Task.due_date >= due_date_from)
-    if due_date_to:
-        query = query.filter(Task.due_date <= due_date_to)
-    
-    # 创建时间范围过滤
-    if created_at_from:
-        query = query.filter(Task.created_at >= created_at_from)
-    if created_at_to:
-        query = query.filter(Task.created_at <= created_at_to)
-    
-    # 分页
-    total = query.count()
-    tasks = query.offset((page - 1) * size).limit(size).all()
-    
-    return BaseResponse(
-        message="获取任务列表成功",
-        data=PaginationResponse(
-            total=total,
-            page=page,
-            size=size,
-            pages=ceil(total / size),
-            items=[TaskResponse.from_orm(task) for task in tasks]
-        )
+    return standard_response(
+        data=task_list,
+        message=f"获取任务列表成功，共 {len(task_list)} 条记录"
     )
 
 @router.get("/page", response_model=BaseResponse)
@@ -113,213 +71,123 @@ async def get_tasks_page(
     size: int = Query(10, ge=1, le=100, description="每页数量"),
     keyword: Optional[str] = Query(None, description="关键词搜索"),
     status: Optional[str] = Query(None, description="任务状态"),
-    priority: Optional[str] = Query(None, description="优先级"),
-    project_id: Optional[int] = Query(None, description="项目ID"),
-    assignee_id: Optional[int] = Query(None, description="分配人ID"),
+    department_id: Optional[str] = Query(None, description="组织ID"),
+    project_id: Optional[str] = Query(None, description="项目ID"),
+    assignee_id: Optional[str] = Query(None, description="执行人ID"),
+    reporter_id: Optional[str] = Query(None, description="报告人ID"),
+    priority: Optional[str] = Query(None, description="任务优先级"),
+    type: Optional[str] = Query(None, description="任务类型"),
+    start_date: Optional[date] = Query(None, description="开始日期 (YYYY-MM-DD)"),
+    end_date: Optional[date] = Query(None, description="结束日期 (YYYY-MM-DD)"),
     db: Session = Depends(get_db),
     current_user: User = Depends(require_permission("task:read"))
 ):
     """获取任务分页数据"""
-    return await get_tasks(
-        keyword, status, priority, None, project_id, assignee_id, None, None,
-        None, None, None, None, page, size, db, current_user
+    task_service = TaskService(db)
+    
+    # 构建过滤参数
+    filters = {
+        "keyword": keyword,
+        "status": status,
+        "department_id": department_id,
+        "project_id": project_id,
+        "assignee_id": assignee_id,
+        "reporter_id": reporter_id,
+        "priority": priority,
+        "type": type,
+        "start_date": start_date,
+        "end_date": end_date
+    }
+    
+    total, tasks = task_service.get_tasks_page(
+        current_user=current_user,
+        page=page,
+        size=size,
+        keyword=filters["keyword"],
+        status=filters["status"],
+        department_id=filters["department_id"],
+        project_id=filters["project_id"],
+        assignee_id=filters["assignee_id"],
+        reporter_id=filters["reporter_id"],
+        priority=filters["priority"],
+        type=filters["type"],
+        start_date=filters["start_date"],
+        end_date=filters["end_date"]
     )
 
-@router.get("/my", response_model=BaseResponse)
-async def get_my_tasks(
-    status: Optional[str] = Query(None, description="任务状态"),
-    priority: Optional[str] = Query(None, description="优先级"),
-    project_id: Optional[int] = Query(None, description="项目ID"),
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
-):
-    """获取当前用户的任务"""
-    query = db.query(Task).filter(Task.assignee_id == current_user.id)
-    
-    # 状态过滤
-    if status:
-        query = query.filter(Task.status == status)
-    
-    # 优先级过滤
-    if priority:
-        query = query.filter(Task.priority == priority)
-    
-    # 项目过滤
-    if project_id:
-        query = query.filter(Task.project_id == project_id)
-    
-    tasks = query.all()
-    
-    return BaseResponse(
-        message="获取我的任务成功",
-        data=[TaskResponse.from_orm(task) for task in tasks]
-    )
-
-@router.get("/statistics", response_model=BaseResponse)
-async def get_task_statistics(
-    project_id: Optional[int] = Query(None, description="项目ID"),
-    assignee_id: Optional[int] = Query(None, description="分配人ID"),
-    date_from: Optional[datetime] = Query(None, description="日期范围开始"),
-    date_to: Optional[datetime] = Query(None, description="日期范围结束"),
-    db: Session = Depends(get_db),
-    current_user: User = Depends(require_permission("task:read"))
-):
-    """获取任务统计信息"""
-    query = db.query(Task)
-    
-    # 项目过滤
-    if project_id:
-        query = query.filter(Task.project_id == project_id)
-    
-    # 分配人过滤
-    if assignee_id:
-        query = query.filter(Task.assignee_id == assignee_id)
-    
-    # 日期范围过滤
-    if date_from:
-        query = query.filter(Task.created_at >= date_from)
-    if date_to:
-        query = query.filter(Task.created_at <= date_to)
-    
-    # 统计各状态任务数量
-    total = query.count()
-    todo = query.filter(Task.status == "todo").count()
-    in_progress = query.filter(Task.status == "in_progress").count()
-    review = query.filter(Task.status == "review").count()
-    done = query.filter(Task.status == "done").count()
-    cancelled = query.filter(Task.status == "cancelled").count()
-    
-    # 统计逾期任务
-    overdue = query.filter(
-        and_(
-            Task.due_date < datetime.now(),
-            Task.status.notin_(["done", "cancelled"])
-        )
-    ).count()
-    
-    statistics = TaskStatistics(
+    return list_response(
+        records=[TaskResponse.model_validate(task, from_attributes=True) for task in tasks],
         total=total,
-        todo=todo,
-        in_progress=in_progress,
-        review=review,
-        done=done,
-        cancelled=cancelled,
-        overdue=overdue
-    )
-    
-    return BaseResponse(
-        message="获取任务统计成功",
-        data=statistics
+        page=page,
+        size=size,
+        message="获取任务列表成功"
     )
 
-@router.get("/{task_id}", response_model=BaseResponse)
-async def get_task(
-    task_id: int,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(require_permission("task:read"))
-):
-    """获取任务详情"""
-    task = db.query(Task).filter(Task.id == task_id).first()
-    if not task:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="任务不存在"
-        )
-    
-    return BaseResponse(
-        message="获取任务详情成功",
-        data=TaskResponse.from_orm(task)
-    )
-
-@router.post("/", response_model=BaseResponse)
+@router.post("/create", response_model=BaseResponse)
 async def create_task(
     task_data: TaskCreate,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_permission("task:write"))
 ):
-    """创建任务"""
-    # 检查项目是否存在
-    project = db.query(Project).filter(Project.id == task_data.project_id).first()
-    if not project:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="项目不存在"
+    """创建新任务"""
+    task_service = TaskService(db)
+    
+    try:
+        task = task_service.create_task(task_data, current_user)
+        
+        # 转换为响应模型
+        task_response = TaskResponse.model_validate(task)
+        
+        return standard_response(
+            data=task_response,
+            message="任务创建成功"
         )
-    
-    # 检查分配人是否存在
-    if task_data.assignee_id:
-        assignee = db.query(User).filter(User.id == task_data.assignee_id).first()
-        if not assignee:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="分配人不存在"
-            )
-    
-    # 创建新任务
-    tags_json = json.dumps(task_data.tags) if task_data.tags else None
-    db_task = Task(
-        title=task_data.title,
-        description=task_data.description,
-        status=task_data.status,
-        priority=task_data.priority,
-        type=task_data.type,
-        project_id=task_data.project_id,
-        assignee_id=task_data.assignee_id,
-        reporter_id=current_user.id,
-        due_date=task_data.due_date,
-        estimated_hours=task_data.estimated_hours,
-        tags=tags_json
-    )
-    
-    db.add(db_task)
-    db.commit()
-    db.refresh(db_task)
-    
-    return BaseResponse(
-        message="创建任务成功",
-        data=TaskResponse.from_orm(db_task)
-    )
-
-@router.put("/{task_id}", response_model=BaseResponse)
-async def update_task(
-    task_id: int,
-    task_data: TaskUpdate,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(require_permission("task:write"))
-):
-    """更新任务信息"""
-    task = db.query(Task).filter(Task.id == task_id).first()
-    if not task:
+        
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        db.rollback()
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="任务不存在"
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"创建任务失败: {str(e)}"
         )
-    
-    # 更新任务信息
-    update_data = task_data.dict(exclude_unset=True)
-    
-    # 处理标签
-    if 'tags' in update_data and update_data['tags'] is not None:
-        update_data['tags'] = json.dumps(update_data['tags'])
-    
-    for field, value in update_data.items():
-        setattr(task, field, value)
-    
-    db.commit()
-    db.refresh(task)
-    
-    return BaseResponse(
-        message="更新任务信息成功",
-        data=TaskResponse.from_orm(task)
-    )
 
 @router.delete("/{task_id}", response_model=BaseResponse)
 async def delete_task(
-    task_id: int,
+    task_id: str,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_permission("task:write"))
+    current_user: User = Depends(require_permission("task:delete"))
 ):
-    """删除任务"""
+    """删除任务
+    
+    Args:
+        task_id: 任务ID（支持T前缀格式或纯数字）
+    
+    Returns:
+        删除结果
+    """
+    # ID格式处理函数
+    def extract_id(id_str):
+        """提取ID的数字部分，兼容多种格式"""
+        if not id_str:
+            return None
+        # 如果是纯数字，直接返回
+        if id_str.isdigit():
+            return id_str
+        # 如果以T开头（任务ID）
+        if id_str.startswith('T') and id_str[1:].isdigit():
+            return id_str[1:]
+        return id_str
+    
+    # 提取任务ID
+    extracted_task_id = extract_id(task_id)
+    if not extracted_task_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="无效的任务ID格式"
+        )
+    
+    # 查找任务（使用原始task_id，因为数据库中存储的是带前缀的ID）
     task = db.query(Task).filter(Task.id == task_id).first()
     if not task:
         raise HTTPException(
@@ -327,170 +195,634 @@ async def delete_task(
             detail="任务不存在"
         )
     
-    db.delete(task)
-    db.commit()
+    # 检查权限：只有任务创建者、负责人或管理员可以删除任务
+    user_is_admin: bool = current_user.role == UserRole.ADMIN  # type: ignore
+    user_is_reporter: bool = current_user.id == task.reporter_id  # type: ignore
+    user_is_assignee: bool = current_user.id == task.assignee_id  # type: ignore
+    if not (user_is_admin or user_is_reporter or user_is_assignee):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="没有权限删除此任务"
+        )
     
-    return BaseResponse(message="删除任务成功")
+    # 删除任务
+    try:
+        db.delete(task)
+        db.commit()
+        
+        return standard_response(
+            data={"task_id": task_id},
+            message="任务删除成功"
+        )
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"删除任务失败: {str(e)}"
+        )
 
-@router.post("/batch-delete", response_model=BaseResponse)
+@router.put("/{task_id}", response_model=BaseResponse)
+async def update_task(
+    task_id: str,
+    task_update: TaskUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_permission("task:update"))
+):
+    """更新任务信息
+    
+    Args:
+        task_id: 任务ID（支持T前缀格式或纯数字）
+        task_update: 任务更新数据
+    
+    Returns:
+        更新后的任务信息
+    """
+    # ID格式处理函数,使用原来的ID
+
+    if not task_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="无效的任务ID格式"
+        )
+    
+    # 查找任务（使用原始带前缀的task_id）
+    task = db.query(Task).filter(Task.id == task_id).first()
+    if not task:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="任务不存在"
+        )
+    
+    # 检查权限：非管理员只能更新自己相关的任务
+    if current_user.role != UserRole.ADMIN:  # type: ignore
+        user_is_assignee = current_user.id == task.assignee_id
+        user_is_reporter = current_user.id == task.reporter_id
+        user_is_project_member = task.project and any(
+            member.id == current_user.id for member in task.project.members
+        )
+        
+        if not (user_is_assignee or user_is_reporter or user_is_project_member):  # type: ignore
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="没有权限更新此任务"
+            )
+    
+    # 更新任务字段
+    update_data = task_update.model_dump(exclude_unset=True)
+    
+    # 处理tags字段，转换为JSON字符串
+    if 'tags' in update_data and update_data['tags'] is not None:
+        import json
+        update_data['tags'] = json.dumps(update_data['tags'], ensure_ascii=False)
+
+    # 处理关联ID字段（保持带前缀的ID格式）
+    if 'project_id' in update_data and update_data['project_id']:
+        project_id = update_data['project_id']  # 保持原始ID格式
+        # 验证项目是否存在
+        project = db.query(Project).filter(Project.id == project_id).first()
+        if not project:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="指定的项目不存在"
+            )
+        update_data['project_id'] = project_id
+    
+    if 'assignee_id' in update_data and update_data['assignee_id']:
+        assignee_id = update_data['assignee_id']  # 保持原始ID格式
+        # 验证用户是否存在
+        assignee = db.query(User).filter(User.id == assignee_id).first()
+        if not assignee:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="指定的负责人不存在"
+            )
+        update_data['assignee_id'] = assignee_id
+    
+    # 更新任务
+    try:
+        for field, value in update_data.items():
+            setattr(task, field, value)
+        
+        # 更新时间戳
+        task.updated_at = datetime.now()  # type: ignore
+        
+        db.commit()
+        db.refresh(task)
+        
+        # 返回更新后的任务信息
+        return standard_response(
+            data=TaskResponse.model_validate(task),
+            message="任务更新成功"
+        )
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"更新任务失败: {str(e)}"
+        )
+
+@router.get("/{task_id}", response_model=BaseResponse)
+async def get_task_detail(
+    task_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_permission("task:read"))
+):
+    """获取任务详情
+    
+    Args:
+        task_id: 任务ID（支持T前缀格式或纯数字）
+    
+    Returns:
+        任务详细信息
+    """
+    # ID格式处理函数
+    def extract_id(id_str):
+        """提取ID的数字部分，兼容多种格式"""
+        if not id_str:
+            return None
+        # 如果是纯数字，直接返回
+        if id_str.isdigit():
+            return id_str
+        # 如果以T开头（任务ID）
+        if id_str.startswith('T') and id_str[1:].isdigit():
+            return id_str[1:]
+        # 如果以P开头（项目ID）
+        if id_str.startswith('P') and id_str[1:].isdigit():
+            return id_str[1:]
+        # 如果以U开头（用户ID）
+        if id_str.startswith('U') and id_str[1:].isdigit():
+            return id_str[1:]
+        # 如果以O开头（组织ID）
+        if id_str.startswith('O') and id_str[1:].isdigit():
+            return id_str[1:]
+        return id_str
+    
+    # 提取任务ID
+    extracted_task_id = extract_id(task_id)
+    if not extracted_task_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="无效的任务ID格式"
+        )
+    
+    # 查找任务，预加载用户关联数据（不包含项目信息）
+    task = db.query(Task).options(
+        joinedload(Task.assignee),
+        joinedload(Task.reporter),
+        joinedload(Task.project)
+    ).filter(Task.id == task_id).first()  # 修复：使用原始task_id而不是extracted_task_id
+    
+    if not task:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="任务不存在"
+        )
+    
+    # 检查权限：非管理员只能查看自己相关的任务
+    if current_user.role != UserRole.ADMIN:  # type: ignore
+        user_is_assignee = current_user.id == task.assignee_id
+        user_is_reporter = current_user.id == task.reporter_id
+        user_is_project_member = task.project and any(
+            member.id == current_user.id for member in task.project.members
+        )
+        
+        if not (user_is_assignee or user_is_reporter or user_is_project_member):  # type: ignore
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="没有权限查看此任务"
+            )
+    
+    # 返回任务详情
+    task_data = TaskResponse.model_validate(task)
+    
+    return standard_response(
+        data=task_data,
+        message="获取任务详情成功"
+    )
+
+# 更新任务状态
+@router.put("/{task_id}/status", response_model=BaseResponse)
+async def update_task_status(
+    task_id: str,
+    status_update: TaskStatusUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_permission("task:write"))
+):
+    """更新任务状态
+    
+    Args:
+        task_id: 任务ID（支持T前缀格式或纯数字）
+        status_update: 包含新状态的请求体
+    
+    Returns:
+        更新后的任务信息
+    """
+    
+    # 查找任务
+    task = db.query(Task).filter(Task.id == task_id).first()
+    if not task:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="任务不存在"
+        )
+    
+    # 检查权限：只有任务创建者、负责人或管理员可以更新任务
+    user_is_admin = current_user.role == UserRole.ADMIN  # type: ignore
+    unauthorized_tasks = []
+    
+    if not user_is_admin:  # type: ignore
+        for task in tasks:  # type: ignore
+            user_is_reporter = current_user.id == task.reporter_id
+            user_is_assignee = current_user.id == task.assignee_id
+            if not (user_is_reporter or user_is_assignee):  # type: ignore
+                unauthorized_tasks.append(task.id)
+    
+    if unauthorized_tasks:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="没有权限更新以下任务: " + ", ".join(unauthorized_tasks)
+        )
+    
+    # 检查状态是否合法
+    if status_update.status not in TaskStatus:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="无效的任务状态"
+        )
+    
+    # 检查状态是否改变
+    if status_update.status == task.status:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="任务状态未改变"
+        )
+    
+    # 更新任务状态
+    task.status = status_update.status  # type: ignore
+    task.updated_at = datetime.now()  # type: ignore
+    db.commit()
+    db.refresh(task)
+    
+    # 返回更新后的任务信息
+    return standard_response(
+        data=TaskResponse.model_validate(task),
+        message="任务状态更新成功"
+    ) 
+
+# 批量更新任务状态
+@router.put("/batch/status", response_model=BaseResponse)
+async def batch_update_task_status(
+    batch_update: TaskBatchStatusUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_permission("task:write"))
+):
+    """批量更新任务状态
+    
+    只支持更新为以下状态：
+    - todo: 待办
+    - in_progress: 进行中  
+    - done: 完成
+    
+    Args:
+        batch_update: 批量更新请求，包含任务ID列表和目标状态
+    
+    Returns:
+        更新结果统计
+    """
+    if not batch_update.task_ids:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="任务ID列表不能为空"
+        )
+    
+    # 查询要更新的任务
+    tasks = db.query(Task).filter(Task.id.in_(batch_update.task_ids)).all()
+    
+    if not tasks:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="未找到任何指定的任务"
+        )
+    
+    # 检查找到的任务数量
+    found_task_ids = [task.id for task in tasks]
+    missing_task_ids = [task_id for task_id in batch_update.task_ids if task_id not in found_task_ids]
+    
+    # 检查权限：只有任务创建者、负责人或管理员可以更新任务
+    user_is_admin = current_user.role == UserRole.ADMIN
+    unauthorized_tasks = []
+    
+    if not user_is_admin:  # type: ignore
+        for task in tasks:
+            user_is_reporter = current_user.id == task.reporter_id
+            user_is_assignee = current_user.id == task.assignee_id
+            if not (user_is_reporter or user_is_assignee): # type: ignore
+                unauthorized_tasks.append(task.id)
+    
+    if unauthorized_tasks:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"没有权限更新以下任务: {', '.join(unauthorized_tasks)}"
+        )
+    
+    # 执行批量更新
+    try:
+        updated_count = 0
+        for task in tasks:
+            task.status = batch_update.status  # type: ignore
+            task.updated_at = datetime.now()  # type: ignore
+            updated_count += 1
+        
+        db.commit()
+        
+        # 构建响应数据
+        result = {
+            "updated_count": updated_count,
+            "total_requested": len(batch_update.task_ids),
+            "updated_task_ids": found_task_ids,
+            "target_status": batch_update.status.value,
+            "missing_task_ids": missing_task_ids if missing_task_ids else '无'
+        }
+        
+        message = f"成功更新 {updated_count} 个任务状态为 {batch_update.status.value}"
+        if missing_task_ids:
+            message += f"，{len(missing_task_ids)} 个任务未找到"
+        
+        return standard_response(
+            data=result,
+            message=message
+        )
+        
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"批量更新任务状态失败: {str(e)}"
+        )
+
+# 批量分配任务
+@router.put("/batch-assign", response_model=BaseResponse)
+async def batch_update_task_assignee(
+    batch_update: TaskBatchAssigneeUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_permission("task:write"))
+):
+    
+    """批量分配任务"""
+    # 检查权限：只有任务创建者、负责人或管理员可以分配任务
+    user_is_admin = current_user.role == UserRole.ADMIN  # type: ignore
+    unauthorized_tasks = []
+    if not user_is_admin:  # type: ignore
+        for task_id in batch_update.task_ids:
+            task = db.query(Task).filter(Task.id == task_id).first()
+            if not task:
+                continue
+            user_is_reporter = current_user.id == task.reporter_id
+            user_is_assignee = current_user.id == task.assignee_id
+            if not (user_is_reporter or user_is_assignee):  # type: ignore
+                unauthorized_tasks.append(task_id)
+    if unauthorized_tasks:  
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="没有权限分配以下任务: " + ", ".join(unauthorized_tasks)
+        )
+    if not batch_update.assignee_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="分配者ID不能为空"
+        )
+    # 检查分配者是否存在
+    assignee = db.query(User).filter(User.id == batch_update.assignee_id).first()
+    if not assignee:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="分配者不存在"
+        )
+    # 检查任务是否存在
+    tasks = db.query(Task).filter(Task.id.in_(batch_update.task_ids)).all()
+    if not tasks:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="未找到任何指定的任务"
+        )
+    # 检查任务是否已分配
+    assigned_task_ids = [str(task.id) for task in tasks if task.assignee_id]  # type: ignore
+    if assigned_task_ids:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"以下任务已分配，不能重复分配: {', '.join(assigned_task_ids)}"
+        )
+    # 检查任务是否已完成
+    completed_task_ids = [str(task.id) for task in tasks if task.status == TaskStatus.DONE]  # type: ignore
+    if completed_task_ids:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"以下任务已完成，不能分配: {', '.join(completed_task_ids)}"
+        )
+    # 检查任务是否已取消
+    cancelled_task_ids = [str(task.id) for task in tasks if task.status == TaskStatus.CANCELLED]  # type: ignore
+    if cancelled_task_ids:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"以下任务已取消，不能分配: {', '.join(cancelled_task_ids)}"
+        )
+    # 执行批量分配
+    try:
+        updated_count = 0
+        for task in tasks:
+            task.assignee_id = batch_update.assignee_id  # type: ignore
+            task.updated_at = datetime.now()  # type: ignore
+            updated_count += 1
+        db.commit()
+        return standard_response(
+            data={
+                "updated_count": updated_count,
+                "total_requested": len(batch_update.task_ids),
+                "updated_task_ids": [task.id for task in tasks],
+                "assignee_id": batch_update.assignee_id
+            },
+            message="批量分配任务成功"
+        )
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"批量分配任务失败: {str(e)}"
+        )
+    finally:
+        db.close()
+
+# 批量删除
+@router.delete("/batch-delete", response_model=BaseResponse)
 async def batch_delete_tasks(
-    request: BatchDeleteRequest,
+    batch_delete: TaskBatchDelete,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_permission("task:write"))
 ):
     """批量删除任务"""
-    tasks = db.query(Task).filter(Task.id.in_(request.ids)).all()
-    
-    for task in tasks:
-        db.delete(task)
-    
-    db.commit()
-    
-    return BaseResponse(message=f"成功删除 {len(tasks)} 个任务")
-
-@router.post("/batch-assign", response_model=BaseResponse)
-async def batch_assign_tasks(
-    request: BatchAssignRequest,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(require_permission("task:write"))
-):
-    """批量分配任务"""
-    # 检查分配人是否存在
-    assignee = db.query(User).filter(User.id == request.assignee_id).first()
-    if not assignee:
+    # 检查权限：只有任务创建者、负责人或管理员可以删除任务
+    user_is_admin = current_user.role == UserRole.ADMIN  # type: ignore
+    unauthorized_tasks = []
+    if not user_is_admin:  # type: ignore
+        for task_id in batch_delete.task_ids:
+            task = db.query(Task).filter(Task.id == task_id).first()
+            if not task:
+                continue
+            user_is_reporter = current_user.id == task.reporter_id
+            user_is_assignee = current_user.id == task.assignee_id
+            if not (user_is_reporter or user_is_assignee):  # type: ignore
+                unauthorized_tasks.append(task_id)
+    if unauthorized_tasks:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="没有权限删除以下任务: " + ", ".join(unauthorized_tasks)
+        )
+    # 检查任务是否存在
+    tasks = db.query(Task).filter(Task.id.in_(batch_delete.task_ids)).all()
+    if not tasks:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="分配人不存在"
+            detail="未找到任何指定的任务"
         )
-    
-    tasks = db.query(Task).filter(Task.id.in_(request.task_ids)).all()
-    
-    for task in tasks:
-        task.assignee_id = request.assignee_id
-    
-    db.commit()
-    
-    return BaseResponse(message=f"成功分配 {len(tasks)} 个任务")
-
-# 任务附件相关接口
-@router.get("/{task_id}/attachments", response_model=BaseResponse)
-async def get_task_attachments(
-    task_id: int,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(require_permission("task:read"))
-):
-    """获取任务附件列表"""
-    task = db.query(Task).filter(Task.id == task_id).first()
-    if not task:
+    # 检查任务是否已完成
+    completed_task_ids = [str(task.id) for task in tasks if task.status == TaskStatus.DONE]  # type: ignore
+    if completed_task_ids:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="任务不存在"
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"以下任务已完成，不能删除: {', '.join(completed_task_ids)}"
         )
-    
-    attachments = db.query(TaskAttachment).filter(TaskAttachment.task_id == task_id).all()
-    
-    return BaseResponse(
-        message="获取任务附件成功",
-        data=[AttachmentResponse.from_orm(attachment) for attachment in attachments]
-    )
-
-@router.post("/{task_id}/attachments", response_model=BaseResponse)
-async def upload_task_attachment(
-    task_id: int,
-    file: UploadFile = File(...),
-    db: Session = Depends(get_db),
-    current_user: User = Depends(require_permission("task:write"))
-):
-    """上传任务附件"""
-    task = db.query(Task).filter(Task.id == task_id).first()
-    if not task:
+    # 检查任务是否已取消
+    cancelled_task_ids = [str(task.id) for task in tasks if task.status == TaskStatus.CANCELLED]  # type: ignore
+    if cancelled_task_ids:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="任务不存在"
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"以下任务已取消，不能删除: {', '.join(cancelled_task_ids)}"
         )
-    
-    # 创建上传目录
-    upload_dir = "uploads/attachments"
-    os.makedirs(upload_dir, exist_ok=True)
-    
-    # 生成唯一文件名
-    file_extension = os.path.splitext(file.filename)[1]
-    unique_filename = f"{uuid.uuid4()}{file_extension}"
-    file_path = os.path.join(upload_dir, unique_filename)
-    
-    # 保存文件
-    with open(file_path, "wb") as buffer:
-        content = await file.read()
-        buffer.write(content)
-    
-    # 创建附件记录
-    attachment = TaskAttachment(
-        task_id=task_id,
-        filename=unique_filename,
-        original_filename=file.filename,
-        file_path=file_path,
-        file_size=len(content),
-        content_type=file.content_type,
-        uploaded_by=current_user.id
-    )
-    
-    db.add(attachment)
-    db.commit()
-    db.refresh(attachment)
-    
-    return BaseResponse(
-        message="上传附件成功",
-        data=AttachmentResponse.from_orm(attachment)
-    )
-
-# 任务评论相关接口
-@router.get("/{task_id}/comments", response_model=BaseResponse)
-async def get_task_comments(
-    task_id: int,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(require_permission("task:read"))
-):
-    """获取任务评论列表"""
-    task = db.query(Task).filter(Task.id == task_id).first()
-    if not task:
+    # 执行批量删除
+    try:
+        deleted_task_ids = [task.id for task in tasks]
+        for task in tasks:
+            db.delete(task)
+        db.commit()
+        return standard_response(
+            data={
+                "deleted_count": len(tasks),
+                "total_requested": len(batch_delete.task_ids),
+                "deleted_task_ids": deleted_task_ids
+            },
+            message="批量删除任务成功"
+        )
+    except Exception as e:
+        db.rollback()
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="任务不存在"
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"批量删除任务失败: {str(e)}"
         )
-    
-    comments = db.query(TaskComment).filter(TaskComment.task_id == task_id).all()
-    
-    return BaseResponse(
-        message="获取任务评论成功",
-        data=[CommentResponse.from_orm(comment) for comment in comments]
-    )
+    finally:
+        db.close()
 
-@router.post("/{task_id}/comments", response_model=BaseResponse)
-async def create_task_comment(
-    task_id: int,
-    comment_data: CommentCreate,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(require_permission("task:write"))
-):
-    """创建任务评论"""
-    task = db.query(Task).filter(Task.id == task_id).first()
-    if not task:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="任务不存在"
-        )
-    
-    comment = TaskComment(
-        task_id=task_id,
-        user_id=current_user.id,
-        content=comment_data.content
-    )
-    
-    db.add(comment)
-    db.commit()
-    db.refresh(comment)
-    
-    return BaseResponse(
-        message="创建评论成功",
-        data=CommentResponse.from_orm(comment)
-    )
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
