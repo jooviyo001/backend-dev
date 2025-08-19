@@ -33,7 +33,7 @@ def get_permission_cache_dep():
 
 # 异步权限管理API
 @router.post("/", response_model=Permission)
-async def create_permission(
+def create_permission(
     permission_data: PermissionFormData,
     db: Session = Depends(get_db),
     permission_service: PermissionService = Depends(get_permission_service_dep),
@@ -520,7 +520,7 @@ def get_permission_usage(
 
 
 @router.post("/sync-cache")
-async def sync_permission_cache(
+def sync_permission_cache(
     db: Session = Depends(get_db),
     permission_service: PermissionService = Depends(get_permission_service_dep),
     current_user: User = Depends(require_admin)
@@ -537,7 +537,7 @@ async def sync_permission_cache(
 
 
 @router.get("/{id}/history")
-async def get_permission_history(
+def get_permission_history(
     id: str,
     page: int = Query(1, ge=1),
     limit: int = Query(20, ge=1, le=100),
@@ -564,23 +564,16 @@ async def get_permission_history(
 
 # 角色权限API
 @router.get("/role/{role_id}/permissions", response_model=BaseResponse)
-async def get_role_permissions(
+def get_role_permissions(
     role_id: int,
     db: Session = Depends(get_db),
     permission_service: PermissionService = Depends(get_permission_service_dep),
-    permission_cache = Depends(get_permission_cache_dep),
     current_user: User = Depends(require_permission("role", "read"))
 ):
     """获取指定角色的权限信息"""
     try:
-        # 使用缓存获取角色权限
-        role_permissions = await permission_cache.get_role_permissions(role_id)
-        if not role_permissions:
-            # 缓存未命中，从服务层获取
-            role_permissions = permission_service.get_role_permissions(role_id)
-            if role_permissions:
-                # 更新缓存
-                await permission_cache.set_role_permissions(role_id, role_permissions)
+        # 直接从服务层获取角色权限
+        role_permissions = permission_service.get_role_permissions(role_id)
         
         if not role_permissions:
             raise HTTPException(
@@ -593,7 +586,7 @@ async def get_role_permissions(
         raise HTTPException(status_code=400, detail=str(e))
 
 @router.post("/role/{role_id}/permissions", response_model=BaseResponse)
-async def assign_role_permissions(
+def assign_role_permissions(
     role_id: int,
     permission_ids: List[int],
     db: Session = Depends(get_db),
@@ -605,16 +598,15 @@ async def assign_role_permissions(
     try:
         success = permission_service.assign_role_permissions(role_id, permission_ids)
         if success:
-            # 清除相关缓存
-            await permission_cache.invalidate_role_permissions(role_id)
-            await permission_cache.invalidate_users_by_role(role_id)
+            # 清除所有缓存（因为角色权限变更影响所有用户）
+            permission_cache.clear_all_cache()
         
         return success_response(message="角色权限分配成功")
     except BusinessException as e:
         raise HTTPException(status_code=400, detail=str(e))
 
 @router.delete("/role/{role_id}/permissions/{permission_id}", response_model=BaseResponse)
-async def revoke_role_permission(
+def revoke_role_permission(
     role_id: int,
     permission_id: int,
     db: Session = Depends(get_db),
@@ -626,9 +618,8 @@ async def revoke_role_permission(
     try:
         success = permission_service.revoke_role_permission(role_id, permission_id)
         if success:
-            # 清除相关缓存
-            await permission_cache.invalidate_role_permissions(role_id)
-            await permission_cache.invalidate_users_by_role(role_id)
+            # 清除所有缓存（因为角色权限变更影响所有用户）
+            permission_cache.clear_all_cache()
         
         return success_response(message="角色权限撤销成功")
     except BusinessException as e:
@@ -637,7 +628,7 @@ async def revoke_role_permission(
 
 # 权限检查API
 @router.post("/check", response_model=BaseResponse)
-async def check_user_permission(
+def check_user_permission(
     permission_request: PermissionCheckRequest,
     db: Session = Depends(get_db),
     permission_service: PermissionService = Depends(get_permission_service_dep),
@@ -646,18 +637,21 @@ async def check_user_permission(
 ):
     """检查当前用户是否拥有指定权限"""
     try:
-        # 使用缓存进行权限检查
-        has_permission = await permission_cache.check_user_permission(
-            current_user.id, 
-            permission_request.permission
-        )
+        # 解析权限字符串 (格式: "resource_type:action_type")
+        if ':' in permission_request.permission:
+            resource_type, action_type = permission_request.permission.split(':', 1)
+        else:
+            # 兼容旧格式
+            resource_type = permission_request.permission
+            action_type = 'read'
         
-        if has_permission is None:
-            # 缓存未命中，使用服务层检查
-            has_permission = permission_service.check_user_permission(
-                current_user.id, 
-                permission_request.permission
-            )
+        # 使用缓存进行权限检查
+        has_permission = permission_cache.check_user_permission(
+            str(current_user.id), 
+            resource_type,
+            action_type,
+            db=db
+        )
         
         response_data = PermissionCheckResponse(
             has_permission=has_permission,
@@ -673,7 +667,7 @@ async def check_user_permission(
         raise HTTPException(status_code=400, detail=str(e))
 
 @router.post("/check/batch", response_model=BaseResponse)
-async def check_user_permissions_batch(
+def check_user_permissions_batch(
     permissions: List[str],
     user_id: Optional[int] = None,
     db: Session = Depends(get_db),
@@ -696,9 +690,19 @@ async def check_user_permissions_batch(
                     detail="无权限检查其他用户权限"
                 )
         
+        # 将权限字符串转换为(resource_type, action_type)元组列表
+        permission_checks = []
+        for perm in permissions:
+            if ':' in perm:
+                resource_type, action_type = perm.split(':', 1)
+                permission_checks.append((resource_type, action_type))
+            else:
+                # 如果没有冒号，假设是resource_type，action_type为read
+                permission_checks.append((perm, 'read'))
+        
         # 使用缓存进行批量权限检查
-        permission_results = await permission_cache.check_user_permissions_batch(
-            target_user_id, permissions
+        permission_results = permission_cache.batch_check_permissions(
+            str(target_user_id), permission_checks, db
         )
         
         return success_response(
@@ -725,7 +729,7 @@ def get_permission_stats(
 
 # 缓存管理API
 @router.post("/cache/refresh", response_model=BaseResponse)
-async def refresh_permission_cache(
+def refresh_permission_cache(
     user_id: Optional[int] = None,
     role_id: Optional[int] = None,
     db: Session = Depends(get_db),
@@ -737,22 +741,17 @@ async def refresh_permission_cache(
     try:
         if user_id:
             # 刷新指定用户的权限缓存
-            await permission_cache.invalidate_user_permissions(user_id)
+            permission_cache.invalidate_user_cache(str(user_id))
             user_permissions = permission_service.get_user_permissions(user_id)
-            if user_permissions:
-                await permission_cache.set_user_permissions(user_id, user_permissions)
             message = f"用户 {user_id} 权限缓存刷新成功"
         elif role_id:
             # 刷新指定角色的权限缓存
-            await permission_cache.invalidate_role_permissions(role_id)
-            await permission_cache.invalidate_users_by_role(role_id)
+            permission_cache.clear_all_cache()
             role_permissions = permission_service.get_role_permissions(role_id)
-            if role_permissions:
-                await permission_cache.set_role_permissions(role_id, role_permissions)
             message = f"角色 {role_id} 权限缓存刷新成功"
         else:
             # 刷新所有权限缓存
-            await permission_cache.clear_all_cache()
+            permission_cache.clear_all_cache()
             message = "所有权限缓存刷新成功"
         
         return success_response(message=message)
@@ -760,13 +759,13 @@ async def refresh_permission_cache(
         raise HTTPException(status_code=400, detail=str(e))
 
 @router.get("/cache/stats", response_model=BaseResponse)
-async def get_cache_stats(
+def get_cache_stats(
     permission_cache = Depends(get_permission_cache_dep),
     current_user: User = Depends(require_permission("system", "read"))
 ):
     """获取权限缓存统计信息"""
     try:
-        cache_stats = await permission_cache.get_cache_stats()
+        cache_stats = permission_cache.get_cache_stats()
         return success_response(data=cache_stats, message="获取缓存统计信息成功")
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"获取缓存统计失败: {str(e)}")
