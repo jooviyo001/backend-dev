@@ -53,14 +53,14 @@ class PermissionSearchParams(BaseModel):
     module: Optional[str] = Field(None, description="所属模块")
     resource_type: Optional[str] = Field(None, description="资源类型")
     action_type: Optional[str] = Field(None, description="操作类型")
-    status: Optional[str] = Field(None, description="权限状态")
+    is_active: Optional[str] = Field(None, description="权限状态") 
     keyword: Optional[str] = Field(None, description="搜索关键词")
     sort_order: Optional[SortOrder] = Field(None, description="排序顺序，asc或desc")
     created_at_start: Optional[datetime] = Field(None, description="创建时间范围-开始")
     created_at_end: Optional[datetime] = Field(None, description="创建时间范围-结束")
     updated_at_start: Optional[datetime] = Field(None, description="更新时间范围-开始")
     updated_at_end: Optional[datetime] = Field(None, description="更新时间范围-结束")
-    func: Optional[str] = Field(None, description="前端功能标识")
+    frontend_func: Optional[str] = Field(None, description="前端功能标识")
 
 # 权限列表响应
 class PermissionListResponse(BaseResponse):

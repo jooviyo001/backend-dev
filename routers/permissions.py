@@ -13,7 +13,7 @@ from schemas.permission import (
     PermissionCheckRequest, PermissionCheckResponse, PermissionModule, PermissionModuleResponse
 )
 from schemas.base import BaseResponse
-from services.permission_service import get_permission_service
+from services.permission_service import get_permission_service, PermissionService
 from utils.auth import get_current_active_user
 from utils.permission_middleware import require_permission, require_admin
 from utils.permission_cache import get_permission_cache
@@ -31,18 +31,17 @@ def get_permission_cache_dep():
     """获取权限缓存实例"""
     return get_permission_cache()
 
-
-# 权限管理API
+# 异步权限管理API
 @router.post("/", response_model=Permission)
 async def create_permission(
     permission_data: PermissionFormData,
     db: Session = Depends(get_db),
-    permission_service = Depends(get_permission_service_dep),
+    permission_service: PermissionService = Depends(get_permission_service_dep),
     current_user: User = Depends(require_admin)
 ):
     """创建新权限"""
     try:
-        permission = await permission_service.create_permission(
+        permission = permission_service.create_permission(
             name=permission_data.name,
             code=permission_data.code,
             description=permission_data.description,
@@ -56,10 +55,10 @@ async def create_permission(
         raise HTTPException(status_code=400, detail=str(e))
 
 @router.get("/pages", response_model=PermissionListResponse)
-async def get_permissions(
+def get_permissions(
     params: PermissionSearchParams = Depends(),
     db: Session = Depends(get_db),
-    permission_service = Depends(get_permission_service_dep),
+    permission_service: PermissionService = Depends(get_permission_service_dep),
     current_user: User = Depends(require_permission("system", "read"))
 ):
     """获取权限列表"""
@@ -70,6 +69,7 @@ async def get_permissions(
             query=params.keyword,
             resource_type=params.resource_type,
             action_type=params.action_type,
+            is_active=params.is_active,
             start_time=params.created_at_start,
             end_time=params.created_at_end
         )
@@ -91,15 +91,15 @@ async def get_permissions(
 
 
 @router.get("/{permission_id}", response_model=Permission)
-async def get_permission(
+def get_permission(
     permission_id: str,
     db: Session = Depends(get_db),
-    permission_service = Depends(get_permission_service_dep),
+    permission_service: PermissionService = Depends(get_permission_service_dep),
     current_user: User = Depends(require_permission("system", "read"))
 ):
     """获取指定权限详情"""
     try:
-        permission = await permission_service.get_permission_by_id(permission_id)
+        permission = permission_service.get_permission_by_id(permission_id)
         if not permission:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -110,16 +110,16 @@ async def get_permission(
         raise HTTPException(status_code=400, detail=str(e))
 
 @router.put("/{permission_id}", response_model=Permission)
-async def update_permission(
+def update_permission(
     permission_id: str,
     permission_data: PermissionFormData,
     db: Session = Depends(get_db),
-    permission_service = Depends(get_permission_service_dep),
+    permission_service: PermissionService = Depends(get_permission_service_dep),
     current_user: User = Depends(require_admin)
 ):
     """更新权限信息"""
     try:
-        permission = await permission_service.update_permission(
+        permission = permission_service.update_permission(
             permission_id=permission_id,
             name=permission_data.name,
             code=permission_data.code,
@@ -139,15 +139,15 @@ async def update_permission(
         raise HTTPException(status_code=400, detail=str(e))
 
 @router.delete("/{permission_id}")
-async def delete_permission(
+def delete_permission(
     permission_id: str,
     db: Session = Depends(get_db),
-    permission_service = Depends(get_permission_service_dep),
+    permission_service: PermissionService = Depends(get_permission_service_dep),
     current_user: User = Depends(require_admin)
 ):
     """删除权限"""
     try:
-        success = await permission_service.delete_permission(permission_id)
+        success = permission_service.delete_permission(permission_id)
         if not success:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -159,10 +159,10 @@ async def delete_permission(
 
 
 @router.delete("/batch")
-async def batch_delete_permissions(
+def batch_delete_permissions(
     request_data: dict,
     db: Session = Depends(get_db),
-    permission_service = Depends(get_permission_service_dep),
+    permission_service: PermissionService = Depends(get_permission_service_dep),
     current_user: User = Depends(require_admin)
 ):
     """批量删除权限"""
@@ -171,7 +171,7 @@ async def batch_delete_permissions(
         if not permission_ids:
             raise HTTPException(status_code=400, detail="权限ID列表不能为空")
         
-        success_count = await permission_service.batch_delete_permissions(permission_ids)
+        success_count = permission_service.batch_delete_permissions(permission_ids)
         return {
             "message": f"成功删除 {success_count} 个权限",
             "deleted_count": success_count
@@ -181,15 +181,15 @@ async def batch_delete_permissions(
 
 
 @router.post("/batch-operation")
-async def batch_operate_permissions(
+def batch_operate_permissions(
     params: PermissionBatchOperationParams,
     db: Session = Depends(get_db),
-    permission_service = Depends(get_permission_service_dep),
+    permission_service: PermissionService = Depends(get_permission_service_dep),
     current_user: User = Depends(require_admin)
 ):
     """批量操作权限"""
     try:
-        result = await permission_service.batch_operate_permissions(
+        result = permission_service.batch_operate_permissions(
             permission_ids=params.permission_ids,
             operation=params.operation,
             data=params.data
@@ -204,10 +204,10 @@ async def batch_operate_permissions(
 
 
 @router.post("/copy", response_model=Permission)
-async def copy_permission(
+def copy_permission(
     request_data: dict,
     db: Session = Depends(get_db),
-    permission_service = Depends(get_permission_service_dep),
+    permission_service: PermissionService = Depends(get_permission_service_dep),
     current_user: User = Depends(require_admin)
 ):
     """复制权限"""
@@ -219,7 +219,7 @@ async def copy_permission(
         if not all([permission_id, name, code]):
             raise HTTPException(status_code=400, detail="缺少必要参数")
         
-        permission = await permission_service.copy_permission(
+        permission = permission_service.copy_permission(
             permission_id=permission_id,
             new_name=name,
             new_code=code
@@ -230,10 +230,10 @@ async def copy_permission(
 
 
 @router.patch("/status", response_model=Permission)
-async def update_permission_status(
+def update_permission_status(
     request_data: dict,
     db: Session = Depends(get_db),
-    permission_service = Depends(get_permission_service_dep),
+    permission_service: PermissionService = Depends(get_permission_service_dep),
     current_user: User = Depends(require_admin)
 ):
     """更新权限状态"""
@@ -247,7 +247,7 @@ async def update_permission_status(
         if status not in ["active", "inactive"]:
             raise HTTPException(status_code=400, detail="无效的状态值")
         
-        permission = await permission_service.update_permission_status(
+        permission = permission_service.update_permission_status(
             permission_id=permission_id,
             status=status
         )
@@ -257,14 +257,14 @@ async def update_permission_status(
 
 
 @router.get("/stats")
-async def get_permission_stats(
+def get_permission_stats(
     db: Session = Depends(get_db),
-    permission_service = Depends(get_permission_service_dep),
+    permission_service: PermissionService = Depends(get_permission_service_dep),
     current_user: User = Depends(require_permission("system", "read"))
 ):
     """获取权限统计"""
     try:
-        stats = await permission_service.get_permission_stats()
+        stats = permission_service.get_permission_stats()
         return {
             "total": stats.get("total", 0),
             "active": stats.get("active", 0),
@@ -277,16 +277,16 @@ async def get_permission_stats(
 
 
 @router.get("/check-code")
-async def check_permission_code(
+def check_permission_code(
     code: str = Query(..., description="权限代码"),
     exclude_id: Optional[str] = Query(None, description="排除的权限ID"),
     db: Session = Depends(get_db),
-    permission_service = Depends(get_permission_service_dep),
+    permission_service: PermissionService = Depends(get_permission_service_dep),
     current_user: User = Depends(require_permission("system", "read"))
 ):
     """检查权限代码是否可用"""
     try:
-        available = await permission_service.check_permission_code_available(
+        available = permission_service.check_permission_code_available(
             code=code,
             exclude_id=exclude_id
         )
@@ -296,59 +296,59 @@ async def check_permission_code(
 
 
 @router.get("/modules", response_model=List[PermissionModule])
-async def get_permission_modules(
+def get_permission_modules(
     db: Session = Depends(get_db),
-    permission_service = Depends(get_permission_service_dep),
+    permission_service: PermissionService = Depends(get_permission_service_dep),
     current_user: User = Depends(get_current_active_user)
 ):
     """获取权限模块列表"""
     try:
-        modules = await permission_service.get_permission_modules()
+        modules = permission_service.get_permission_modules()
         return modules
     except BusinessException as e:
         raise HTTPException(status_code=400, detail=str(e))
 
 
 @router.get("/by-module/{module}", response_model=List[Permission])
-async def get_permissions_by_module(
+def get_permissions_by_module(
     module: str,
     db: Session = Depends(get_db),
-    permission_service = Depends(get_permission_service_dep),
+    permission_service: PermissionService = Depends(get_permission_service_dep),
     current_user: User = Depends(require_permission("system", "read"))
 ):
     """按模块获取权限"""
     try:
-        permissions = await permission_service.get_permissions_by_module(module)
+        permissions = permission_service.get_permissions_by_module(module)
         return permissions
     except BusinessException as e:
         raise HTTPException(status_code=400, detail=str(e))
 
 
 @router.get("/by-type/{type}", response_model=List[Permission])
-async def get_permissions_by_type(
+def get_permissions_by_type(
     type: str,
     db: Session = Depends(get_db),
-    permission_service = Depends(get_permission_service_dep),
+    permission_service: PermissionService = Depends(get_permission_service_dep),
     current_user: User = Depends(require_permission("system", "read"))
 ):
     """按类型获取权限"""
     try:
-        permissions = await permission_service.get_permissions_by_type(type)
+        permissions = permission_service.get_permissions_by_type(type)
         return permissions
     except BusinessException as e:
         raise HTTPException(status_code=400, detail=str(e))
 
 
 @router.get("/search", response_model=List[Permission])
-async def search_permissions(
+def search_permissions(
     q: str = Query(..., description="搜索关键词"),
     db: Session = Depends(get_db),
-    permission_service = Depends(get_permission_service_dep),
+    permission_service: PermissionService = Depends(get_permission_service_dep),
     current_user: User = Depends(require_permission("system", "read"))
 ):
     """搜索权限"""
     try:
-        permissions = await permission_service.search_permissions(q)
+        permissions = permission_service.search_permissions(q)
         return permissions
     except BusinessException as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -356,31 +356,31 @@ async def search_permissions(
 
 # 用户权限API
 @router.get("/users/{user_id}/permissions", response_model=List[Permission])
-async def get_user_permissions(
+def get_user_permissions(
     user_id: str,
     db: Session = Depends(get_db),
-    permission_service = Depends(get_permission_service_dep),
+    permission_service: PermissionService = Depends(get_permission_service_dep),
     current_user: User = Depends(require_permission("user", "read"))
 ):
     """获取用户权限"""
     try:
-        permissions = await permission_service.get_user_permissions(user_id)
+        permissions = permission_service.get_user_permissions(user_id)
         return permissions
     except BusinessException as e:
         raise HTTPException(status_code=400, detail=str(e))
 
 
 @router.get("/users/{user_id}/permissions/check")
-async def check_user_permission(
+def check_user_permission(
     user_id: str,
     permission_code: str = Query(..., description="权限代码"),
     db: Session = Depends(get_db),
-    permission_service = Depends(get_permission_service_dep),
+    permission_service: PermissionService = Depends(get_permission_service_dep),
     current_user: User = Depends(require_permission("user", "read"))
 ):
     """检查用户是否有特定权限"""
     try:
-        has_permission = await permission_service.check_user_permission(
+        has_permission = permission_service.check_user_permission(
             user_id=user_id,
             permission_code=permission_code
         )
@@ -391,32 +391,32 @@ async def check_user_permission(
 
 # 角色权限API
 @router.get("/roles/{role_id}/permissions", response_model=List[Permission])
-async def get_role_permissions(
+def get_role_permissions(
     role_id: str,
     db: Session = Depends(get_db),
-    permission_service = Depends(get_permission_service_dep),
+    permission_service: PermissionService = Depends(get_permission_service_dep),
     current_user: User = Depends(require_permission("role", "read"))
 ):
     """获取角色权限"""
     try:
-        permissions = await permission_service.get_role_permissions(role_id)
+        permissions = permission_service.get_role_permissions(role_id)
         return permissions
     except BusinessException as e:
         raise HTTPException(status_code=400, detail=str(e))
 
 
 @router.put("/roles/{role_id}/permissions")
-async def update_role_permissions(
+def update_role_permissions(
     role_id: str,
     request_data: dict,
     db: Session = Depends(get_db),
-    permission_service = Depends(get_permission_service_dep),
+    permission_service: PermissionService = Depends(get_permission_service_dep),
     current_user: User = Depends(require_permission("role", "write"))
 ):
     """更新角色权限"""
     try:
         permission_ids = request_data.get("permission_ids", [])
-        await permission_service.update_role_permissions(
+        permission_service.update_role_permissions(
             role_id=role_id,
             permission_ids=permission_ids
         )
@@ -427,15 +427,15 @@ async def update_role_permissions(
 
 # 高级功能API
 @router.get("/export")
-async def export_permissions(
+def export_permissions(
     params: PermissionSearchParams = Depends(),
     db: Session = Depends(get_db),
-    permission_service = Depends(get_permission_service_dep),
+    permission_service: PermissionService = Depends(get_permission_service_dep),
     current_user: User = Depends(require_permission("system", "read"))
 ):
     """导出权限数据"""
     try:
-        file_content = await permission_service.export_permissions(params)
+        file_content = permission_service.export_permissions(params)
         return Response(
             content=file_content,
             media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -446,15 +446,15 @@ async def export_permissions(
 
 
 @router.post("/import")
-async def import_permissions(
+def import_permissions(
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
-    permission_service = Depends(get_permission_service_dep),
+    permission_service: PermissionService = Depends(get_permission_service_dep),
     current_user: User = Depends(require_admin)
 ):
     """导入权限数据"""
     try:
-        result = await permission_service.import_permissions(file)
+        result = permission_service.import_permissions(file)
         return {
             "success": result.get("success", 0),
             "failed": result.get("failed", 0),
@@ -465,15 +465,15 @@ async def import_permissions(
 
 
 @router.get("/{id}/dependencies")
-async def get_permission_dependencies(
+def get_permission_dependencies(
     id: str,
     db: Session = Depends(get_db),
-    permission_service = Depends(get_permission_service_dep),
+    permission_service: PermissionService = Depends(get_permission_service_dep),
     current_user: User = Depends(require_permission("system", "read"))
 ):
     """获取权限依赖关系"""
     try:
-        dependencies = await permission_service.get_permission_dependencies(id)
+        dependencies = permission_service.get_permission_dependencies(id)
         return {
             "dependencies": dependencies.get("dependencies", []),
             "dependents": dependencies.get("dependents", [])
@@ -483,15 +483,15 @@ async def get_permission_dependencies(
 
 
 @router.post("/validate")
-async def validate_permission_config(
+def validate_permission_config(
     data: PermissionFormData,
     db: Session = Depends(get_db),
-    permission_service = Depends(get_permission_service_dep),
+    permission_service: PermissionService = Depends(get_permission_service_dep),
     current_user: User = Depends(require_permission("system", "read"))
 ):
     """验证权限配置"""
     try:
-        result = await permission_service.validate_permission_config(data)
+        result = permission_service.validate_permission_config(data)
         return {
             "valid": result.get("valid", False),
             "errors": result.get("errors", [])
@@ -501,15 +501,15 @@ async def validate_permission_config(
 
 
 @router.get("/{id}/usage")
-async def get_permission_usage(
+def get_permission_usage(
     id: str,
     db: Session = Depends(get_db),
-    permission_service = Depends(get_permission_service_dep),
+    permission_service: PermissionService = Depends(get_permission_service_dep),
     current_user: User = Depends(require_permission("system", "read"))
 ):
     """获取权限使用情况"""
     try:
-        usage = await permission_service.get_permission_usage(id)
+        usage = permission_service.get_permission_usage(id)
         return {
             "roles": usage.get("roles", 0),
             "users": usage.get("users", 0),
@@ -522,12 +522,12 @@ async def get_permission_usage(
 @router.post("/sync-cache")
 async def sync_permission_cache(
     db: Session = Depends(get_db),
-    permission_service = Depends(get_permission_service_dep),
+    permission_service: PermissionService = Depends(get_permission_service_dep),
     current_user: User = Depends(require_admin)
 ):
     """同步权限缓存"""
     try:
-        result = await permission_service.sync_permission_cache()
+        result = permission_service.sync_permission_cache()
         return {
             "success": result.get("success", False),
             "message": result.get("message", "缓存同步完成")
@@ -542,12 +542,12 @@ async def get_permission_history(
     page: int = Query(1, ge=1),
     limit: int = Query(20, ge=1, le=100),
     db: Session = Depends(get_db),
-    permission_service = Depends(get_permission_service_dep),
+    permission_service: PermissionService = Depends(get_permission_service_dep),
     current_user: User = Depends(require_permission("system", "read"))
 ):
     """获取权限变更历史"""
     try:
-        history = await permission_service.get_permission_history(
+        history = permission_service.get_permission_history(
             permission_id=id,
             page=page,
             limit=limit
@@ -567,7 +567,7 @@ async def get_permission_history(
 async def get_role_permissions(
     role_id: int,
     db: Session = Depends(get_db),
-    permission_service = Depends(get_permission_service_dep),
+    permission_service: PermissionService = Depends(get_permission_service_dep),
     permission_cache = Depends(get_permission_cache_dep),
     current_user: User = Depends(require_permission("role", "read"))
 ):
@@ -577,7 +577,7 @@ async def get_role_permissions(
         role_permissions = await permission_cache.get_role_permissions(role_id)
         if not role_permissions:
             # 缓存未命中，从服务层获取
-            role_permissions = await permission_service.get_role_permissions(role_id)
+            role_permissions = permission_service.get_role_permissions(role_id)
             if role_permissions:
                 # 更新缓存
                 await permission_cache.set_role_permissions(role_id, role_permissions)
@@ -597,13 +597,13 @@ async def assign_role_permissions(
     role_id: int,
     permission_ids: List[int],
     db: Session = Depends(get_db),
-    permission_service = Depends(get_permission_service_dep),
+    permission_service: PermissionService = Depends(get_permission_service_dep),
     permission_cache = Depends(get_permission_cache_dep),
     current_user: User = Depends(require_admin)
 ):
     """为角色分配权限"""
     try:
-        success = await permission_service.assign_role_permissions(role_id, permission_ids)
+        success = permission_service.assign_role_permissions(role_id, permission_ids)
         if success:
             # 清除相关缓存
             await permission_cache.invalidate_role_permissions(role_id)
@@ -618,13 +618,13 @@ async def revoke_role_permission(
     role_id: int,
     permission_id: int,
     db: Session = Depends(get_db),
-    permission_service = Depends(get_permission_service_dep),
+    permission_service: PermissionService = Depends(get_permission_service_dep),
     permission_cache = Depends(get_permission_cache_dep),
     current_user: User = Depends(require_admin)
 ):
     """撤销角色权限"""
     try:
-        success = await permission_service.revoke_role_permission(role_id, permission_id)
+        success = permission_service.revoke_role_permission(role_id, permission_id)
         if success:
             # 清除相关缓存
             await permission_cache.invalidate_role_permissions(role_id)
@@ -640,7 +640,7 @@ async def revoke_role_permission(
 async def check_user_permission(
     permission_request: PermissionCheckRequest,
     db: Session = Depends(get_db),
-    permission_service = Depends(get_permission_service_dep),
+    permission_service: PermissionService = Depends(get_permission_service_dep),
     permission_cache = Depends(get_permission_cache_dep),
     current_user: User = Depends(get_current_active_user)
 ):
@@ -654,7 +654,7 @@ async def check_user_permission(
         
         if has_permission is None:
             # 缓存未命中，使用服务层检查
-            has_permission = await permission_service.check_user_permission(
+            has_permission = permission_service.check_user_permission(
                 current_user.id, 
                 permission_request.permission
             )
@@ -677,7 +677,7 @@ async def check_user_permissions_batch(
     permissions: List[str],
     user_id: Optional[int] = None,
     db: Session = Depends(get_db),
-    permission_service = Depends(get_permission_service_dep),
+    permission_service: PermissionService = Depends(get_permission_service_dep),
     permission_cache = Depends(get_permission_cache_dep),
     current_user: User = Depends(get_current_active_user)
 ):
@@ -687,7 +687,7 @@ async def check_user_permissions_batch(
         
         # 如果检查其他用户权限，需要管理员权限
         if user_id and user_id != current_user.id:
-            admin_permission = await permission_service.check_user_permission(
+            admin_permission = permission_service.check_user_permission(
                 current_user.id, "user:read"
             )
             if not admin_permission:
@@ -711,14 +711,14 @@ async def check_user_permissions_batch(
 
 # 权限统计API
 @router.get("/stats", response_model=BaseResponse)
-async def get_permission_stats(
+def get_permission_stats(
     db: Session = Depends(get_db),
-    permission_service = Depends(get_permission_service_dep),
+    permission_service: PermissionService = Depends(get_permission_service_dep),
     current_user: User = Depends(require_permission("system", "read"))
 ):
     """获取权限统计信息"""
     try:
-        stats = await permission_service.get_permission_stats()
+        stats = permission_service.get_permission_stats()
         return success_response(data=stats, message="获取权限统计信息成功")
     except BusinessException as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -729,7 +729,7 @@ async def refresh_permission_cache(
     user_id: Optional[int] = None,
     role_id: Optional[int] = None,
     db: Session = Depends(get_db),
-    permission_service = Depends(get_permission_service_dep),
+    permission_service: PermissionService = Depends(get_permission_service_dep),
     permission_cache = Depends(get_permission_cache_dep),
     current_user: User = Depends(require_admin)
 ):
@@ -738,7 +738,7 @@ async def refresh_permission_cache(
         if user_id:
             # 刷新指定用户的权限缓存
             await permission_cache.invalidate_user_permissions(user_id)
-            user_permissions = await permission_service.get_user_permissions(user_id)
+            user_permissions = permission_service.get_user_permissions(user_id)
             if user_permissions:
                 await permission_cache.set_user_permissions(user_id, user_permissions)
             message = f"用户 {user_id} 权限缓存刷新成功"
@@ -746,7 +746,7 @@ async def refresh_permission_cache(
             # 刷新指定角色的权限缓存
             await permission_cache.invalidate_role_permissions(role_id)
             await permission_cache.invalidate_users_by_role(role_id)
-            role_permissions = await permission_service.get_role_permissions(role_id)
+            role_permissions = permission_service.get_role_permissions(role_id)
             if role_permissions:
                 await permission_cache.set_role_permissions(role_id, role_permissions)
             message = f"角色 {role_id} 权限缓存刷新成功"
@@ -773,14 +773,14 @@ async def get_cache_stats(
 
 # 权限模块API（兼容性保持）
 @router.get("/modules", response_model=BaseResponse)
-async def get_permission_modules(
+def get_permission_modules(
     db: Session = Depends(get_db),
-    permission_service = Depends(get_permission_service_dep),
+    permission_service: PermissionService = Depends(get_permission_service_dep),
     current_user: User = Depends(get_current_active_user)
 ):
     """获取权限模块列表（按模块分组的权限）"""
     try:
-        modules = await permission_service.get_permission_modules()
+        modules = permission_service.get_permission_modules()
         return success_response(data=modules, message="获取权限模块列表成功")
     except BusinessException as e:
         raise HTTPException(status_code=400, detail=str(e))
