@@ -129,10 +129,20 @@ def configure_exception_handlers(app: FastAPI) -> None:
         """通用异常处理器"""
         from utils.response_utils import format_timestamp
         import traceback
+        import logging
         
-        # 记录异常信息
-        print(f"Unhandled exception: {exc}")
+        # 获取请求信息
+        request_url = str(request.url) if hasattr(request, 'url') else 'Unknown'
+        request_method = request.method if hasattr(request, 'method') else 'Unknown'
+        
+        # 记录详细异常信息
+        error_msg = f"Unhandled exception on {request_method} {request_url}: {exc}"
+        print(error_msg)
+        print(f"Exception type: {type(exc).__name__}")
         traceback.print_exc()
+        
+        # 使用logging记录
+        logging.error(error_msg, exc_info=True)
         
         return JSONResponse(
             status_code=500,
